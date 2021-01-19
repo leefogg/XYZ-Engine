@@ -1,0 +1,19 @@
+Test, FPS, TextureSizeMB, ModelSizeMB
+Without optimization, 39
+Removed Error.Check(), 44, 35254, 176
+Nessersary shader change, 74, 35254, 176
+Nessersary texture rebinds, 80, 35254, 176
+Nessersary VAO changes, 80, 35254, 176
+Nessersary Uniform changes, 80, 35254, 176
+VAO pool, 96, 35254, 208
+Camera UBO, 97, 35254, 208
+RG8 normals, 138, 28804, 208
+RGB8 albedo, 136, 25332, 208
+RGB8 illum, 132, 25016, 208
+Compressed normals, 131, 19372, 208
+RGBA8 albedo textures, 132, 22844, 208
+RGBA8 albedo textures, 132, 22844, 208
+Compressed albedo textures, 130, 9824, 208
+Dumb Texture arrays, 85, 12466, 208
+Preload exact Texture array size, 125, 5728, 208
+Instanced lighting spheres, 133, 5728, 208
