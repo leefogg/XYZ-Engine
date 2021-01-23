@@ -37,7 +37,8 @@ namespace GLOOP.Rendering
             for (var i = 0; i < ColorBuffers.Length; i++)
             {
                 var attachmentName = string.IsNullOrEmpty(name) ? null : name[..Math.Min(name.Length, Globals.MaxLabelLength - 2)] + i;
-                ColorBuffers[i] = new Texture(width, height, settings[i], attachmentName);
+                settings[i].Name = attachmentName;
+                ColorBuffers[i] = new Texture(width, height, settings[i]);
                 GL.FramebufferTexture2D(
                     FramebufferTarget.Framebuffer,
                     FramebufferAttachment.ColorAttachment0 + i,

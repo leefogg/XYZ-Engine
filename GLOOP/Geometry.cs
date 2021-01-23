@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using static GLOOP.Vector3Extensions;
+using static GLOOP.Extensions.Vector3Extensions;
 
 namespace GLOOP
 {

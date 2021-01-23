@@ -5,7 +5,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using static GLOOP.Vector3Extensions;
+using static GLOOP.Extensions.Vector3Extensions;
 
 namespace GLOOP {
     public class DebugCamera : Camera {

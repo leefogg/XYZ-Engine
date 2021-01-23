@@ -2,6 +2,7 @@
 using OpenTK.Graphics.OpenGL4;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace GLOOP
@@ -41,17 +42,24 @@ namespace GLOOP
             if (Textures.TryGetValue(path, out Texture tex))
                 return tex;
 
-            return Textures[path] = new Texture(
-                path,
-                new TextureParams()
-                {
-                    MinFilter = minFilter,
-                    MagFilter = magFilter,
-                    WrapMode = wrapMode,
-                    GenerateMips = hasMipMaps,
-                    InternalFormat = format
-                }
-            );
+            try { 
+                return Textures[path] = new Texture(
+                    path,
+                    new TextureParams()
+                    {
+                        MinFilter = minFilter,
+                        MagFilter = magFilter,
+                        WrapMode = wrapMode,
+                        GenerateMips = hasMipMaps,
+                        InternalFormat = format
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(path);
+                return null;
+            }
         }
 
         public static bool TryGet(string name, out TextureSlice tex) => TexturesSlices.TryGetValue(name, out tex);

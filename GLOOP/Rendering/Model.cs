@@ -60,6 +60,7 @@ namespace GLOOP.Rendering
                 var mesh = scene.Meshes[i];
 
                 var mat = scene.Materials[mesh.MaterialIndex];
+                var beforeLoadingTextures = DateTime.Now;
                 GetTextures(
                     mat.TextureDiffuse.FilePath,
                     mat.TextureNormal.FilePath,
@@ -71,6 +72,7 @@ namespace GLOOP.Rendering
                     out var specularTex,
                     out var illumTex
                 );
+                Metrics.TimeLoadingTextures += DateTime.Now - beforeLoadingTextures;
 
                 var vaoName = $"{path}[{i}]";
                 VirtualVAO vao;

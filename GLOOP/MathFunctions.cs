@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using static GLOOP.MatrixExtensions;
-using static GLOOP.Vector3Extensions;
+using static GLOOP.Extensions.Vector3Extensions;
 using static GLOOP.QuaternionExtensions;
 using OpenTK.Mathematics;
 

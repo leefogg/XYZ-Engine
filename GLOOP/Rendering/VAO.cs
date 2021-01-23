@@ -181,10 +181,10 @@ namespace GLOOP.Rendering
         public void Allocate(int sizeOfIndicies, int sizeOfVertcies)
         {
             GL.NamedBufferData(EBO, sizeOfIndicies, (IntPtr)0, BufferUsageHint.StaticDraw);
-            GPUResource.ModelsIndiciesBytesUsed += (ulong)sizeOfIndicies;
+            Metrics.ModelsIndiciesBytesUsed += (ulong)sizeOfIndicies;
 
             GL.NamedBufferData(VBO, sizeOfVertcies, (IntPtr)0, BufferUsageHint.StaticDraw);
-            GPUResource.ModelsBytesUsed += (ulong)sizeOfVertcies;
+            Metrics.ModelsBytesUsed += (ulong)sizeOfVertcies;
         }
 
         private Type getSmallestDataFormat(uint count)

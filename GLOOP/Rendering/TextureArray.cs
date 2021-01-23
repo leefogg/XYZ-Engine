@@ -45,8 +45,8 @@ namespace GLOOP.Rendering
                 GenerateMips();
 
 
-            GPUResource.TexturesBytesUsed += (ulong)(shape.Layout.GetSizeInBytes() * shape.Width * shape.Height * numLayers);
-            GPUResource.TextureCount++;
+            Metrics.TexturesBytesUsed += (ulong)(shape.Layout.GetSizeInBytes() * shape.Width * shape.Height * numLayers);
+            Metrics.TextureCount++;
         }
 
         private void GenerateMips()

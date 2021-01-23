@@ -64,66 +64,78 @@ namespace GLOOP.SOMA
             out Texture specularTex, 
             out Texture illumTex)
         {
-            var texturesFolder = @"C:\png";
-
-            if (Path.GetExtension(diffusePath) == ".mat")
-            {
-                var materialName = Path.GetFileName(diffusePath);
-                var materialPath = Path.Combine(currentFolder, materialName);
-                var material = Deserialize<Material>(materialPath);
-
-                diffusePath = material.Textures.Diffuse?.Path ?? diffusePath;
-                specularPath = material.Textures.Specular.Path ?? specularPath;
-                illumPath = material.Textures.Illumination?.Path ?? illumPath;
-            }
-
             diffuseTex = null;
             specularTex = null;
             illumTex = null;
             normalTex = null;
 
-            var diffuseName = Path.GetFileNameWithoutExtension(diffusePath);
-            diffusePath = Path.Combine(texturesFolder, diffuseName + ".png");
-            if (File.Exists(diffusePath))
-                diffuseTex = TextureCache.Get(diffusePath, PixelInternalFormat.CompressedRgba);
-
-            var normName = Path.GetFileNameWithoutExtension(normalPath);
-            var normPath = Path.Combine(texturesFolder, normName + ".png");
-            if (File.Exists(normPath))
-                normalTex = TextureCache.Get(normPath, PixelInternalFormat.CompressedRg);
-            if (normalTex == null)
+            try
             {
-                normPath = Path.Combine(texturesFolder, diffuseName + "_nrm.png");
-                if (File.Exists(normPath))
-                    normalTex = TextureCache.Get(normPath, PixelInternalFormat.CompressedRg);
-            }
+                var extension = "png";
+                var texturesFolder = @"C:\" + extension;
+                Texture findTex(string[] names, PixelInternalFormat format)
+                {
+                    Texture tex = null;
 
+                    foreach (var name in names)
+                    {
+                        var path = Path.Combine(texturesFolder, name + "." + extension);
+                        if (!File.Exists(path))
+                            continue;
+                        tex = TextureCache.Get(path, format);
+                        if (tex != null)
+                            break;
+                    }
 
-            var specName = Path.GetFileNameWithoutExtension(specularPath);
-            specularPath = Path.Combine(texturesFolder, specName + ".png");
-            if (File.Exists(specularPath)) {
-                specularTex = TextureCache.Get(specularPath);
-            } else {
-                specularPath = Path.Combine(texturesFolder, diffuseName + "_spec.png");
-                if (File.Exists(specularPath))
-                    specularTex = TextureCache.Get(specularPath);
-            }
+                    return tex;
+                }
 
-            var name = Path.GetFileNameWithoutExtension(illumPath);
-            illumPath = Path.Combine(texturesFolder, name + ".png");
-            if (File.Exists(illumPath))
-                illumTex = TextureCache.Get(illumPath, PixelInternalFormat.Rgb8);
-            if (illumTex == null)
+                if (Path.GetExtension(diffusePath) == ".mat")
+                {
+                    var materialName = Path.GetFileName(diffusePath);
+                    var materialPath = Path.Combine(@"c:\mat", materialName);
+                    var material = Deserialize<Material>(materialPath);
+
+                    diffusePath = material.Textures.Diffuse?.Path ?? diffusePath;
+                    specularPath = material.Textures.Specular?.Path ?? specularPath;
+                    illumPath = material.Textures.Illumination?.Path ?? illumPath;
+                }
+
+                diffusePath = Path.ChangeExtension(diffusePath, extension);
+                normalPath ??= diffusePath;
+                specularPath ??= diffusePath;
+
+                var diffuseName = Path.GetFileNameWithoutExtension(diffusePath);
+                diffusePath = Path.Combine(texturesFolder, Path.GetFileName(diffusePath));
+                if (File.Exists(diffusePath))
+                    diffuseTex = TextureCache.Get(diffusePath, PixelInternalFormat.CompressedRgbaS3tcDxt5Ext);
+
+                var normNames = new[] {
+                    diffuseName + "_nrm",
+                    diffuseName + "_norm",
+                    diffuseName + "_norm",
+                    diffuseName + "_nmor",
+                };
+                normalTex = findTex(normNames, PixelInternalFormat.CompressedRg);
+
+                var specNames = new[]
+                {
+                    Path.GetFileNameWithoutExtension(specularPath ?? ""),
+                    diffuseName + "_spec"
+                };
+                specularTex = findTex(specNames, PixelInternalFormat.Rgba);
+
+                var illumNames = new[]
+                {
+                    Path.GetFileNameWithoutExtension(illumPath ?? ""),
+                    diffuseName + "_illum",
+                    diffuseName + "_emmi"
+                };
+                specularTex = findTex(specNames, PixelInternalFormat.Rgb8);
+            } 
+            catch (Exception ex)
             {
-                illumPath = illumPath.Replace("_emmi", "_illum");
-                if (File.Exists(illumPath))
-                    illumTex = TextureCache.Get(illumPath, PixelInternalFormat.Rgb8);
-            }
-            if (illumTex == null)
-            {
-                illumPath = Path.Combine(texturesFolder, diffuseName + "_illum.png");
-                if (File.Exists(illumPath))
-                    illumTex = TextureCache.Get(illumPath, PixelInternalFormat.Rgb8);
+                Console.WriteLine(ex);
             }
 
             if (diffuseTex == null)

@@ -32,7 +32,6 @@ namespace GLOOP.Tests
         private FrameBuffer StagingBuffer;
         private Shader PointLightShader;
         private Shader SpotLightShader;
-        private Shader SingleColorShader;
         private SingleColorMaterial singleColorMaterial;
         private Shader FinalCombineShader;
         private Shader FullBrightShader;
@@ -110,11 +109,6 @@ namespace GLOOP.Tests
                 },
                 "Deferred Spot light"
             );
-            SingleColorShader = new StaticPixelShader(
-                "assets/shaders/SingleColor/basic.vert",
-                "assets/shaders/SingleColor/basic.frag",
-                name: "Single color"
-            );
             var singleColorShader = new SingleColorShader();
             singleColorMaterial = new SingleColorMaterial(singleColorShader);
             singleColorMaterial.Color = new Vector4(0.25f);
@@ -170,13 +164,13 @@ namespace GLOOP.Tests
             var spotLightStructSize = Marshal.SizeOf<SpotLight>();
             */
 
-            var lab = @"D:\Games\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
-            var bedroom = @"D:\Games\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm";
-            var theta_outside = @"D:\Games\Steam\steamapps\common\SOMA\maps\chapter02\02_04_theta_outside\02_04_theta_outside.hpm";
-            var upsilon = @"D:\Games\Steam\steamapps\common\SOMA\maps\chapter01\01_02_upsilon_inside\01_02_upsilon_inside.hpm";
-            var theta_inside = @"D:\Games\Steam\steamapps\common\SOMA\maps\chapter02\02_05_theta_inside\02_05_theta_inside.hpm";
-            var tau = @"D:\Games\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm";
-            var phi = @"D:\Games\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm";
+            var lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
+            var bedroom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm";
+            var theta_outside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_04_theta_outside\02_04_theta_outside.hpm";
+            var upsilon = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_02_upsilon_inside\01_02_upsilon_inside.hpm";
+            var theta_inside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_05_theta_inside\02_05_theta_inside.hpm";
+            var tau = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm";
+            var phi = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm";
             var mapToLoad = phi;
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
 
@@ -198,16 +192,18 @@ namespace GLOOP.Tests
             */
 
             var assimp = new AssimpContext();
+            var beforeMapLoad = DateTime.Now;
             map = new Map(
                 mapToLoad,
                 assimp,
                 deferredMaterial
             );
-
-            Console.WriteLine("Number of textures: " + GPUResource.TextureCount);
-            Console.WriteLine("Textures: " + GPUResource.TexturesBytesUsed / 1024 / 1024 + "MB");
-            Console.WriteLine("Models vertcies: " + GPUResource.ModelsBytesUsed / 1024 / 1024 + "MB");
-            Console.WriteLine("Models indicies: " + GPUResource.ModelsIndiciesBytesUsed/ 1024 / 1024 + "MB");
+            Console.WriteLine($"Time taken to load map {(DateTime.Now - beforeMapLoad).TotalSeconds} seconds");
+            Console.WriteLine($"Time taken to load textures {Metrics.TimeLoadingTextures.TotalSeconds} seconds");
+            Console.WriteLine("Number of textures: " + Metrics.TextureCount);
+            Console.WriteLine("Textures: " + Metrics.TexturesBytesUsed / 1024 / 1024 + "MB");
+            Console.WriteLine("Models vertcies: " + Metrics.ModelsBytesUsed / 1024 / 1024 + "MB");
+            Console.WriteLine("Models indicies: " + Metrics.ModelsIndiciesBytesUsed/ 1024 / 1024 + "MB");
 
             setupUniformBuffers();
 
@@ -261,6 +257,8 @@ namespace GLOOP.Tests
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             GBuffers.Use();
+            var clearColor = DebugLights ? 0.05f : 0;
+            GL.ClearColor(clearColor, clearColor, clearColor, 1);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
             var projectionMatrix = Camera.ProjectionMatrix;
@@ -349,7 +347,7 @@ namespace GLOOP.Tests
             }
             else
             {
-                DoLightPass(projectionMatrix, viewMatrix, new Vector3(0.0f));
+                DoLightPass(projectionMatrix, viewMatrix, new Vector3(0.05f));
 
                 if (debugLightBuffer) {
                     GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);

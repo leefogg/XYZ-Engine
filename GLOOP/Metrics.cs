@@ -4,11 +4,12 @@ using System.Text;
 
 namespace GLOOP
 {
-    public class GPUResource
+    public class Metrics
     {
         public static ulong TexturesBytesUsed = 0;
         public static ulong ModelsBytesUsed = 0;
         public static ulong ModelsIndiciesBytesUsed = 0;
         public static ulong TextureCount = 0;
+        public static TimeSpan TimeLoadingTextures;
     }
 }

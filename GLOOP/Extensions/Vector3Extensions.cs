@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP
+namespace GLOOP.Extensions
 {
     public static class Vector3Extensions
     {

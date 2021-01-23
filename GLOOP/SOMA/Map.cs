@@ -13,16 +13,17 @@ using System.Xml.Serialization;
 namespace GLOOP.SOMA
 {
     public class Map {
+        private const string SOMARoot = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
         public List<SOMAModel> Models = new List<SOMAModel>();
         public List<GLOOP.PointLight> PointLights = new List<GLOOP.PointLight>();
         public List<GLOOP.SpotLight> SpotLights = new List<GLOOP.SpotLight>();
 
         public Map(string mapPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             loadLights(mapPath + "_Light");
-            //loadStaticObjects(mapPath + "_StaticObject", assimp, material);
+            loadStaticObjects(mapPath + "_StaticObject", assimp, material);
             loadEntities(mapPath + "_Entity", assimp, material);
-            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
-            //loadPrimitives(mapPath + "_Primitive", material);
+            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            loadPrimitives(mapPath + "_Primitive", material);
 
             // Sort
             Models = Models
@@ -53,8 +54,6 @@ namespace GLOOP.SOMA
         public void loadEntities(string entitiesFilePath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             var entityDict = Deserialize<Entities>(entitiesFilePath);
 
-            var somaRoot = "D:/Games/Steam/steamapps/common/soma";
-
             int attempted = 0, success = 0;
             var failed = new List<string>();
             var instances = new List<SOMAModel>();
@@ -66,7 +65,7 @@ namespace GLOOP.SOMA
                 foreach (var entFile in section.Files) {
                     try {
                         attempted++;
-                        var fullPath = Path.Combine(somaRoot, entFile.Path);
+                        var fullPath = Path.Combine(SOMARoot, entFile.Path);
                         Console.Write(".");
 
                         //if (entFile.Path.Contains("Generator_Habitat.ent")) { 
@@ -74,7 +73,7 @@ namespace GLOOP.SOMA
                             var entity = Deserialize<Entity>(fullPath);
                             entities[entFile.Id] = entity;
 
-                            var daePath = Path.Combine(somaRoot, entity.Model.Mesh.FileName);
+                            var daePath = Path.Combine(SOMARoot, entity.Model.Mesh.FileName);
                             files[entFile.Id] = entity.Load(assimp, material);
 
                             //Console.WriteLine("SUCCESS.");
@@ -146,8 +145,6 @@ namespace GLOOP.SOMA
         public void loadStaticObjects(string staticObjectsPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             var staticObjects = Deserialize<StaticObjects>(staticObjectsPath);
 
-            var somaRoot = "D:/Games/Steam/steamapps/common/soma";
-
             int attempted = 0, success = 0;
             var failed = new List<string>();
             var instances = new List<SOMAModel>();
@@ -158,7 +155,7 @@ namespace GLOOP.SOMA
                 foreach (var entFile in section.Files) {
                     try {
                         attempted++;
-                        var fullPath = Path.Combine(somaRoot, entFile.Path);
+                        var fullPath = Path.Combine(SOMARoot, entFile.Path);
                         Console.Write(".");
 
                        //if (fullPath.Contains("05_01_adon_support.DAE") || fullPath.Contains("05_01_adon_box_small.DAE") || fullPath.Contains("phi_tunnel_straight.DAE")) { 
@@ -224,8 +221,6 @@ namespace GLOOP.SOMA
         {
             var primitives = Deserialize<Primitives>(primitivesPath);
 
-            var somaRoot = "D:/Games/Steam/steamapps/common/soma";
-
             int attempted = 0, success = 0;
             Console.WriteLine();
             Console.WriteLine("Loading primitives");
@@ -234,7 +229,7 @@ namespace GLOOP.SOMA
                     try {
                         Console.Write(".");
                         attempted++;
-                        var mat = Deserialize<Material>(Path.Combine(somaRoot, plane.MaterialPath));
+                        var mat = Deserialize<Material>(Path.Combine(SOMARoot, plane.MaterialPath));
 
                         var endCorner = plane.Scale.ParseVector3();
                         var scale = new Vector2(endCorner.X, endCorner.Z);

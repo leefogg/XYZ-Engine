@@ -50,7 +50,7 @@ namespace GLOOP.SOMA
         }
 
         public SOMAModel Load(AssimpContext context, DeferredRenderingGeoMaterial shader) {
-            var SOMAHome = @"D:\Games\Steam\steamapps\common\soma";
+            var SOMAHome = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
             var fullPath = Path.Combine(SOMAHome, Model.Mesh.FileName);
             var model = new SOMAModel(fullPath, context, shader);
 

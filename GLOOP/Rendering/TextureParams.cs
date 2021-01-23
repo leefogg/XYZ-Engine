@@ -14,5 +14,7 @@ namespace GLOOP.Rendering
         public TextureMinFilter MagFilter = TextureMinFilter.Linear;
         public TextureWrapMode WrapMode = TextureWrapMode.Repeat;
         public IntPtr Data = new IntPtr();
+        public int CompressedDataLength;
+        public string Name;
     }
 }

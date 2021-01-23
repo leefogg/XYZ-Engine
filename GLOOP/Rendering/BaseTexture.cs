@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using static OpenTK.Graphics.OpenGL4.GL;
+using static OpenTK.Graphics.OpenGL4.GL.Arb;
 
 namespace GLOOP.Rendering
 {
@@ -9,12 +11,16 @@ namespace GLOOP.Rendering
     {
         private static readonly int[] BoundTextures = new int[16];
 
-        public readonly int Handle = GL.GenTexture();
+        private Lazy<ulong> bindlessHandle;
+        public readonly int Handle = GenTexture();
+        public ulong BindlessHandle => bindlessHandle.Value;
         public readonly TextureTarget Type;
 
         public BaseTexture(TextureTarget type)
         {
             Type = type;
+
+            bindlessHandle = new Lazy<ulong>(makeTexureResident);
         }
 
         public void Dispose()
@@ -31,11 +37,20 @@ namespace GLOOP.Rendering
         {
             if (BoundTextures[unit - TextureUnit.Texture0] != handle)
             {
-                GL.ActiveTexture(unit);
-                GL.BindTexture(type, handle);
+                ActiveTexture(unit);
+                BindTexture(type, handle);
 
                 BoundTextures[unit - TextureUnit.Texture0] = handle;
             }
+        }
+
+        private ulong makeTexureResident()
+        {
+            Use();
+
+            var handle = (ulong)GetTextureHandle(Handle);
+            MakeTextureHandleResident(handle);
+            return handle;
         }
     }
 }

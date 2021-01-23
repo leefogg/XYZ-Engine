@@ -23,8 +23,12 @@ namespace GLOOP.Extensions
                 PixelInternalFormat.Rgba8 => floatSize * 4,
                 PixelInternalFormat.Rgba16 => floatSize * 2 * 4,
                 PixelInternalFormat.Rgba16f => floatSize * 2 * 4,
-                PixelInternalFormat.CompressedRg => 1, // Yes, 1 byte per pixel
-                PixelInternalFormat.CompressedRgba => 1, // Yes, 1 byte per pixel
+                PixelInternalFormat.CompressedRg => 1,
+                PixelInternalFormat.CompressedRgba => 1,
+                PixelInternalFormat.CompressedRgbaS3tcDxt1Ext => 1, 
+                PixelInternalFormat.CompressedRgbaS3tcDxt3Ext => 1,
+                PixelInternalFormat.CompressedRgbaS3tcDxt5Ext => 1,
+                (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext => 1,
                 _ => floatSize * 4
             };
         }

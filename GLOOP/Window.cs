@@ -15,10 +15,13 @@ namespace GLOOP
     public abstract class Window : GameWindow
     {
         public static ulong FrameNumber { get; protected set; }
+        private int framesThisSecond;
+        private DateTime lastSecond;
+        public static int FPS;
 
 #if DEBUG
-        private static DebugProc _debugProcCallback = DebugCallback;
-        private static GCHandle _debugProcCallbackHandle;
+        private DebugProc _debugProcCallback = DebugCallback;
+        private GCHandle _debugProcCallbackHandle;
 #endif
         public static int Width { get; private set; }
         public static int Height { get; private set; }
@@ -36,7 +39,7 @@ namespace GLOOP
             Width = Size.X;
             Height = Size.Y;
 
-            OnResized.Invoke(this, Size);
+            OnResized?.Invoke(this, Size);
 
             base.OnResize(e);
         }
@@ -55,6 +58,8 @@ namespace GLOOP
             GL.Enable(EnableCap.DebugOutput);
             GL.Enable(EnableCap.DebugOutputSynchronous);
 #endif
+
+            lastSecond = DateTime.Now;
 
             base.OnLoad();
         }
@@ -89,6 +94,16 @@ namespace GLOOP
             SwapBuffers();
 
             FrameNumber++;
+            var now = DateTime.Now;
+            if (now > lastSecond + TimeSpan.FromSeconds(1))
+            {
+                FPS = framesThisSecond;
+                lastSecond = now;
+            }
+            else
+            {
+                framesThisSecond++;
+            }
 
             base.OnRenderFrame(args);
         }
