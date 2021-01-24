@@ -12,7 +12,6 @@ namespace GLOOP.Rendering
         private Uniform2f textureOffset, textureRepeat;
         private Uniform3f illuminationColor, albedoColourTint;
         private Uniform1b hasWorldspaceUVs;
-        private UniformBindlessTexture diffuse, normal, specular, illumination;
         //private Uniform1ui diffuseSlice, normalSlice, specularSlice, illumSlice;
         private Uniform16f modelMatrix;
 
@@ -32,6 +31,8 @@ namespace GLOOP.Rendering
         {
             set => albedoColourTint.Set(value);
         }
+#if BINDLESSTEXTURES
+        private UniformBindlessTexture diffuse, normal, specular, illumination;
         public ulong DiffuseTexture {
             set => diffuse.Set(value);
         }
@@ -45,6 +46,25 @@ namespace GLOOP.Rendering
         public ulong IlluminationTexture {
             set => illumination.Set(value);
         }
+#else
+        private CachedUniformTexture diffuse, normal, specular, illumination;
+        public TextureUnit DiffuseTexture
+        {
+            set => diffuse.Set(value);
+        }
+        public TextureUnit NormalTexture
+        {
+            set => normal.Set(value);
+        }
+        public TextureUnit SpecularTexture
+        {
+            set => specular.Set(value);
+        }
+        public TextureUnit IlluminationTexture
+        {
+            set => illumination.Set(value);
+        }
+#endif
         /*
         public ushort DiffuseTextureSlice
         {
@@ -80,17 +100,24 @@ namespace GLOOP.Rendering
             hasWorldspaceUVs = new CachedUniform1b(this, "isWorldSpaceUVs");
             illuminationColor = new CachedUniform3f(this, "illuminationColor");
             albedoColourTint = new CachedUniform3f(this, "albedoColourTint");
-
+#if BINDLESSTEXTURES
             diffuse = new UniformBindlessTexture(this, "diffuseTex");
             normal = new UniformBindlessTexture(this, "normalTex");
             specular = new UniformBindlessTexture(this, "specularTex");
             illumination = new UniformBindlessTexture(this, "illumTex");
+#else
+            diffuse = new CachedUniformTexture(this, "diffuseTex");
+            normal = new CachedUniformTexture(this, "normalTex");
+            specular = new CachedUniformTexture(this, "specularTex");
+            illumination = new CachedUniformTexture(this, "illumTex");
+#endif
             /*
             diffuseSlice = new CachedUniform1ui(this, "diffuseSlice");
             normalSlice = new CachedUniform1ui(this, "normalSlice");
             specularSlice = new CachedUniform1ui(this, "specularSlice");
             illumSlice = new CachedUniform1ui(this, "illumSlice");
             */
+
             modelMatrix = new CachedUniform16f(this, "ModelMatrix");
         }
     }

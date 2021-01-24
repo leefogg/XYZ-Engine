@@ -34,18 +34,17 @@ namespace GLOOP.Rendering
             shader.IlluminationColor = IlluminationColor;
             shader.AlbedoColourTint = AlbedoColourTint;
 
-            
+#if BINDLESSTEXTURES
             shader.DiffuseTexture = DiffuseTexture.BindlessHandle;
             shader.NormalTexture = NormalTexture.BindlessHandle;
             shader.SpecularTexture = SpecularTexture.BindlessHandle;
             shader.IlluminationTexture = IlluminationTexture.BindlessHandle;
-            
-            /*
+#else
             DiffuseTexture.Use(shader.DiffuseTexture = TextureUnit.Texture0);
             NormalTexture.Use(shader.NormalTexture = TextureUnit.Texture1);
             SpecularTexture.Use(shader.SpecularTexture = TextureUnit.Texture2);
             IlluminationTexture.Use(shader.IlluminationTexture = TextureUnit.Texture3);
-            */
+#endif
         }
 
         public override void SetCameraUniforms(Matrix4 projectionMatrix, Matrix4 viewMatrix, Matrix4 modelMatrix)
