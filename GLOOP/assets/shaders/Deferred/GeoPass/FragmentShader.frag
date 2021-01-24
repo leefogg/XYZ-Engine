@@ -7,7 +7,7 @@ in mat3 TBNMatrix;
 uniform vec2 textureOffset = vec2(0.0);
 uniform vec2 textureRepeat = vec2(1.0);
 uniform bool isWorldSpaceUVs = false;
-uniform float normalStrength = 4;
+uniform float normalStrength = 1;
 
 layout (location = 0) out vec3 diffuse;
 layout (location = 1) out vec4 position;
@@ -39,7 +39,8 @@ void main()
 		discard;
 	diff.rgb *= albedoColourTint;
 
-	vec3 norm = normalize(vec3(texture(normalTex, textureCoord).rg * 2.0 - 1.0, 1 / normalStrength));
+	vec3 norm = vec3(texture(normalTex, textureCoord).ra, 1.0 * normalStrength);
+	
 	specular = texture(specularTex, textureCoord);
 	position = vec4(fragPos, 0.0);
 	illum = texture(illumTex, textureCoord).rgb * illuminationColor;
