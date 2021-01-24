@@ -131,7 +131,7 @@ namespace GLOOP.SOMA
                     diffuseName + "_illum",
                     diffuseName + "_emmi"
                 };
-                specularTex = findTex(specNames, PixelInternalFormat.Rgb8);
+                illumTex = findTex(illumNames, PixelInternalFormat.Rgb8);
             } 
             catch (Exception ex)
             {
@@ -141,7 +141,7 @@ namespace GLOOP.SOMA
             if (diffuseTex == null)
                 diffuseTex = TextureCache.Get("assets/textures/error.png");
             if (normalTex == null)
-                normalTex = TextureCache.Get("assets/textures/gray.png");
+                normalTex = TextureCache.Get("assets/textures/black.png");
             if (specularTex == null)
                 specularTex = TextureCache.Get("assets/textures/black.png");
             if (illumTex == null)
