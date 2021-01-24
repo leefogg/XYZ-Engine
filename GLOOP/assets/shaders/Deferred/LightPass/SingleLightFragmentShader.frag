@@ -114,7 +114,6 @@ void main()
 	vec3 vSpecular = vSpecIntensity * min(fEngeryConservation * pow(max(dot(vHalfVec, normal), 0.0), fSpecPower), 1.0);
 	vSpecular *= fSpecPower;
 	vSpecular *= color;
-	vSpecular *= fAttenuatuion;
 	vSpecular *= light.specularScalar;
 	
 	vec3 lighting = diffuse + vSpecular;
