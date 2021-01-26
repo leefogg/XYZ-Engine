@@ -86,15 +86,15 @@ namespace GLOOP.Extensions
             return floats;
         }
 
-        public static IEnumerable<Vector3> RotateAround(this IEnumerable<Vector3> self, Quaternion rotation, Vector3 origin)
+        public static void RotateAround(this List<Vector3> self, Quaternion rotation, Vector3 origin)
         {
-            foreach (var point in self)
+            for (var i=0; i<self.Count; i++)
             {
-                var temp = new Vector4(point, 0);
+                var temp = new Vector4(self[i], 0);
                 temp.Xyz -= origin;
                 temp = rotation * temp;
                 temp.Xyz += origin;
-                yield return temp.Xyz;
+                self[i] = temp.Xyz;
             }
         }
 
@@ -133,8 +133,17 @@ namespace GLOOP.Extensions
         {
             var allCorners = new List<Vector3>(8);
             self.GetCorners(allCorners);
-            var rotatedCorners = allCorners.RotateAround(rotation, self.Center);
-            return rotatedCorners.ToBoundingBox();
+            allCorners.RotateAround(rotation, self.Center);
+            return allCorners.ToBoundingBox();
+        }
+
+        public static Box3 Transform(this Box3 self, Matrix4 modelMatrix)
+        {
+            var allCorners = new List<Vector3>(8);
+            self.GetCorners(allCorners);
+            for (int i = 0; i < allCorners.Count; i++)
+                allCorners[i] = Vector3.TransformPosition(allCorners[i], modelMatrix);
+            return allCorners.ToBoundingBox();
         }
     }
 }

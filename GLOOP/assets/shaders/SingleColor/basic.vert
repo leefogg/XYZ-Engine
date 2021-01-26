@@ -10,7 +10,7 @@ out vec4 outColor;
 void main()
 {
     vec4 worldspacePos = ModelMatrix * vec4(Position, 1.0);
-	gl_Position =  ProjectionMatrix * ViewMatrix * worldspacePos;
+	gl_Position = ProjectionMatrix * ViewMatrix * worldspacePos;
 
     outColor = color;
 }  

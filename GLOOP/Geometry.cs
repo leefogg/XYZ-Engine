@@ -143,7 +143,7 @@ namespace GLOOP
                 eboName = eboName[^Globals.MaxLabelLength..];
             //CalculateFaceNormals();
 
-            return VAOManager.Get(
+            var vao = VAOManager.Get(
                 new VAO.VAOShape(true, UVs?.Any() ?? false, Normals?.Any() ?? false, Tangents?.Any() ?? false),
                 Indicies,
                 Positions,
@@ -151,6 +151,8 @@ namespace GLOOP
                 Normals,
                 Tangents
             );
+            vao.BoundingBox = GetBoundingBox();
+            return vao;
         }
     }
 }

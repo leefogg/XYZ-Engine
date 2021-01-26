@@ -54,25 +54,6 @@ namespace GLOOP.SOMA
             var fullPath = Path.Combine(SOMAHome, Model.Mesh.FileName);
             var model = new SOMAModel(fullPath, context, shader);
 
-            for (var i = 0; i < Model.Mesh.SubMeshes.Length; i++)
-            {
-                var pos = new Vector3();
-                var scale = new Vector3(1);
-                var rot = new Quaternion();
-                try
-                {
-                    var subMesh = Model.Mesh.SubMeshes[i];
-                    pos = subMesh.Position.ParseVector3();
-                    scale = subMesh.Scale.ParseVector3();
-                    rot = new Quaternion(subMesh.Rotation.ParseVector3().Negated());
-                } 
-                catch (Exception ex)
-                {
-
-                }
-                //model.Renderables[0].ModelMatrix = MathFunctions.CreateModelMatrix(pos, rot, scale);
-            }
-
             return model;
         }
     }

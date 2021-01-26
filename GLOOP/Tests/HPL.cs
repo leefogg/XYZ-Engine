@@ -109,8 +109,7 @@ namespace GLOOP.Tests
                 },
                 "Deferred Spot light"
             );
-            var singleColorShader = new SingleColorShader();
-            singleColorMaterial = new SingleColorMaterial(singleColorShader);
+            singleColorMaterial = new SingleColorMaterial(Shader.SingleColorShader);
             singleColorMaterial.Color = new Vector4(0.25f);
 
             FinalCombineShader = new StaticPixelShader(
@@ -604,6 +603,8 @@ namespace GLOOP.Tests
                     useFXAA = !useFXAA;
                 if (input.IsKeyReleased(Keys.O))
                     useSSAO = !useSSAO;
+                if (input.IsKeyPressed(Keys.V))
+                    VSync = VSync == VSyncMode.Off ? VSyncMode.On : VSyncMode.Off; 
             }
         }
 

@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -9,6 +10,7 @@ namespace GLOOP.Rendering
     {
         public DrawElementsIndirectData description;
         public readonly VAO container;
+        public Box3 BoundingBox = new Box3();
 
         public VirtualVAO(DrawElementsIndirectData description, VAO container)
         {

@@ -10,6 +10,8 @@ namespace GLOOP.Rendering
 {
     public class Model
     {
+        private static readonly SingleColorMaterial boundingBoxMaterial = new SingleColorMaterial(Shader.SingleColorShader) { Color = new Vector4(1) };
+
         public Vector3 Position = new Vector3(0, 0, 0);
         public Vector3 Scale = new Vector3(1, 1, 1);
         public Quaternion Rot = new Quaternion();
@@ -20,8 +22,12 @@ namespace GLOOP.Rendering
         {
             get
             {
-                var scaledBB = OriginalBoundingBox.Scaled(Scale, OriginalBoundingBox.Center);
-                return scaledBB.Rotated(Rot.Inverted());
+                //var scaledBB = OriginalBoundingBox
+                //    .Translated(-OriginalBoundingBox.Center)
+                //    .Scaled(Scale, Vector3.Zero)
+                //    .Rotated(Rot.Inverted());
+                var modelMatrix = MathFunctions.CreateModelMatrix(Vector3.Zero, Rot, Scale);
+                return OriginalBoundingBox.Transform(modelMatrix);
             }
         }
         public Vector3 WorldScale => new Vector3(
@@ -32,8 +38,21 @@ namespace GLOOP.Rendering
 
         public List<Renderable> Renderables = new List<Renderable>();
 
+        public Model(List<Renderable> renderables, Box3 boundingBox) 
+            : this(renderables, Vector3.Zero, Quaternion.Identity, Vector3.One, boundingBox) { }
+        protected Model(List<Renderable> renderables, Vector3 pos, Quaternion rotation, Vector3 scale, Box3 originalBoundingBox)
+        {
+            Renderables = renderables;
+            Position = pos;
+            Rot = rotation;
+            Scale = scale;
+            OriginalBoundingBox = originalBoundingBox;
+        }
         public Model(string path, Assimp.AssimpContext assimp, Material material)
         {
+            if (Path.GetExtension(path).ToLower() == ".fbx")
+                throw new NotSupportedException("FBX files not supported yet");
+
             var steps = Assimp.PostProcessSteps.FlipUVs
                 | Assimp.PostProcessSteps.PreTransformVertices
                 | Assimp.PostProcessSteps.GenerateNormals
@@ -50,8 +69,11 @@ namespace GLOOP.Rendering
             Rot *= new Quaternion(rotation.X, rotation.Y, rotation.Z, rotation.W);
             Rot.Invert();
 
-            var daeScale = DAE.Model.Load(path)?.Meta?.Units?.Scale;
-            Scale *= daeScale ?? 1.0f;
+            if (Path.GetExtension(path).ToLower() == ".dae")
+            {
+                var daeScale = DAE.Model.Load(path)?.Meta?.Units?.Scale;
+                Scale *= daeScale ?? 1.0f;
+            }
 
             var currentFolder = Path.GetDirectoryName(path);
 
@@ -91,11 +113,11 @@ namespace GLOOP.Rendering
                         geo.CalculateTangents();
                     geo.Scale(new Vector3(Scale.X, Scale.Y, Scale.Z));
 
-                    OriginalBoundingBox = OriginalBoundingBox.Union(geo.GetBoundingBox());
-
                     vao = geo.ToVirtualVAO(vaoName);
                     VAOCache.Put(vao, vaoName);
                 }
+
+                OriginalBoundingBox = OriginalBoundingBox.Union(vao.BoundingBox);
 
                 var materialInstance = material.Clone();
                 materialInstance.SetTextures(diffuseTex, normalTex, specularTex, illumTex);
@@ -103,7 +125,6 @@ namespace GLOOP.Rendering
             }
 
             Scale = new Vector3(1);
-            var bbSize = OriginalBoundingBox.Size;
         }
 
         public virtual void GetTextures(
@@ -152,15 +173,15 @@ namespace GLOOP.Rendering
                 renderable.Render(projectionMatrix, viewMatrix, modelMatrix);
         }
 
-        public Model Clone() => new Model(Renderables, Position, Rot, Scale);
-
-        public Model(List<Renderable> renderables) : this(renderables, Vector3.Zero, Quaternion.Identity, Vector3.One) { }
-        public Model(List<Renderable> renderables, Vector3 pos, Quaternion rotation, Vector3 scale)
+        public void RenderBoundingBox(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
-            Renderables = renderables;
-            Position = pos;
-            Rot = rotation;
-            Scale = scale;
+            var bb = BoundingBox;
+            var modelMatrix = MathFunctions.CreateModelMatrix(bb.Center + Position, Quaternion.Identity, bb.Size);
+            boundingBoxMaterial.SetCameraUniforms(projectionMatrix, viewMatrix, modelMatrix);
+            boundingBoxMaterial.Commit();
+            Primitives.Cube.Draw(OpenTK.Graphics.OpenGL4.PrimitiveType.Lines);
         }
+
+        public Model Clone() => new Model(Renderables, Position, Rot, Scale, OriginalBoundingBox);
     }
 }

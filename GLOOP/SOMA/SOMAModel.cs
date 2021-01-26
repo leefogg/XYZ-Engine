@@ -18,7 +18,8 @@ namespace GLOOP.SOMA
 
         public string ResourcePath { get; }
 
-        public SOMAModel(string path,  Assimp.AssimpContext assimp, DeferredRenderingGeoMaterial material) : base(path, assimp, material) {
+        public SOMAModel(string path,  Assimp.AssimpContext assimp, DeferredRenderingGeoMaterial material) 
+            : base(path, assimp, material) {
             ResourcePath = path;
         }
 
@@ -71,7 +72,7 @@ namespace GLOOP.SOMA
 
             try
             {
-                var extension = "png";
+                var extension = "dds";
                 var texturesFolder = @"C:\" + extension;
                 Texture findTex(string[] names, PixelInternalFormat format)
                 {
@@ -149,11 +150,13 @@ namespace GLOOP.SOMA
         }
 
         public new SOMAModel Clone() {
-            return new SOMAModel(Renderables, Position, Rot, Scale);
+            return new SOMAModel(Renderables, Position, Rot, Scale, OriginalBoundingBox);
         }
 
-        public SOMAModel(List<Renderable> renderables) : this(renderables, Vector3.Zero, Quaternion.Identity, Vector3.One) { }
-        private SOMAModel(List<Renderable> renderables, Vector3 pos, Quaternion rotation, Vector3 scale) : base(renderables, pos, rotation, scale) { 
+        public SOMAModel(List<Renderable> renderables, Box3 boundingBox) 
+            : this(renderables, Vector3.Zero, Quaternion.Identity, Vector3.One, boundingBox) { }
+        private SOMAModel(List<Renderable> renderables, Vector3 pos, Quaternion rotation, Vector3 scale, Box3 originalBoundingBox) 
+            : base(renderables, pos, rotation, scale, originalBoundingBox) { 
         }
     }
 }

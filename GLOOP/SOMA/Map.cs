@@ -265,7 +265,7 @@ namespace GLOOP.SOMA
                         materialInstance.IlluminationTexture = illumTex;
 
                         var renderable = new Renderable(vao, materialInstance);
-                        var model = new SOMAModel(new List<Renderable> { renderable });
+                        var model = new SOMAModel(new List<Renderable> { renderable }, vao.BoundingBox);
                         model.Position = plane.Position.ParseVector3();
                         //model.Rot += new OpenTK.Mathematics.Quaternion(plane.Rotation.ParseVector3().Negated());
 
@@ -286,8 +286,6 @@ namespace GLOOP.SOMA
             var detailMeshesSerializer = new XmlSerializer(typeof(DetailMeshes));
             var detailMeshes = (DetailMeshes)detailMeshesSerializer.Deserialize(File.OpenRead(detailMeshesPath));
 
-            var somaRoot = "D:/Games/Steam/steamapps/common/soma";
-
             int attempted = 0, success = 0;
             var failed = new List<string>();
             var instances = new List<SOMAModel>();
@@ -299,7 +297,7 @@ namespace GLOOP.SOMA
                 foreach (var detailMesh in section.DetailMeshes) {
                     try {
                         attempted++;
-                        var fullPath = Path.Combine(somaRoot, detailMesh.FilePath);
+                        var fullPath = Path.Combine(SOMARoot, detailMesh.FilePath);
                         Console.Write(".");
 
                         if (true) {
@@ -340,7 +338,10 @@ namespace GLOOP.SOMA
         public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
             foreach (var model in Models)
+            {
                 model.Render(projectionMatrix, viewMatrix);
+               // model.RenderBoundingBox(projectionMatrix, viewMatrix);
+            }
         }
     }
 }

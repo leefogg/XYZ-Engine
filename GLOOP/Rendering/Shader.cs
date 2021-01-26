@@ -10,6 +10,8 @@ namespace GLOOP.Rendering
 {
     public class Shader : IDisposable
     {
+        public static readonly SingleColorShader SingleColorShader = new SingleColorShader();
+
         private static int currentShaderHandle;
 
         public int Handle { get; protected set; }
