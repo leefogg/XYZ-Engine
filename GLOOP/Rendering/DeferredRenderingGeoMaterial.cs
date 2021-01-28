@@ -61,6 +61,18 @@ namespace GLOOP.Rendering
         }
 
         public override Material Clone() 
-            => new DeferredRenderingGeoMaterial((DeferredRenderingGeoShader)shader);
+            => new DeferredRenderingGeoMaterial((DeferredRenderingGeoShader)shader)
+            {
+                AlbedoColourTint = AlbedoColourTint,
+                DiffuseTexture = DiffuseTexture,
+                HasWorldpaceUVs = HasWorldpaceUVs,
+                IlluminationColor = IlluminationColor,
+                IlluminationTexture = IlluminationTexture,
+                ModelMatrix = ModelMatrix,
+                NormalTexture = NormalTexture,
+                SpecularTexture = SpecularTexture,
+                TextureOffset = TextureOffset,
+                TextureRepeat = TextureRepeat
+            };
     }
 }

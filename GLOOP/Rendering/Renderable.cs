@@ -27,5 +27,7 @@ namespace GLOOP.Rendering
            
             VAO.Draw();
         }
+
+        public Renderable Clone() => new Renderable(VAO, material.Clone());
     }
 }
