@@ -140,7 +140,7 @@ namespace GLOOP.SOMA
             if (diffuseTex == null)
                 diffuseTex = TextureCache.Get("assets/textures/error.png");
             if (normalTex == null)
-                normalTex = TextureCache.Get("assets/textures/black.png");
+                normalTex = TextureCache.Get("assets/textures/gray.png");
             if (specularTex == null)
                 specularTex = TextureCache.Get("assets/textures/black.png");
             if (illumTex == null)

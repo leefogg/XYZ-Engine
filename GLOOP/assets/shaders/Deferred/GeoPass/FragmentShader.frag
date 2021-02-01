@@ -23,6 +23,14 @@ uniform uint diffuseSlice, normalSlice, specularSlice, illumSlice;
 uniform vec3 illuminationColor;
 uniform vec3 albedoColourTint;
 
+vec3 UnpackNormalmapYW(in vec4 avNormalValue)
+{
+	vec3 vNormal = avNormalValue.wyx * 2 - 1;
+	vNormal.z = sqrt(1 - min(dot(vNormal.xy, vNormal.xy), 1)) / normalStrength;
+	return vNormal;	
+}
+
+
 void main()
 {
 	vec2 textureCoord;
@@ -39,7 +47,7 @@ void main()
 		discard;
 	diff.rgb *= albedoColourTint;
 
-	vec3 norm = vec3(texture(normalTex, textureCoord).ra, 1.0 * normalStrength);
+	vec3 norm = UnpackNormalmapYW(texture(normalTex, textureCoord));
 	
 	specular = texture(specularTex, textureCoord);
 	position = vec4(fragPos, 0.0);
