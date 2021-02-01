@@ -3,7 +3,7 @@
 in vec4 outColor;
 in vec2 texCoord;
 
-uniform vec3 avSizeWeight = vec3(1, 0.5, 0.1);
+uniform vec3 avSizeWeight = vec3(0.5, 1, 2);
 
 uniform sampler2D blurMap0;
 uniform sampler2D blurMap1;
@@ -17,8 +17,8 @@ void main()
 	vec4 vBlurColor1 = texture(blurMap1, texCoord);
 	vec4 vBlurColor2 = texture(blurMap2, texCoord);
 	
-	vec4 vBlurColor = sqrt((vBlurColor0 * avSizeWeight.x + vBlurColor1 * avSizeWeight.y + vBlurColor2 * avSizeWeight.z) / dot(avSizeWeight, vec3(1.0)));
-	//vec4 vBlurColor = (vBlurColor0 * avSizeWeight.x + vBlurColor1 * avSizeWeight.y + vBlurColor2 * avSizeWeight.z);
+	//vec4 vBlurColor = sqrt((vBlurColor0 * avSizeWeight.x + vBlurColor1 * avSizeWeight.y + vBlurColor2 * avSizeWeight.z) / dot(avSizeWeight, vec3(1.0)));
+	vec4 vBlurColor = (vBlurColor0 * avSizeWeight.x + vBlurColor1 * avSizeWeight.y + vBlurColor2 * avSizeWeight.z);
 	
 	// Perform the brightness check in normalized space since value can be more than 1.0
 	vec2 vMax = max(vBlurColor.xy, vec2(vBlurColor.z, 0.001));
