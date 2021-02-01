@@ -103,8 +103,6 @@ namespace GLOOP.SOMA
                 }
 
                 diffusePath = Path.ChangeExtension(diffusePath, extension);
-                normalPath ??= diffusePath;
-                specularPath ??= diffusePath;
 
                 var diffuseName = Path.GetFileNameWithoutExtension(diffusePath);
                 diffusePath = Path.Combine(texturesFolder, Path.GetFileName(diffusePath));
