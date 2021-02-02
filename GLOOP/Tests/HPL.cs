@@ -40,6 +40,8 @@ namespace GLOOP.Tests
         private Shader BloomCombineShader;
         private Shader FXAAShader;
         private Shader SSAOShader;
+        private Shader ColorCorrectionShader;
+
         private bool DebugLights;
 
         private int debugGBufferTexture = -1;
@@ -68,7 +70,7 @@ namespace GLOOP.Tests
             GBuffers = new FrameBuffer(
                 Width, Height,
                 new[] { 
-                    PixelInternalFormat.Rgb,        // Diffuse
+                    PixelInternalFormat.Srgb8Alpha8,// Diffuse
                     PixelInternalFormat.Rgb16f,     // Position
                     PixelInternalFormat.Rgb16f,     // Normal
                     PixelInternalFormat.Rgba,       // Specular
@@ -155,13 +157,11 @@ namespace GLOOP.Tests
                 "assets/shaders/SSAO/FragmentShader.frag",
                 name: "SSAO"
             );
-
-            /*
-            GL.GetActiveUniformBlock(PointLightShader.Handle, 1, ActiveUniformBlockParameter.UniformBlockDataSize, out int pointLightBufferSize); // 64
-            GL.GetActiveUniformBlock(SpotLightShader.Handle, 1, ActiveUniformBlockParameter.UniformBlockDataSize, out int spotLightBufferSize); // 80
-            var pointLightStructSize = Marshal.SizeOf<PointLight>();
-            var spotLightStructSize = Marshal.SizeOf<SpotLight>();
-            */
+            ColorCorrectionShader = new DynamicPixelShader(
+                "assets/shaders/ColorCorrection/vertex.vert",
+                "assets/shaders/ColorCorrection/fragment.frag",
+                name: "Color Correction"
+            );
 
             var lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
             var bedroom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm";
@@ -347,9 +347,11 @@ namespace GLOOP.Tests
             }
             else
             {
-                DoLightPass(projectionMatrix, viewMatrix, new Vector3(0.05f));
+                GL.Disable(EnableCap.FramebufferSrgb);
+                DoLightPass(projectionMatrix, viewMatrix, new Vector3(0.00f));
 
                 if (debugLightBuffer) {
+                    GL.Enable(EnableCap.FramebufferSrgb);
                     GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
                     GL.ClearColor(0, 0, 0, 1);
                     GL.Clear(ClearBufferMask.ColorBufferBit);
@@ -374,8 +376,9 @@ namespace GLOOP.Tests
 
                     DoBloomPass();
 
+                    // Blit to default frame buffer
                     GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-                    shader = useFXAA ? FXAAShader : FullBrightShader;
+                    shader = useFXAA ? FXAAShader : ColorCorrectionShader;
                     shader.Use();
                     StagingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
                     shader.Set("Texture", TextureUnit.Texture0);
@@ -389,6 +392,7 @@ namespace GLOOP.Tests
 
         private void DoBloomPass()
         {
+            GL.Enable(EnableCap.FramebufferSrgb);
             var offsets = new[] { 0.00000f, 0.00289f, 0.00675f, 0.01060f, 0.01446f, 0.01832f, 0.02217f, 0.02603f, 0.02988f, 0.03374f, 0.03760f, 0.04145f, 0.04531f, 0.04917f, 0.05302f, 0.05688f, 0.06074f, 0.06460f, 0.06846f, 0.07231f, 0.07617f, 0.08003f, 0.08389f, 0.08775f };
             var weights = new[] { 1.00000f, 1.94883f, 1.75699f, 1.45802f, 1.11366f, 0.78296f, 0.50667f, 0.30179f, 0.16545f, 0.08349f, 0.03878f, 0.01658f, 0.00652f, 0.00236f, 0.00079f, 0.00024f, 0.00007f, 0.00002f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f };
 
@@ -448,6 +452,7 @@ namespace GLOOP.Tests
             Primitives.Quad.Draw();
 
             GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+            GL.Disable(EnableCap.FramebufferSrgb);
         }
 
         private void DisplayGBuffer(int buffer)
@@ -455,6 +460,7 @@ namespace GLOOP.Tests
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.ClearColor(0, 0, 0, 1);
             GL.Clear(ClearBufferMask.ColorBufferBit);
+            GL.Enable(EnableCap.FramebufferSrgb);
 
             var shader = FullBrightShader;
             shader.Use();
@@ -472,7 +478,23 @@ namespace GLOOP.Tests
             GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
             GL.CullFace(CullFaceMode.Front);
 
-            if (map.PointLights.Any()) {
+            RenderLights(projectionMatrix, viewMatrix);
+
+            GL.CullFace(CullFaceMode.Back);
+            GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+            GL.BlendEquation(BlendEquationMode.FuncReverseSubtract);
+
+            if (useSSAO)
+                SSAOPostEffect();
+
+            GL.BlendEquation(BlendEquationMode.FuncAdd);
+            GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+        }
+
+        private void RenderLights(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        {
+            if (map.PointLights.Any())
+            {
                 var shader = PointLightShader;
                 shader.Use();
                 GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse].Use(TextureUnit.Texture0);
@@ -487,7 +509,7 @@ namespace GLOOP.Tests
                 //TODO: Could render a 2D circle in screenspace instead of a sphere
 
                 var numPointLights = Math.Min(maxLights, map.PointLights.Count);
-                
+
                 Primitives.Sphere.Draw(numInstances: numPointLights);
 
                 // Debug light spheres
@@ -506,7 +528,8 @@ namespace GLOOP.Tests
                 }
             }
 
-            if (map.SpotLights.Any()) {
+            if (map.SpotLights.Any())
+            {
                 var numSpotLights = Math.Min(maxLights, map.SpotLights.Count);
 
                 Shader shader = SpotLightShader;
@@ -537,34 +560,27 @@ namespace GLOOP.Tests
                     }
                 }
             }
+        }
 
-            GL.CullFace(CullFaceMode.Back);
-            GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
-            GL.BlendEquation(BlendEquationMode.FuncReverseSubtract);
+        private void SSAOPostEffect()
+        {
+            var shader = SSAOShader;
+            shader.Use();
+            GBuffers.ColorBuffers[(int)GBufferTexture.Position].Use(TextureUnit.Texture0);
+            GBuffers.ColorBuffers[(int)GBufferTexture.Normal].Use(TextureUnit.Texture1);
+            shader.Set("positionTexture", TextureUnit.Texture0);
+            shader.Set("normalTexture", TextureUnit.Texture1);
+            var cameraRotation = Camera.Rotation * (float)(Math.PI / 180);
+            var rotationMatrix =
+                Matrix4.CreateRotationX(cameraRotation.X) *
+                Matrix4.CreateRotationY(cameraRotation.Y) *
+                Matrix4.CreateRotationZ(cameraRotation.Z);
+            rotationMatrix.Invert();
+            shader.Set("RotationMatrix", rotationMatrix);
+            //shader.Set("Time", FrameNumber / 0.0001f);
+            shader.Set("campos", Camera.Position);
 
-            if (useSSAO)
-            {
-                var shader = SSAOShader;
-                shader.Use();
-                GBuffers.ColorBuffers[(int)GBufferTexture.Position].Use(TextureUnit.Texture0);
-                GBuffers.ColorBuffers[(int)GBufferTexture.Normal].Use(TextureUnit.Texture1);
-                shader.Set("positionTexture", TextureUnit.Texture0);
-                shader.Set("normalTexture", TextureUnit.Texture1);
-                var cameraRotation = Camera.Rotation * (float)(Math.PI / 180);
-                var rotationMatrix = 
-                    Matrix4.CreateRotationX(cameraRotation.X) * 
-                    Matrix4.CreateRotationY(cameraRotation.Y) * 
-                    Matrix4.CreateRotationZ(cameraRotation.Z);
-                rotationMatrix.Invert();
-                shader.Set("RotationMatrix", rotationMatrix);
-                //shader.Set("Time", FrameNumber / 0.0001f);
-                shader.Set("campos", Camera.Position);
-
-                Primitives.Quad.Draw();
-            }
-
-            GL.BlendEquation(BlendEquationMode.FuncAdd);
-            GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+            Primitives.Quad.Draw();
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)

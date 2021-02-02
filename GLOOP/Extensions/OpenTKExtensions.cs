@@ -28,6 +28,7 @@ namespace GLOOP.Extensions
                 PixelInternalFormat.CompressedRgbaS3tcDxt1Ext => 1, 
                 PixelInternalFormat.CompressedRgbaS3tcDxt3Ext => 1,
                 PixelInternalFormat.CompressedRgbaS3tcDxt5Ext => 1,
+                PixelInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext => 1,
                 (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext => 1,
                 _ => floatSize * 4
             };

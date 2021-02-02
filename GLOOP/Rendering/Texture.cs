@@ -33,12 +33,14 @@ namespace GLOOP.Rendering
                 settings.CompressedDataLength = image.Data.Length;
                 settings.InternalFormat = image.Header.PixelFormat.FourCC switch
                 {
-                    CompressionAlgorithm.D3DFMT_DXT1 => PixelInternalFormat.CompressedRgbaS3tcDxt1Ext,
-                    CompressionAlgorithm.D3DFMT_DXT3 => PixelInternalFormat.CompressedRgbaS3tcDxt3Ext,
-                    CompressionAlgorithm.D3DFMT_DXT5 => PixelInternalFormat.CompressedRgbaS3tcDxt5Ext,
+                    CompressionAlgorithm.D3DFMT_DXT1 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext,
+                    CompressionAlgorithm.D3DFMT_DXT3 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext,
+                    CompressionAlgorithm.D3DFMT_DXT5 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext,
                     CompressionAlgorithm.ATI2 => (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext, // Not sure
                     CompressionAlgorithm.BC5U => (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext
                 };
+
+                
                 construct(image.Width, image.Height, settings);
             }
             else
@@ -79,9 +81,9 @@ namespace GLOOP.Rendering
                 GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBaseLevel, 0);
                 var compressedBytesPerBlock = settings.InternalFormat switch
                 {
-                    PixelInternalFormat.CompressedRgbaS3tcDxt1Ext => 8,
-                    PixelInternalFormat.CompressedRgbaS3tcDxt3Ext => 16,
-                    PixelInternalFormat.CompressedRgbaS3tcDxt5Ext => 16,
+                    PixelInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext => 8,
+                    PixelInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext => 16,
+                    PixelInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext => 16,
                     (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext => 16
                 };
                 var offset = 0;

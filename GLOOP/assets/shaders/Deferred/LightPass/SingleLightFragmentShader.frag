@@ -90,12 +90,18 @@ void main()
 		fAttenuatuion *= falloff;
 	#endif
 		
-	vec3 color = light.color.rgb * light.brightness / 25;
+	vec3 color = light.color.rgb * light.brightness;
 	
+	///////////
+	// A cheaper version of Dice Translucency
+	// Refract the incoming light with the normal
 	float fLDotN = dot(vLightDir, normal);
 	float fLightScatterAmount = max(-fLDotN, 0.0);
 	float fLightTransport = clamp(dot(vEye, vPos + normal * 0.2), -1.0, 0.0);
 	fLightTransport = pow(fLightTransport, 16.0);
+	
+	////////
+	// Apply energy conservation and ambient scattering
 	float fLightScatter = min(2.0, fLightTransport * 16.0) + fLightScatterAmount;
 		
 	float fLightAmount = max(fLDotN, 0.0);
@@ -105,19 +111,22 @@ void main()
 
 	// Specular
 	vec3 vSpecIntensity = specular.rgb;
-	float fSpecPower = 1.0 - specular.a; //specular.w
+	float fSpecPower = specular.a;
 		
 	vec3 vHalfVec = normalize(vLightDir + vEye);
 	fSpecPower = exp2(fSpecPower * 10.0) + 1.0; //Range 0 - 1024
+	
 	// Calculate the enegry conservation value, this will make sure that the intergral of the specular is 1.0
 	float fEngeryConservation = (fSpecPower + 8.0) * (1.0 / (8.0 * PI));
 	vec3 vSpecular = vSpecIntensity * min(fEngeryConservation * pow(max(dot(vHalfVec, normal), 0.0), fSpecPower), 1.0);
 	vSpecular *= fSpecPower;
 	vSpecular *= color;
-	vSpecular *= light.specularScalar;
+	//vSpecular *= light.specularScalar;
 	
 	vec3 lighting = diffuse + vSpecular;
 	lighting *= fAttenuatuion;
 
+	// Multiply with 8.0 to increase precision
+	lighting *= 8.0;
 	fragColor = lighting;
 }
