@@ -186,8 +186,8 @@ namespace GLOOP.SOMA
                         newInstance.Rot += rot;
                         newInstance.Scale *= scale;
 
-                        var illumColor = instance.IlluminationColor.ParseVector3();
-                        var albedoTint = instance.ColourMultiplier.ParseVector3();
+                        var illumColor = instance.IlluminationColor?.ParseVector3() ?? Vector3.One;
+                        var albedoTint = instance.ColourMultiplier?.ParseVector3() ?? Vector3.One;
                         foreach (var renderable in newInstance.Renderables)
                         {
                             var mat = (DeferredRenderingGeoMaterial)renderable.material;
