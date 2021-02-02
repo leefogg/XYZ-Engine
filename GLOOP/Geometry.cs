@@ -22,12 +22,8 @@ namespace GLOOP
         public void NormalizeScale()
         {
             var bb = GetBoundingBox();
-            var scale = new Vector3(
-                1f / bb.Size.X,
-                1f / bb.Size.Y,
-                1f / bb.Size.Z
-            );
-            Scale(scale);
+            var scale = Math.Max(bb.Size.X, Math.Max(bb.Size.Y, bb.Size.Z));
+            Scale(new Vector3(1f / scale));
         }
 
         public void Centre() {
