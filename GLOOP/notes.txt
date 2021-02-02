@@ -35,12 +35,20 @@ Optimizations:
 	Mip maps
 
 TODO:
+	Color
+		Colour correction / White Point / Exposure
+		SRGB
+			Gbuffer albedo to be SRGB8_Alpha8
+
+	Graphics
+		albedo color.w is translucentcy
+		Correct bloom weights + bias'
+
 	Decals
 	Make Gbuffer position local to camera [znear - zfar]
 	Time sections
 	Refactor location of code into project layers and seperate projects for examples
 	Fix bloom light bleed
-	Colour correction / White Point / Exposure
 	Add auditing
 		Add size to Buffer class
 		frame timings to CSV file
