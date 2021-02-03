@@ -1,11 +1,13 @@
-#version 330
+#version 420
 
 uniform sampler2D diffuseMap;
 
 in vec2 texCoord; 
 
-uniform float weights[24];
-uniform float offsets[24];
+layout (std140, binding = 3) uniform pointlights {
+	float weights[24];
+	float offsets[24];
+};
 
 layout (location = 0) out vec3 fragColor; 
 

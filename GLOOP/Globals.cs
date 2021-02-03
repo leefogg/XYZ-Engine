@@ -7,7 +7,7 @@ namespace GLOOP
 {
     public static class Globals
     {
-        private static int? maxLabelLength;
+        private static int? maxLabelLength, uniformBufferOffsetAlignment;
         public static int MaxLabelLength
         {
             get
@@ -15,6 +15,16 @@ namespace GLOOP
                 if (!maxLabelLength.HasValue)
                     maxLabelLength = GL.GetInteger((GetPName)All.MaxLabelLength);
                 return maxLabelLength.Value;
+            }
+        }
+
+        public static int UniformBufferOffsetAlignment
+        {
+            get
+            {
+                if (!uniformBufferOffsetAlignment.HasValue)
+                    uniformBufferOffsetAlignment = GL.GetInteger((GetPName)All.UniformBufferOffsetAlignment);
+                return uniformBufferOffsetAlignment.Value;
             }
         }
     }
