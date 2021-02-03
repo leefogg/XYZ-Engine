@@ -130,7 +130,7 @@ namespace GLOOP.Tests
                "assets/shaders/Blur/FragmentShader.frag",
                new Dictionary<string, string>
                {
-                   { "Direction", "vec2(1.0,0.0)" }
+                   { "Direction", "vec2(0.0,1.0)" }
                },
                "Blur Vertically"
             );
@@ -139,7 +139,7 @@ namespace GLOOP.Tests
                "assets/shaders/Blur/FragmentShader.frag",
                new Dictionary<string, string>
                {
-                   { "Direction", "vec2(0.0,1.0)" }
+                   { "Direction", "vec2(1.0,0.0)" }
                },
                "Blur Horizontally"
             );
