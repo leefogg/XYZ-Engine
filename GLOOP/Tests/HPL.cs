@@ -465,30 +465,25 @@ namespace GLOOP.Tests
                 height = Height;
             var previousTexture = GBuffers.ColorBuffers[(int)GBufferTexture.Illumination];
             Shader shader;
-            for (var i = 0; i < BloomBuffers.Length; i++)
+            for (var i = 0; i < BloomBuffers.Length;)
             {
                 width /= 2;
                 height /= 2;
                 GL.Viewport(0, 0, width, height);
 
-                shader = VerticalBlurShader;
-                shader.Use();
-                BloomBuffers[i].Use();
-                GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 3, bloomUBO, (IntPtr)(bloomDataStride * i), bloomDataStride);
-                shader.Set("diffuseMap", TextureUnit.Texture0);
-                previousTexture.Use(TextureUnit.Texture0);
-                Primitives.Quad.Draw();
-                previousTexture = BloomBuffers[i].ColorBuffers[0];
-
-                i++;
-                BloomBuffers[i].Use();
-                shader = HorizontalBlurShader;
-                shader.Use();
-                GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 3, bloomUBO, (IntPtr)(bloomDataStride * i), bloomDataStride);
-                shader.Set("diffuseMap", TextureUnit.Texture0);
-                previousTexture.Use(TextureUnit.Texture0);
-                Primitives.Quad.Draw();
-                previousTexture = BloomBuffers[i].ColorBuffers[0];
+                var shaderSteps = new[] { VerticalBlurShader, HorizontalBlurShader };
+                foreach (var step in shaderSteps)
+                {
+                    shader = step;
+                    shader.Use();
+                    BloomBuffers[i].Use();
+                    GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 3, bloomUBO, (IntPtr)(bloomDataStride * i), bloomDataStride);
+                    shader.Set("diffuseMap", TextureUnit.Texture0);
+                    previousTexture.Use(TextureUnit.Texture0);
+                    Primitives.Quad.Draw();
+                    previousTexture = BloomBuffers[i].ColorBuffers[0];
+                    i++;
+                }
             }
 
             // Add all to finished frame
