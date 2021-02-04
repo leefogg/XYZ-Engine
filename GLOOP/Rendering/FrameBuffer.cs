@@ -16,7 +16,7 @@ namespace GLOOP.Rendering
             : this(width, height, Enumerable.Repeat(format, count).ToArray(), withDepth, name)
         { }
         public FrameBuffer(int width, int height, PixelInternalFormat[] pixelFormats, bool withDepth, string name = null)
-            : this(width, height, pixelFormats.Select(f => new TextureParams { InternalFormat = f}).ToArray(), withDepth, name)
+            : this(width, height, pixelFormats.Select(f => new TextureParams { InternalFormat = f, WrapMode = TextureWrapMode.ClampToBorder }).ToArray(), withDepth, name)
         {
         }
         public FrameBuffer(int width, int height, TextureParams[] settings, bool withDepth, string name = null)
