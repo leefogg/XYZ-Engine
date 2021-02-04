@@ -32,6 +32,7 @@ namespace GLOOP.Tests
         private FrameBuffer StagingBuffer;
         private Shader PointLightShader;
         private Shader SpotLightShader;
+        private Texture NoiseMap;
         private SingleColorMaterial singleColorMaterial;
         private Shader FinalCombineShader;
         private Shader FullBrightShader;
@@ -50,10 +51,12 @@ namespace GLOOP.Tests
         private bool useSSAO = false;
         private int cameraUBO, pointLightsUBO, spotLightsUBO, bloomUBO;
         const int maxLights = 500;
-        private int bloomDataStride = 1000;
+        private int bloomDataSize = 1000, bloomDataStride = 1000;
+        private float elapsedMilliseconds = 0;
+        private readonly DateTime startTime = DateTime.Now;
 
         public HPL(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(new Vector3(6.450693f, 2.9499855f, -2.7591739f), new Vector3(), 90);
+            Camera = new DebugCamera(new Vector3(-17.039896f, 14.750014f, 64.48185f), new Vector3(), 90);
         }
 
         protected override void OnLoad() {
@@ -233,6 +236,7 @@ namespace GLOOP.Tests
 
             SwapBuffers();
             FrameNumber++;
+            elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
         }
 
         private void setupUniformBuffers()
@@ -303,6 +307,7 @@ namespace GLOOP.Tests
                     structs.Add(weights[y, x]);
                     structs.Add(offsets[y, x]);
                 }
+                bloomDataSize = sizeof(float) * structs.Count;
                 while (sizeof(float) * structs.Count % Globals.UniformBufferOffsetAlignment != 0)
                     structs.Add(0);
                 bloomDataStride = Math.Min(sizeof(float) * structs.Count, bloomDataStride);
@@ -336,7 +341,7 @@ namespace GLOOP.Tests
                 Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
             };
 
-            var tex = new Texture(randomTextureSize, randomTextureSize, texParams);
+            NoiseMap = new Texture(randomTextureSize, randomTextureSize, texParams);
         }
 
         private void updateCameraUBO()
@@ -477,10 +482,14 @@ namespace GLOOP.Tests
                     shader = step;
                     shader.Use();
                     BloomBuffers[i].Use();
-                    GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 3, bloomUBO, (IntPtr)(bloomDataStride * i), bloomDataStride);
-                    shader.Set("diffuseMap", TextureUnit.Texture0);
+
+                    GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 3, bloomUBO, (IntPtr)(bloomDataStride * i), bloomDataSize);
+
                     previousTexture.Use(TextureUnit.Texture0);
+                    shader.Set("diffuseMap", TextureUnit.Texture0);
+
                     Primitives.Quad.Draw();
+
                     previousTexture = BloomBuffers[i].ColorBuffers[0];
                     i++;
                 }
@@ -496,9 +505,13 @@ namespace GLOOP.Tests
             BloomBuffers[1].ColorBuffers[0].Use(TextureUnit.Texture0);
             BloomBuffers[3].ColorBuffers[0].Use(TextureUnit.Texture1);
             BloomBuffers[5].ColorBuffers[0].Use(TextureUnit.Texture2);
+            NoiseMap.Use(TextureUnit.Texture3);
             shader.Set("blurMap0", TextureUnit.Texture0);
             shader.Set("blurMap1", TextureUnit.Texture1);
             shader.Set("blurMap2", TextureUnit.Texture2);
+            shader.Set("noiseMap", TextureUnit.Texture3);
+            shader.Set("avInvScreenSize", new Vector2(1f / Width, 1f / Height));
+            shader.Set("timeMilliseconds", elapsedMilliseconds);
             Primitives.Quad.Draw();
 
             GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);

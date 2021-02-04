@@ -20,7 +20,7 @@ void main()
 	vec2 vOffsetMul = Direction;
 
 	float fWeight = data[0].weight * 0.5;
-	vec3 vAmount = texture(diffuseMap, texCoord + data[0].weight * vOffsetMul).rgb * data[0].weight;
+	vec3 vAmount = texture(diffuseMap, texCoord + data[0].offset * vOffsetMul).rgb * data[0].weight;
 	
 	for(int i=1; i<24; i+=1)
 	{	
