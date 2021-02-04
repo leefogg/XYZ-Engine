@@ -53,7 +53,7 @@ namespace GLOOP.Tests
         private int bloomDataStride = 1000;
 
         public HPL(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(new Vector3(-17.039896f, 14.750014f, 64.48185f), new Vector3(), 90);
+            Camera = new DebugCamera(new Vector3(6.450693f, 2.9499855f, -2.7591739f), new Vector3(), 90);
         }
 
         protected override void OnLoad() {
@@ -242,6 +242,7 @@ namespace GLOOP.Tests
             updatePointLightsUBO();
             updateSpotLightsUBO();
             setupBloomUBO();
+            setupRandomTexture();
         }
 
         private void setupCameraUniformBuffer()
@@ -300,16 +301,7 @@ namespace GLOOP.Tests
                 for (int x = 0; x < 24; x++)
                 {
                     structs.Add(weights[y, x]);
-                    structs.Add(0);
-                    structs.Add(0);
-                    structs.Add(0);
-                }
-                for (int x = 0; x < 24; x++)
-                {
                     structs.Add(offsets[y, x]);
-                    structs.Add(0);
-                    structs.Add(0);
-                    structs.Add(0);
                 }
                 while (sizeof(float) * structs.Count % Globals.UniformBufferOffsetAlignment != 0)
                     structs.Add(0);
@@ -322,6 +314,29 @@ namespace GLOOP.Tests
             GL.ObjectLabel(ObjectLabelIdentifier.Buffer, bloomUBO, 9, "BloomData");
             var size = data.SizeInBytes();
             GL.NamedBufferData(bloomUBO, size, data, BufferUsageHint.StreamDraw);
+        }
+
+        private void setupRandomTexture()
+        {
+            const int randomTextureSize = 64;
+            const int randomTexturePixels = randomTextureSize * randomTextureSize;
+            var r = new Random();
+            var data = new byte[randomTexturePixels * 3];
+            r.NextBytes(data);
+
+            var texParams = new TextureParams()
+            {
+                GenerateMips = false,
+                InternalFormat = PixelInternalFormat.Rgb,
+                MagFilter = TextureMinFilter.Linear,
+                MinFilter = TextureMinFilter.Linear,
+                WrapMode = TextureWrapMode.Repeat,
+                Name = "Random",
+                PixelFormat = PixelFormat.Rgb,
+                Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
+            };
+
+            var tex = new Texture(randomTextureSize, randomTextureSize, texParams);
         }
 
         private void updateCameraUBO()

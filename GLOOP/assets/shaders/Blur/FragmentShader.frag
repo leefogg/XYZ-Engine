@@ -2,11 +2,15 @@
 
 uniform sampler2D diffuseMap;
 
-in vec2 texCoord; 
+in vec2 texCoord;
 
-layout (std140, binding = 3) uniform pointlights {
-	float weights[24];
-	float offsets[24];
+struct uniformData {
+	float weight;
+	float offset;
+};
+
+layout (std140, binding = 3) uniform uniforms {
+	uniformData data[24];
 };
 
 layout (location = 0) out vec3 fragColor; 
@@ -15,19 +19,19 @@ void main()
 {
 	vec2 vOffsetMul = Direction;
 
-	float fWeight = weights[0] * 0.5;
-	vec3 vAmount = texture(diffuseMap, texCoord + offsets[0] * vOffsetMul).rgb * weights[0];
+	float fWeight = data[0].weight * 0.5;
+	vec3 vAmount = texture(diffuseMap, texCoord + data[0].weight * vOffsetMul).rgb * data[0].weight;
 	
 	for(int i=1; i<24; i+=1)
 	{	
-		vec2 vOffset = offsets[i] * vOffsetMul;
+		vec2 vOffset = data[i].offset * vOffsetMul;
 
 		//////////
 		// sample in both positive and negative direction at the same time
 		vec3 vColor = texture(diffuseMap, texCoord + vOffset).rgb + 
 					  texture(diffuseMap, texCoord - vOffset).rgb;
 
-		float fMul = weights[i];
+		float fMul = data[i].weight;
 		vAmount += vColor * fMul;
 		fWeight += fMul;
 	}
