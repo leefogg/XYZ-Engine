@@ -3,7 +3,6 @@ using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace GLOOP.Rendering
@@ -193,9 +192,104 @@ namespace GLOOP.Rendering
             }
         }
 
+        public ProgramIntrospection Introspect()
+        {
+            var blockProperties = new[] { ProgramProperty.NumActiveVariables };
+            var activeVariables = new[] { ProgramProperty.ActiveVariables };
+            var uniformProperties = new[] { ProgramProperty.NameLength, ProgramProperty.Type, ProgramProperty.Offset };
+
+            GL.GetProgramInterface(Handle, ProgramInterface.UniformBlock, ProgramInterfaceParameter.ActiveResources, out int numUBOs);
+            var numActiveBlocks = new int[1];
+            var ubos = new List<BufferBinding>();
+            {
+                for (int block = 0; block < numUBOs; block++)
+                {
+                    GL.GetProgramResource(Handle, ProgramInterface.UniformBlock, block, blockProperties.Length, blockProperties, 1, out _, numActiveBlocks);
+                    int numActiveUniforms = numActiveBlocks[0];
+                    if (numActiveUniforms == 0)
+                        continue;
+
+                    var activeUniformsIds = new int[numActiveUniforms];
+                    GL.GetProgramResource(Handle, ProgramInterface.UniformBlock, block, activeVariables.Length, activeVariables, numActiveUniforms, out var _, activeUniformsIds);
+                    var uniforms = new List<Variable>();
+                    foreach (var uniformID in activeUniformsIds)
+                    {
+                        var values = new int[uniformProperties.Length];
+                        GL.GetProgramResource(Handle, ProgramInterface.Uniform, uniformID, values.Length, uniformProperties, uniformProperties.Length, out var _, values);
+                        GL.GetProgramResourceName(Handle, ProgramInterface.Uniform, uniformID, values[0], out var _, out string name);
+                        uniforms.Add(new Variable((All)values[1], name, values[2]));
+                    }
+
+                    ubos.Add(new BufferBinding(uniforms.ToArray()));
+                }
+            }
+
+            GL.GetProgramInterface(Handle, ProgramInterface.ShaderStorageBlock, ProgramInterfaceParameter.ActiveResources, out int numSSBOs);
+            var ssbos = new List<BufferBinding>();
+            {
+                for (int block = 0; block < numSSBOs; block++)
+                {
+                    GL.GetProgramResource(Handle, ProgramInterface.ShaderStorageBlock, block, blockProperties.Length, blockProperties, 1, out _, numActiveBlocks);
+                    int numActiveUniforms = numActiveBlocks[0];
+                    if (numActiveUniforms == 0)
+                        continue;
+
+                    var activeUniformsIds = new int[numActiveUniforms];
+                    GL.GetProgramResource(Handle, ProgramInterface.ShaderStorageBlock, block, activeVariables.Length, activeVariables, numActiveUniforms, out var _, activeUniformsIds);
+                    var variables = new List<Variable>();
+                    foreach (var uniformID in activeUniformsIds)
+                    {
+                        var values = new int[uniformProperties.Length];
+                        GL.GetProgramResource(Handle, ProgramInterface.BufferVariable, uniformID, values.Length, uniformProperties, uniformProperties.Length, out var _, values);
+                        GL.GetProgramResourceName(Handle, ProgramInterface.BufferVariable, uniformID, values[0], out var _, out string name);
+                        variables.Add(new Variable((All)values[1], name, values[2]));
+                    }
+
+                    ssbos.Add(new BufferBinding(variables.ToArray()));
+                }
+            }
+
+            return new ProgramIntrospection(ubos.ToArray(), ssbos.ToArray());
+        }
+
         public void Dispose()
         {
             GL.DeleteProgram(Handle);
+        }
+
+        public class ProgramIntrospection
+        {
+            public readonly BufferBinding[] UBOs;
+            public readonly BufferBinding[] SSBOs;
+
+            public ProgramIntrospection(BufferBinding[] uBOs, BufferBinding[] sSBOs)
+            {
+                UBOs = uBOs;
+                SSBOs = sSBOs;
+            }
+        }
+
+        public class BufferBinding
+        {
+            public readonly Variable[] Uniforms;
+
+            public BufferBinding(Variable[] uniforms)
+            {
+                Uniforms = uniforms;
+            }
+        }
+        public class Variable
+        {
+            public readonly All Type;
+            public readonly string name;
+            public readonly int OffsetInBytes;
+
+            public Variable(All type, string name, int offsetInBytes)
+            {
+                Type = type;
+                this.name = name;
+                OffsetInBytes = offsetInBytes;
+            }
         }
     }
 }
