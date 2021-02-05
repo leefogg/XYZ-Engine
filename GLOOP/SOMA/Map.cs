@@ -21,7 +21,7 @@ namespace GLOOP.SOMA
         public Map(string mapPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             loadLights(mapPath + "_Light");
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
-            loadEntities(mapPath + "_Entity", assimp, material);
+            //loadEntities(mapPath + "_Entity", assimp, material);
             loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
 
@@ -97,9 +97,9 @@ namespace GLOOP.SOMA
                     var entity = entities[instance.Index];
                     if (model != null) {
                         var newInstance = model.Clone();
-                        newInstance.Position += pos;
-                        newInstance.Rot += rot;
-                        newInstance.Scale *= scale;
+                        newInstance.Transform.Position += pos;
+                        newInstance.Transform.Rotation += rot;
+                        newInstance.Transform.Scale *= scale;
 
                         if (entity != null)
                         {
@@ -182,9 +182,9 @@ namespace GLOOP.SOMA
                     var model = files[instance.Index];
                     if (model != null) {
                         var newInstance = model.Clone();
-                        newInstance.Position += pos;
-                        newInstance.Rot += rot;
-                        newInstance.Scale *= scale;
+                        newInstance.Transform.Position += pos;
+                        newInstance.Transform.Rotation += rot;
+                        newInstance.Transform.Scale *= scale;
 
                         var illumColor = instance.IlluminationColor?.ParseVector3() ?? Vector3.One;
                         var albedoTint = instance.ColourMultiplier?.ParseVector3() ?? Vector3.One;
@@ -266,7 +266,7 @@ namespace GLOOP.SOMA
 
                         var renderable = new Renderable(vao, materialInstance);
                         var model = new SOMAModel(new List<Renderable> { renderable }, vao.BoundingBox);
-                        model.Position = plane.Position.ParseVector3();
+                        model.Transform.Position = plane.Position.ParseVector3();
                         //model.Rot += new OpenTK.Mathematics.Quaternion(plane.Rotation.ParseVector3().Negated());
 
                         Models.Add(model);
@@ -307,8 +307,8 @@ namespace GLOOP.SOMA
 
                             for (var i=0; i<detailMesh.NumInstances; i++) {
                                 var newInstance = model.Clone();
-                                newInstance.Position += positions[i];
-                                newInstance.Rot += rotations[i];
+                                newInstance.Transform.Position += positions[i];
+                                newInstance.Transform.Rotation += rotations[i];
 
                                 instances.Add(newInstance);
                             }

@@ -148,13 +148,13 @@ namespace GLOOP.SOMA
         }
 
         public new SOMAModel Clone() {
-            return new SOMAModel(Renderables, Position, Rot, Scale, OriginalBoundingBox);
+            return new SOMAModel(Renderables, Transform, OriginalBoundingBox);
         }
 
         public SOMAModel(List<Renderable> renderables, Box3 boundingBox) 
-            : this(renderables.Select(r => r.Clone()).ToList(), Vector3.Zero, Quaternion.Identity, Vector3.One, boundingBox) { }
-        private SOMAModel(List<Renderable> renderables, Vector3 pos, Quaternion rotation, Vector3 scale, Box3 originalBoundingBox) 
-            : base(renderables.Select(r => r.Clone()).ToList(), pos, rotation, scale, originalBoundingBox) { 
+            : this(renderables.Select(r => r.Clone()).ToList(), Transform.Default, boundingBox) { }
+        private SOMAModel(List<Renderable> renderables, Transform transform, Box3 originalBoundingBox) 
+            : base(renderables.Select(r => r.Clone()).ToList(), transform, originalBoundingBox) { 
         }
     }
 }

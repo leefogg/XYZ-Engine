@@ -61,17 +61,17 @@ namespace GLOOP.Tests
             var material = new TextureArrayMaterial(shader);
             material.TextureArray = textureArray;
             Model = new Model("assets/models/plane.dae", assimp, material.Clone());
-            Model.Scale *= 10000f;
-            Model.Position.X = -1.5f;
+            Model.Transform.Scale *= 10000f;
+            Model.Transform.Position.X = -1.5f;
             ((TextureArrayMaterial)Model.Renderables[0].material).Slice = 0;
 
             Model2 = new Model("assets/models/plane.dae", assimp, material.Clone());
-            Model2.Scale *= 10000f;
+            Model2.Transform.Scale *= 10000f;
             ((TextureArrayMaterial)Model2.Renderables[0].material).Slice = 1;
 
             Model3 = new Model("assets/models/plane.dae", assimp, material.Clone());
-            Model3.Position.X = 1.5f;
-            Model3.Scale *= 10000f;
+            Model3.Transform.Position.X = 1.5f;
+            Model3.Transform.Scale *= 10000f;
             ((TextureArrayMaterial)Model3.Renderables[0].material).Slice = 2;
 
 
