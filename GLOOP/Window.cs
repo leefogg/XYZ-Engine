@@ -93,19 +93,25 @@ namespace GLOOP
 
             SwapBuffers();
 
+            NewFrame();
+
+            base.OnRenderFrame(args);
+        }
+
+        public void NewFrame()
+        {
             FrameNumber++;
             var now = DateTime.Now;
             if (now > lastSecond + TimeSpan.FromSeconds(1))
             {
                 FPS = framesThisSecond;
                 lastSecond = now;
+                framesThisSecond = 0;
             }
             else
             {
                 framesThisSecond++;
             }
-
-            base.OnRenderFrame(args);
         }
 
         public virtual void Render()

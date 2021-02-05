@@ -235,9 +235,12 @@ namespace GLOOP.Tests
 
             FinishDeferredRendering(projectionMatrix, viewMatrix);
 
+
             SwapBuffers();
+            NewFrame();
             FrameNumber++;
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
+            Title = FPS.ToString() + "FPS";
         }
 
         private void setupUniformBuffers()
