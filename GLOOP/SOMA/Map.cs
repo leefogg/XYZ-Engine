@@ -21,7 +21,7 @@ namespace GLOOP.SOMA
         public Map(string mapPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             loadLights(mapPath + "_Light");
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
-            //loadEntities(mapPath + "_Entity", assimp, material);
+            loadEntities(mapPath + "_Entity", assimp, material);
             loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
 
@@ -264,8 +264,8 @@ namespace GLOOP.SOMA
                         materialInstance.SpecularTexture = specularTex;
                         materialInstance.IlluminationTexture = illumTex;
 
-                        var renderable = new Renderable(vao, materialInstance);
-                        var model = new SOMAModel(new List<Renderable> { renderable }, vao.BoundingBox);
+                        var renderable = new Model(vao, materialInstance);
+                        var model = new SOMAModel(new List<Model> { renderable }, vao.BoundingBox);
                         model.Transform.Position = plane.Position.ParseVector3();
                         //model.Rot += new OpenTK.Mathematics.Quaternion(plane.Rotation.ParseVector3().Negated());
 

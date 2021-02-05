@@ -13,7 +13,7 @@ using static OpenTK.Graphics.OpenGL.GL;
 
 namespace GLOOP.SOMA
 {
-    public class SOMAModel : Model {
+    public class SOMAModel : Rendering.Entity {
         public static Vector3 Offset = new Vector3(0,0,0);
 
         public string ResourcePath { get; }
@@ -151,9 +151,9 @@ namespace GLOOP.SOMA
             return new SOMAModel(Renderables, Transform, OriginalBoundingBox);
         }
 
-        public SOMAModel(List<Renderable> renderables, Box3 boundingBox) 
+        public SOMAModel(List<Model> renderables, Box3 boundingBox) 
             : this(renderables.Select(r => r.Clone()).ToList(), Transform.Default, boundingBox) { }
-        private SOMAModel(List<Renderable> renderables, Transform transform, Box3 originalBoundingBox) 
+        private SOMAModel(List<Model> renderables, Transform transform, Box3 originalBoundingBox) 
             : base(renderables.Select(r => r.Clone()).ToList(), transform, originalBoundingBox) { 
         }
     }

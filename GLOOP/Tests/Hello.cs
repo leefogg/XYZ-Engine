@@ -16,9 +16,9 @@ namespace GLOOP.Tests
     public class Hello : Window
     {
         private DebugCamera Camera;
-        private Model Model1;
-        private Model Model2;
-        private Model Plane;
+        private Entity Model1;
+        private Entity Model2;
+        private Entity Plane;
         private SingleColorMaterial singleColorMaterial;
         private Vector3 sincos = new Vector3();
 
@@ -37,19 +37,19 @@ namespace GLOOP.Tests
             var assimp = new Assimp.AssimpContext();
             var shader = new FullbrightShader();
             var material = new FullbrightMaterial(shader);
-            Model1 = new Model("assets/models/pyramid.dae", assimp, material);
+            Model1 = new Entity("assets/models/pyramid.dae", assimp, material);
             Model1.Transform.Scale *= 10000f;
             //Model1.Scale = new Vector3(0.2f, 0.4f, 0.9f);
             Model1.Transform.Position.X = -1.5f;
             Model1.Transform.Position.Y = 0.5f;
             Model1.Renderables[0].material.SetTextures(TextureCache.Get("assets/textures/duck.bmp"), null, null, null);
 
-            Model2 = new Model("assets/models/sphere.obj", assimp, material);
+            Model2 = new Entity("assets/models/sphere.obj", assimp, material);
             Model2.Transform.Position.X = 1.5f;
             Model2.Transform.Scale *= 0.1f;
             Model2.Renderables[0].material.SetTextures(TextureCache.Get("assets/textures/duck.bmp"), null, null, null);
 
-            Plane = new Model("assets/models/plane.dae", assimp, material);
+            Plane = new Entity("assets/models/plane.dae", assimp, material);
             Plane.Transform.Scale *= new Vector3(100000f, 1f, 100000f);
             //Plane.Scale = new Vector3(1 / Plane.WorldScale.X, 1 / Plane.WorldScale.Y, 1 / Plane.WorldScale.Z);
             Plane.Renderables[0].material.SetTextures(TextureCache.Get("assets/textures/gray.png"), null, null, null);
