@@ -12,8 +12,6 @@ namespace GLOOP.Rendering
     public class TextureArray : BaseTexture
     {
         private TextureShape shape;
-        private Lazy<ulong> bindlessHandle;
-        public ulong BindlessHandle => bindlessHandle.Value;
 
         public TextureArray(TextureShape shape, ushort numLayers, string name = "")
             : base(TextureTarget.Texture2DArray)
@@ -21,8 +19,6 @@ namespace GLOOP.Rendering
             this.shape = shape;
 
             Use();
-
-            bindlessHandle = new Lazy<ulong>(makeTexureResident);
 
             if (!string.IsNullOrEmpty(name))
             {
