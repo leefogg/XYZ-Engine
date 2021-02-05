@@ -13,6 +13,8 @@ namespace GLOOP.Rendering
         public VirtualVAO VAO { get; set; }
         public Material Material { get; }
 
+        private Matrix4? ModelMatrix;
+
         public Model(
             Transform transform,
             VirtualVAO vao,
@@ -25,12 +27,13 @@ namespace GLOOP.Rendering
 
         public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix, ref Transform transform)
         {
-            var modelMatrix = MathFunctions.CreateModelMatrix(
-                transform.Position,
-                transform.Rotation,
-                transform.Scale
-            );
-            Material.SetCameraUniforms(projectionMatrix, viewMatrix, modelMatrix);
+            //if (!ModelMatrix.HasValue)
+                ModelMatrix = MathFunctions.CreateModelMatrix(
+                    transform.Position,
+                    transform.Rotation,
+                    transform.Scale
+                );
+            Material.SetCameraUniforms(projectionMatrix, viewMatrix, ModelMatrix.Value);
             Material.Commit();
            
             VAO.Draw();
