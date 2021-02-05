@@ -114,7 +114,7 @@ namespace GLOOP.SOMA
                             
                             foreach (var renderable in newInstance.Renderables)
                             {
-                                var mat = (DeferredRenderingGeoMaterial)renderable.material;
+                                var mat = (DeferredRenderingGeoMaterial)renderable.Material;
                                 mat.IlluminationColor = illuminationColor * brightness;
                             }
                         }
@@ -190,7 +190,7 @@ namespace GLOOP.SOMA
                         var albedoTint = instance.ColourMultiplier?.ParseVector3() ?? Vector3.One;
                         foreach (var renderable in newInstance.Renderables)
                         {
-                            var mat = (DeferredRenderingGeoMaterial)renderable.material;
+                            var mat = (DeferredRenderingGeoMaterial)renderable.Material;
                             mat.AlbedoColourTint = albedoTint;
                             mat.IlluminationColor = illumColor * instance.IlluminationBrightness;
                         }

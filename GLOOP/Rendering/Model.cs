@@ -11,7 +11,7 @@ namespace GLOOP.Rendering
     {
         public Transform Transform = Transform.Default;
         public VirtualVAO VAO { get; set; }
-        public Material material { get; }
+        public Material Material { get; }
 
         public Model(
             Transform transform,
@@ -19,7 +19,7 @@ namespace GLOOP.Rendering
             Material material)
         {
             Transform = transform;
-            this.material = material;
+            this.Material = material;
             VAO = vao;
         }
 
@@ -30,12 +30,12 @@ namespace GLOOP.Rendering
                 transform.Rotation,
                 transform.Scale
             );
-            material.SetCameraUniforms(projectionMatrix, viewMatrix, modelMatrix);
-            material.Commit();
+            Material.SetCameraUniforms(projectionMatrix, viewMatrix, modelMatrix);
+            Material.Commit();
            
             VAO.Draw();
         }
 
-        public Model Clone() => new Model(Transform, VAO, material.Clone());
+        public Model Clone() => new Model(Transform, VAO, Material.Clone());
     }
 }
