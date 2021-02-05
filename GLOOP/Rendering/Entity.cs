@@ -72,7 +72,7 @@ namespace GLOOP.Rendering
                 var daeScale = DAE.Model.Load(path)?.Meta?.Units?.Scale;
                 Transform.Scale *= daeScale ?? 1.0f;
             }
-
+            
             var currentFolder = Path.GetDirectoryName(path);
 
             for (var i = 0; i < scene.Meshes.Count; i++)
@@ -119,10 +119,10 @@ namespace GLOOP.Rendering
 
                 var materialInstance = material.Clone();
                 materialInstance.SetTextures(diffuseTex, normalTex, specularTex, illumTex);
-                Renderables.Add(new Model(vao, materialInstance));
+                Renderables.Add(new Model(Transform.Default, vao, materialInstance));
             }
 
-            Transform.Scale = new Vector3(1);
+            Transform.Scale = Vector3.One;
         }
 
         public virtual void GetTextures(
@@ -165,10 +165,8 @@ namespace GLOOP.Rendering
 
         public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
-            var modelMatrix = MathFunctions.CreateModelMatrix(Transform.Position, Transform.Rotation, Transform.Scale); // TODO: This should be cached
-
             foreach (var renderable in Renderables)
-                renderable.Render(projectionMatrix, viewMatrix, modelMatrix);
+                renderable.Render(projectionMatrix, viewMatrix, ref Transform);
         }
 
         public void RenderBoundingBox(Matrix4 projectionMatrix, Matrix4 viewMatrix)

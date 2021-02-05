@@ -53,7 +53,24 @@ namespace GLOOP.SOMA
             var SOMAHome = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
             var fullPath = Path.Combine(SOMAHome, Model.Mesh.FileName);
             var model = new SOMAModel(fullPath, context, shader);
-            //TODO: Implement SubMeshInfo pos/scale/rot
+            if (Model.Mesh.SubMeshes != null)
+            {
+                if (Model.Mesh.SubMeshes.Length == model.Renderables.Count)
+                {
+                    for (int i = 0; i < Model.Mesh.SubMeshes.Length; i++)
+                    {
+                        var mesh = Model.Mesh.SubMeshes[i];
+                        var renderable = model.Renderables[0];
+                        renderable.Transform.Position += mesh.Position.ParseVector3();
+                        renderable.Transform.Rotation += new Quaternion(mesh.Rotation.ParseVector3().Negated());
+                        renderable.Transform.Scale *= mesh.Scale.ParseVector3();
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Inconsistent meshes in model");
+                }
+            }
             //TODO: Implement UserDefinedVariables posOffset, rotOffset, scaleOffset
 
             return model;

@@ -264,7 +264,7 @@ namespace GLOOP.SOMA
                         materialInstance.SpecularTexture = specularTex;
                         materialInstance.IlluminationTexture = illumTex;
 
-                        var renderable = new Model(vao, materialInstance);
+                        var renderable = new Model(Transform.Default, vao, materialInstance);
                         var model = new SOMAModel(new List<Model> { renderable }, vao.BoundingBox);
                         model.Transform.Position = plane.Position.ParseVector3();
                         //model.Rot += new OpenTK.Mathematics.Quaternion(plane.Rotation.ParseVector3().Negated());
