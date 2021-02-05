@@ -93,14 +93,5 @@ namespace GLOOP.Rendering
             GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapS, (int)repeatMode);
             GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapT, (int)repeatMode);
         }
-
-        private ulong makeTexureResident()
-        {
-            Use();
-
-            var handle = (ulong)Arb.GetTextureHandle(Handle);
-            Arb.MakeTextureHandleResident(handle);
-            return handle;
-        }
     }
 }
