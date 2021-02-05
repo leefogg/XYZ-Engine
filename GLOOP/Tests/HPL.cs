@@ -175,7 +175,7 @@ namespace GLOOP.Tests
             var tau = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm";
             var phi = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm";
             var custom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm";
-            var mapToLoad = custom;
+            var mapToLoad = phi;
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
 
             /*
@@ -203,6 +203,7 @@ namespace GLOOP.Tests
                 deferredMaterial
             );
             Console.WriteLine($"Time taken to load map {(DateTime.Now - beforeMapLoad).TotalSeconds} seconds");
+            Console.WriteLine($"Time taken to load models {Metrics.TimeLoadingModels.TotalSeconds} seconds");
             Console.WriteLine($"Time taken to load textures {Metrics.TimeLoadingTextures.TotalSeconds} seconds");
             Console.WriteLine("Number of textures: " + Metrics.TextureCount);
             Console.WriteLine("Textures: " + Metrics.TexturesBytesUsed / 1024 / 1024 + "MB");

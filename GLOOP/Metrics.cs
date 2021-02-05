@@ -10,6 +10,6 @@ namespace GLOOP
         public static ulong ModelsBytesUsed = 0;
         public static ulong ModelsIndiciesBytesUsed = 0;
         public static ulong TextureCount = 0;
-        public static TimeSpan TimeLoadingTextures;
+        public static TimeSpan TimeLoadingTextures, TimeLoadingModels;
     }
 }

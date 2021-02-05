@@ -66,7 +66,7 @@ namespace GLOOP.Rendering
                 AlbedoColourTint = AlbedoColourTint,
                 DiffuseTexture = DiffuseTexture,
                 HasWorldpaceUVs = HasWorldpaceUVs,
-                IlluminationColor = IlluminationColor,
+                IlluminationColor = IlluminationColor, // TODO: Add connected light's color
                 IlluminationTexture = IlluminationTexture,
                 ModelMatrix = ModelMatrix,
                 NormalTexture = NormalTexture,

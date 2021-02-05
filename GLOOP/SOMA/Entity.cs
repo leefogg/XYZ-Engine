@@ -53,6 +53,8 @@ namespace GLOOP.SOMA
             var SOMAHome = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
             var fullPath = Path.Combine(SOMAHome, Model.Mesh.FileName);
             var model = new SOMAModel(fullPath, context, shader);
+            //TODO: Implement SubMeshInfo pos/scale/rot
+            //TODO: Implement UserDefinedVariables posOffset, rotOffset, scaleOffset
 
             return model;
         }

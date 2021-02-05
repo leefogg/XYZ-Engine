@@ -58,7 +58,9 @@ namespace GLOOP.Rendering
                 | Assimp.PostProcessSteps.GenerateNormals
                 | Assimp.PostProcessSteps.CalculateTangentSpace
                 | Assimp.PostProcessSteps.Triangulate;
+            var startLoadingModel = DateTime.Now;
             var scene = assimp.ImportFile(path, steps);
+            Metrics.TimeLoadingModels += DateTime.Now - startLoadingModel;
             if (!scene.HasMeshes)
                 return;
 
