@@ -8,7 +8,7 @@ namespace GLOOP.Rendering
 {
     public abstract class BaseTexture : IDisposable
     {
-        private static readonly int[] BoundTextures = new int[16];
+        private static readonly int[] BoundTextures = new int[Globals.MaxTextureUnits];
         private static readonly int[] TexturesToBind = new int[BoundTextures.Length];
 
         private Lazy<ulong> bindlessHandle;
