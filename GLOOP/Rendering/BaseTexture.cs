@@ -53,7 +53,7 @@ namespace GLOOP.Rendering
 
             BindTextures(first, textures.Length, TexturesToBind);
 
-            for (i = 0; i < TexturesToBind.Length; i++)
+            for (i = 0; i < textures.Length; i++)
                 BoundTextures[i + first] = TexturesToBind[i];
         }
 

@@ -506,10 +506,7 @@ namespace GLOOP.Tests
 
             shader = BloomCombineShader;
             shader.Use();
-            BloomBuffers[1].ColorBuffers[0].Use(TextureUnit.Texture0);
-            BloomBuffers[3].ColorBuffers[0].Use(TextureUnit.Texture1);
-            BloomBuffers[5].ColorBuffers[0].Use(TextureUnit.Texture2);
-            NoiseMap.Use(TextureUnit.Texture3);
+            BaseTexture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], NoiseMap }, TextureUnit.Texture0);
             shader.Set("blurMap0", TextureUnit.Texture0);
             shader.Set("blurMap1", TextureUnit.Texture1);
             shader.Set("blurMap2", TextureUnit.Texture2);
@@ -564,10 +561,12 @@ namespace GLOOP.Tests
             {
                 var shader = PointLightShader;
                 shader.Use();
-                GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse].Use(TextureUnit.Texture0);
-                GBuffers.ColorBuffers[(int)GBufferTexture.Position].Use(TextureUnit.Texture1);
-                GBuffers.ColorBuffers[(int)GBufferTexture.Normal].Use(TextureUnit.Texture2);
-                GBuffers.ColorBuffers[(int)GBufferTexture.Specular].Use(TextureUnit.Texture3);
+                BaseTexture.Use(new[] {
+                    GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
+                    GBuffers.ColorBuffers[(int)GBufferTexture.Position],
+                    GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
+                    GBuffers.ColorBuffers[(int)GBufferTexture.Specular],
+                }, TextureUnit.Texture0);
                 shader.Set("diffuseTex", TextureUnit.Texture0);
                 shader.Set("positionTex", TextureUnit.Texture1);
                 shader.Set("normalTex", TextureUnit.Texture2);
@@ -601,10 +600,12 @@ namespace GLOOP.Tests
 
                 Shader shader = SpotLightShader;
                 shader.Use();
-                GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse].Use(TextureUnit.Texture0);
-                GBuffers.ColorBuffers[(int)GBufferTexture.Position].Use(TextureUnit.Texture1);
-                GBuffers.ColorBuffers[(int)GBufferTexture.Normal].Use(TextureUnit.Texture2);
-                GBuffers.ColorBuffers[(int)GBufferTexture.Specular].Use(TextureUnit.Texture3);
+                BaseTexture.Use(new[] {
+                    GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
+                    GBuffers.ColorBuffers[(int)GBufferTexture.Position],
+                    GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
+                    GBuffers.ColorBuffers[(int)GBufferTexture.Specular],
+                }, TextureUnit.Texture0);
                 shader.Set("diffuseTex", TextureUnit.Texture0);
                 shader.Set("positionTex", TextureUnit.Texture1);
                 shader.Set("normalTex", TextureUnit.Texture2);
