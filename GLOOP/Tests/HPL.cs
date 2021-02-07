@@ -49,7 +49,7 @@ namespace GLOOP.Tests
         private bool debugLightBuffer;
         private bool useFXAA = false;
         private bool useSSAO = false;
-        private int cameraUBO, pointLightsUBO, spotLightsUBO, bloomUBO;
+        private int cameraUBO, pointLightsUBO, spotLightsUBO, bloomUBO, materialUBO;
         const int maxLights = 500;
         private int bloomDataSize = 1000, bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
@@ -96,6 +96,7 @@ namespace GLOOP.Tests
             StagingBuffer = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgb16f);
 
             var deferredGeoShader = new DeferredRenderingGeoShader();
+            var introspection = deferredGeoShader.Introspect();
             var deferredMaterial = new DeferredRenderingGeoMaterial(deferredGeoShader);
             PointLightShader = new DynamicPixelShader(
                 "assets/shaders/deferred/LightPass/SingleLightVertexShader.vert",
@@ -210,7 +211,7 @@ namespace GLOOP.Tests
             Console.WriteLine("Models vertcies: " + Metrics.ModelsBytesUsed / 1024 / 1024 + "MB");
             Console.WriteLine("Models indicies: " + Metrics.ModelsIndiciesBytesUsed/ 1024 / 1024 + "MB");
 
-            setupUniformBuffers();
+            setupBuffers();
 
             var usedTextures = TextureArrayManager.GetSummary();
             foreach (var alloc in usedTextures)
@@ -235,7 +236,6 @@ namespace GLOOP.Tests
 
             FinishDeferredRendering(projectionMatrix, viewMatrix);
 
-
             SwapBuffers();
             NewFrame();
             FrameNumber++;
@@ -243,20 +243,76 @@ namespace GLOOP.Tests
             Title = FPS.ToString() + "FPS";
         }
 
-        private void setupUniformBuffers()
+        private void setupBuffers()
         {
             setupCameraUniformBuffer();
             setupLightingUBO();
             updatePointLightsUBO();
             updateSpotLightsUBO();
+
             setupBloomUBO();
+
+            setupMaterialUBO();
+
             setupRandomTexture();
+        }
+
+        private void setupMaterialUBO()
+        {
+            materialUBO = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.UniformBuffer, materialUBO);
+            GL.ObjectLabel(ObjectLabelIdentifier.Buffer, materialUBO, 12, "MaterialData");
+            var materials = new[] {
+                new DeferredGeoMaterial() {
+                    DiffuseMapSlice = 1,
+                    NormalMapSlice= 2,
+                    SpecularMapSlice = 3,
+                    IlluminaitonMapSlice = 4,
+                    IlluminationColor = new Vector3(5, 6, 7),
+                    AlbedoColourTint = new Vector3(8, 9, 10),
+                    TextureOffset = new Vector2(11, 12),
+                    TextureRepeat= new Vector2(13, 14),
+                    NormalStrength = 15,
+                    IsWorldSpaceUVs = true
+                },
+                new DeferredGeoMaterial() {
+                    DiffuseMapSlice = 0,
+                    NormalMapSlice = 1,
+                    SpecularMapSlice = 2,
+                    IlluminaitonMapSlice = 3,
+                    IlluminationColor = new Vector3(5, 6, 7),
+                    AlbedoColourTint = new Vector3(8, 9, 10),
+                    TextureOffset = new Vector2(11, 12),
+                    TextureRepeat= new Vector2(13, 14),
+                    NormalStrength = 556,
+                    IsWorldSpaceUVs = false
+                },
+            };
+            GL.NamedBufferData(materialUBO, Marshal.SizeOf<DeferredGeoMaterial>() * materials.Length, materials, BufferUsageHint.StaticDraw);
+        }
+
+        [StructLayout(LayoutKind.Explicit, Size = 72)]
+        struct DeferredGeoMaterial
+        {
+            [FieldOffset(000)] public Matrix4 ModelMatrix;
+
+            [FieldOffset(000)] public uint DiffuseMapSlice;
+            [FieldOffset(004)] public uint NormalMapSlice;
+            [FieldOffset(008)] public uint SpecularMapSlice;
+            [FieldOffset(012)] public uint IlluminaitonMapSlice;
+            [FieldOffset(016)] public Vector3 IlluminationColor;
+            [FieldOffset(032)] public Vector3 AlbedoColourTint;
+            [FieldOffset(048)] public Vector2 TextureOffset;
+            [FieldOffset(056)] public Vector2 TextureRepeat;
+            [FieldOffset(064)] public float NormalStrength;
+            [FieldOffset(068)] public bool IsWorldSpaceUVs;
         }
 
         private void setupCameraUniformBuffer()
         {
             cameraUBO = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.UniformBuffer, cameraUBO);
+            GL.ObjectLabel(ObjectLabelIdentifier.Buffer, cameraUBO, 10, "CameraData");
             var size = new Vector4[8].SizeInBytes();
             GL.NamedBufferData(cameraUBO, size, (IntPtr)0, BufferUsageHint.StreamRead);
             GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, cameraUBO, (IntPtr)0, size);

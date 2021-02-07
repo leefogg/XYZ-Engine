@@ -32,7 +32,6 @@ namespace GLOOP.SOMA
                 .ThenBy(m => m.ResourcePath).ToList();
         }
 
-
         private void loadLights(string lightsPath)
         {
             var lightsModel = Deserialize<Lights>(lightsPath);

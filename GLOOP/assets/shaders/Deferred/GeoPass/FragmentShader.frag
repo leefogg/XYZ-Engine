@@ -1,4 +1,4 @@
-#version 330
+#version 420
 
 in vec3 fragPos;
 in vec2 uv;
@@ -8,6 +8,13 @@ uniform vec2 textureOffset = vec2(0.0);
 uniform vec2 textureRepeat = vec2(1.0);
 uniform bool isWorldSpaceUVs = false;
 uniform float normalStrength = 1;
+uniform sampler2D diffuseTex;
+uniform sampler2D normalTex;
+uniform sampler2D specularTex;
+uniform sampler2D illumTex;
+// uniform uint diffuseSlice, normalSlice, specularSlice, illumSlice;
+uniform vec3 illuminationColor;
+uniform vec3 albedoColourTint;
 
 layout (location = 0) out vec3 diffuse;
 layout (location = 1) out vec4 position;
@@ -15,13 +22,19 @@ layout (location = 2) out vec3 normal;
 layout (location = 3) out vec4 specular;
 layout (location = 4) out vec3 illum;
 
-uniform sampler2D diffuseTex;
-uniform sampler2D normalTex;
-uniform sampler2D specularTex;
-uniform sampler2D illumTex;
-uniform uint diffuseSlice, normalSlice, specularSlice, illumSlice;
-uniform vec3 illuminationColor;
-uniform vec3 albedoColourTint;
+layout (shared, binding = 5) uniform Material {
+	mat4 ModelMatrix;
+	uint DiffuseMapSlice;
+	uint NormalMapSlice;
+	uint SpecularMapSlice;
+	uint IlluminationMapSlice;
+	vec3 IlluminationColor;
+	vec3 AlbedoColorTint;
+	vec2 TextureRepeat;
+	vec2 TextureOffset;
+	float NormalStrength;
+	bool IsWorldSpaceUVs;
+};
 
 vec3 UnpackNormalmapYW(in vec4 avNormalValue)
 {
