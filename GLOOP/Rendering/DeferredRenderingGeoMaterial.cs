@@ -13,10 +13,27 @@ namespace GLOOP.Rendering
         public Vector3 IlluminationColor = new Vector3(1, 1, 1);
         public Vector3 AlbedoColourTint = new Vector3(1, 1, 1);
         public bool HasWorldpaceUVs;
-        public Texture DiffuseTexture;
-        public Texture NormalTexture;
-        public Texture SpecularTexture;
-        public Texture IlluminationTexture;
+        private Texture[] Textures = new Texture[4];
+        public Texture DiffuseTexture
+        {
+            get => Textures[0];
+            set => Textures[0] = value;
+        }
+        public Texture NormalTexture
+        {
+            get => Textures[1];
+            set => Textures[1] = value;
+        }
+        public Texture SpecularTexture
+        {
+            get => Textures[2];
+            set => Textures[2] = value;
+        }
+        public Texture IlluminationTexture
+        {
+            get => Textures[3];
+            set => Textures[3] = value;
+        }
 
         public DeferredRenderingGeoMaterial(DeferredRenderingGeoShader shader) : base(shader)
         {
@@ -39,11 +56,13 @@ namespace GLOOP.Rendering
             shader.NormalTexture = NormalTexture.BindlessHandle;
             shader.SpecularTexture = SpecularTexture.BindlessHandle;
             shader.IlluminationTexture = IlluminationTexture.BindlessHandle;
+
 #else
-            DiffuseTexture.Use(shader.DiffuseTexture = TextureUnit.Texture0);
-            NormalTexture.Use(shader.NormalTexture = TextureUnit.Texture1);
-            SpecularTexture.Use(shader.SpecularTexture = TextureUnit.Texture2);
-            IlluminationTexture.Use(shader.IlluminationTexture = TextureUnit.Texture3);
+            BaseTexture.Use(Textures, TextureUnit.Texture0);
+            shader.DiffuseTexture = TextureUnit.Texture0;
+            shader.NormalTexture = TextureUnit.Texture1;
+            shader.SpecularTexture = TextureUnit.Texture2;
+            shader.IlluminationTexture = TextureUnit.Texture3;
 #endif
         }
 

@@ -6,7 +6,6 @@ using System.Runtime.InteropServices;
 using GLOOP.Extensions;
 using OpenTK.Graphics.OpenGL4;
 using Pfim;
-using static OpenTK.Graphics.OpenGL.GL;
 using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
 
 namespace GLOOP.Rendering
@@ -39,7 +38,6 @@ namespace GLOOP.Rendering
                     CompressionAlgorithm.ATI2 => (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext, // Not sure
                     CompressionAlgorithm.BC5U => (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext
                 };
-
                 
                 construct(image.Width, image.Height, settings);
             }
@@ -90,7 +88,7 @@ namespace GLOOP.Rendering
                 var i = 0;
                 while (offset < settings.CompressedDataLength)
                 {
-                    var size = Math.Max(1, ((width + 3) / 4)) * Math.Max(1, ((height + 3) / 4)) * compressedBytesPerBlock;
+                    var size = Math.Max(1, (width + 3) / 4) * Math.Max(1, (height + 3) / 4) * compressedBytesPerBlock;
                     GL.CompressedTexImage2D(
                         TextureTarget.Texture2D,
                         i,
