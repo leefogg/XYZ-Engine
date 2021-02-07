@@ -45,12 +45,13 @@ namespace GLOOP.Rendering
         {
             if (changed && Window.FrameNumber == changedFrame + 2) {
                 try {
+                    Console.WriteLine($"Reloading {Path.GetFileName(vertPath)} & {Path.GetFileName(fragPath)}.");
                     tempHandle = load(vertPath, fragPath, defines);
                 } catch (Exception) {
                     changed = false;
                 }
             }
-            else if (changed && Window.FrameNumber == changedFrame + 5) {
+            else if (changed && Window.FrameNumber >= changedFrame + 5) {
                 Dispose();
                 Handle = tempHandle;
                 LoadUniforms();
