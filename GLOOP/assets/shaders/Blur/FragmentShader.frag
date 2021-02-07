@@ -9,7 +9,7 @@ struct uniformData {
 	float offset;
 };
 
-layout (std140, binding = 3) uniform uniforms {
+layout (shared, binding = 3) uniform uniforms {
 	uniformData data[24];
 };
 
