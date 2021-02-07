@@ -48,8 +48,17 @@ namespace GLOOP.Rendering
         {
             var first = firstUnit - TextureUnit.Texture0;
             var i = first;
+            var anyChanges = false;
             foreach (var tex in textures)
-                TexturesToBind[i++] = tex.Handle;
+            {
+                var handle = tex.Handle;
+                TexturesToBind[i] = handle;
+                anyChanges |= BoundTextures[i + first] != handle;
+                i++;
+            }
+
+            if (!anyChanges)
+                return;
 
             BindTextures(first, textures.Length, TexturesToBind);
 
