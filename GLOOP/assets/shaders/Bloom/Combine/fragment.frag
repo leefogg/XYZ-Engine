@@ -3,7 +3,7 @@
 in vec4 outColor;
 in vec2 texCoord;
 
-uniform vec3 avSizeWeight = vec3(0.5, 1, 2);
+uniform vec3 avSizeWeight = vec3(0.25, 0.5, 1) * 5;
 
 uniform sampler2D blurMap0;
 uniform sampler2D blurMap1;
@@ -23,13 +23,13 @@ float rand(vec2 p) {
 
 void main()
 {
-	vec4 vNoise = texture(noiseMap, vec2(rand(texCoord + timeMilliseconds * 2), rand(texCoord + timeMilliseconds)));
+	vec4 vNoise = texture(noiseMap, vec2(rand(texCoord), rand(texCoord)) + vec2(timeMilliseconds));
 
-	vec2 vBloomNoise = (vNoise.rg - vec2(0.5)) * 0.7 * avInvScreenSize;
+	vec2 vBloomNoise = (vNoise.rg - vec2(0.5)) * 10 * avInvScreenSize;
 
-	vec4 vBlurColor0 = texture(blurMap0, texCoord + vBloomNoise);
-	vec4 vBlurColor1 = texture(blurMap1, texCoord + vBloomNoise * vec2(-2.0, 2.0));
-	vec4 vBlurColor2 = texture(blurMap2, texCoord + vBloomNoise * vec2(-4.0, 4.0));
+	vec4 vBlurColor0 = texture(blurMap0, texCoord + vBloomNoise * 1);
+	vec4 vBlurColor1 = texture(blurMap1, texCoord + vBloomNoise * 2);
+	vec4 vBlurColor2 = texture(blurMap2, texCoord + vBloomNoise * 3);
 	
 	//vec4 vBlurColor = sqrt((vBlurColor0 * avSizeWeight.x + vBlurColor1 * avSizeWeight.y + vBlurColor2 * avSizeWeight.z) / dot(avSizeWeight, vec3(1.0)));
 	vec4 vBlurColor = (vBlurColor0 * avSizeWeight.x + vBlurColor1 * avSizeWeight.y + vBlurColor2 * avSizeWeight.z);
