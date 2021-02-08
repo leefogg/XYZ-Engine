@@ -14,7 +14,7 @@ namespace GLOOP.SOMA
 {
     public class Map {
         private const string SOMARoot = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
-        public List<SOMAModel> Models = new List<SOMAModel>();
+        public List<HPLEntity> Entities = new List<HPLEntity>();
         public List<GLOOP.PointLight> PointLights = new List<GLOOP.PointLight>();
         public List<GLOOP.SpotLight> SpotLights = new List<GLOOP.SpotLight>();
 
@@ -26,7 +26,7 @@ namespace GLOOP.SOMA
             loadPrimitives(mapPath + "_Primitive", material);
 
             // Sort
-            Models = Models
+            Entities = Entities
                 .OrderByDescending(m => m.IsStatic)
                 //.ThenByDescending(m => m.IsOccluder)
                 .ThenBy(m => m.ResourcePath).ToList();
@@ -55,11 +55,11 @@ namespace GLOOP.SOMA
 
             int attempted = 0, success = 0;
             var failed = new List<string>();
-            var instances = new List<SOMAModel>();
+            var instances = new List<HPLEntity>();
             Console.WriteLine();
             Console.Write("Loading Entites");
             foreach (var section in entityDict.sections) {
-                var files = new SOMAModel[section.Files.Length];
+                var files = new HPLEntity[section.Files.Length];
                 var entities = new Entity[section.Files.Length];
                 foreach (var entFile in section.Files) {
                     try {
@@ -111,7 +111,7 @@ namespace GLOOP.SOMA
                             if (variables.TryGetValue("IllumBrightness", out var brightnessString))
                                 float.TryParse(brightnessString, out brightness);
                             
-                            foreach (var renderable in newInstance.Renderables)
+                            foreach (var renderable in newInstance.Models)
                             {
                                 var mat = (DeferredRenderingGeoMaterial)renderable.Material;
                                 mat.IlluminationColor = illuminationColor * brightness;
@@ -138,7 +138,7 @@ namespace GLOOP.SOMA
             foreach (var path in failed)
                 Console.WriteLine(path);
 
-            Models.AddRange(instances);
+            Entities.AddRange(instances);
         }
 
         public void loadStaticObjects(string staticObjectsPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
@@ -146,11 +146,11 @@ namespace GLOOP.SOMA
 
             int attempted = 0, success = 0;
             var failed = new List<string>();
-            var instances = new List<SOMAModel>();
+            var instances = new List<HPLEntity>();
             Console.WriteLine();
             Console.Write("Loading Static Objects");
             foreach (var section in staticObjects.sections) {
-                var files = new SOMAModel[section.Files.Length];
+                var files = new HPLEntity[section.Files.Length];
                 foreach (var entFile in section.Files) {
                     try {
                         attempted++;
@@ -159,7 +159,7 @@ namespace GLOOP.SOMA
 
                        //if (fullPath.Contains("05_01_adon_support.DAE") || fullPath.Contains("05_01_adon_box_small.DAE") || fullPath.Contains("phi_tunnel_straight.DAE")) { 
                         if (true) {
-                            files[entFile.Id] = new SOMAModel(fullPath, assimp, material);
+                            files[entFile.Id] = new HPLEntity(fullPath, assimp, material);
 
                             //Console.WriteLine("SUCCESS.");
                             success++;
@@ -187,7 +187,7 @@ namespace GLOOP.SOMA
 
                         var illumColor = instance.IlluminationColor?.ParseVector3() ?? Vector3.One;
                         var albedoTint = instance.ColourMultiplier?.ParseVector3() ?? Vector3.One;
-                        foreach (var renderable in newInstance.Renderables)
+                        foreach (var renderable in newInstance.Models)
                         {
                             var mat = (DeferredRenderingGeoMaterial)renderable.Material;
                             mat.AlbedoColourTint = albedoTint;
@@ -206,7 +206,7 @@ namespace GLOOP.SOMA
             foreach (var path in failed)
                 Console.WriteLine(path);
 
-            Models.AddRange(instances);
+            Entities.AddRange(instances);
         }
 
         private T Deserialize<T>(string path)
@@ -242,7 +242,7 @@ namespace GLOOP.SOMA
                         var geo = GLOOP.Primitives.CreatePlane(scale, uvs);
                         var vao = geo.ToVirtualVAO(plane.Name);
 
-                        SOMAModel.getTextures(
+                        HPLEntity.getTextures(
                             mat.Textures?.Diffuse?.Path,
                             mat.Textures?.NormalMap?.Path,
                             mat.Textures?.Specular?.Path,
@@ -264,11 +264,11 @@ namespace GLOOP.SOMA
                         materialInstance.IlluminationTexture = illumTex;
 
                         var renderable = new Model(Transform.Default, vao, materialInstance);
-                        var model = new SOMAModel(new List<Model> { renderable }, vao.BoundingBox);
+                        var model = new HPLEntity(new List<Model> { renderable }, vao.BoundingBox);
                         model.Transform.Position = plane.Position.ParseVector3();
                         //model.Rot += new OpenTK.Mathematics.Quaternion(plane.Rotation.ParseVector3().Negated());
 
-                        Models.Add(model);
+                        Entities.Add(model);
                         success++;
                     }
                     catch (Exception ex) { 
@@ -287,7 +287,7 @@ namespace GLOOP.SOMA
 
             int attempted = 0, success = 0;
             var failed = new List<string>();
-            var instances = new List<SOMAModel>();
+            var instances = new List<HPLEntity>();
             Console.WriteLine();
             Console.Write("Loading Details");
             foreach (var section in detailMeshes.meshes.sections) {
@@ -300,7 +300,7 @@ namespace GLOOP.SOMA
                         Console.Write(".");
 
                         if (true) {
-                            var model = new SOMAModel(fullPath, assimp, material);
+                            var model = new HPLEntity(fullPath, assimp, material);
                             var positions = detailMesh.GetPositions().ToArray();
                             var rotations = detailMesh.GetRotations().ToArray();
 
@@ -331,16 +331,26 @@ namespace GLOOP.SOMA
             foreach (var path in failed)
                 Console.WriteLine(path);
 
-            Models.AddRange(instances);
+            Entities.AddRange(instances);
         }
 
-        public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        public Scene ToScene()
         {
-            foreach (var model in Models)
+            var s = new Scene()
             {
-                model.Render(projectionMatrix, viewMatrix);
-               // model.RenderBoundingBox(projectionMatrix, viewMatrix);
+                PointLights = PointLights,
+                SpotLights = SpotLights
+            };
+            foreach (var ent in Entities)
+            {
+                foreach (var model in ent.Models)
+                {
+                    model.Transform = ent.Transform;
+                    s.Models.Add(model);
+                }
             }
+
+            return s;
         }
     }
 }

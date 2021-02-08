@@ -21,17 +21,17 @@ namespace GLOOP.Rendering
             Material material)
         {
             Transform = transform;
-            this.Material = material;
+            Material = material;
             VAO = vao;
         }
 
-        public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix, ref Transform transform)
+        public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
             //if (!ModelMatrix.HasValue)
                 ModelMatrix = MathFunctions.CreateModelMatrix(
-                    transform.Position,
-                    transform.Rotation,
-                    transform.Scale
+                    Transform.Position,
+                    Transform.Rotation,
+                    Transform.Scale
                 );
             Material.SetCameraUniforms(projectionMatrix, viewMatrix, ModelMatrix.Value);
             Material.Commit();

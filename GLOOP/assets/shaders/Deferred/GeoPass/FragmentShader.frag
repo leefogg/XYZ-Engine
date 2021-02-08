@@ -21,7 +21,7 @@ layout (location = 1) out vec4 position;
 layout (location = 2) out vec3 normal;
 layout (location = 3) out vec4 specular;
 layout (location = 4) out vec3 illum;
-
+/*
 layout (shared, binding = 5) uniform Material {
 	mat4 ModelMatrix;
 	uint DiffuseMapSlice;
@@ -35,7 +35,7 @@ layout (shared, binding = 5) uniform Material {
 	float NormalStrength;
 	bool IsWorldSpaceUVs;
 };
-
+*/
 vec3 UnpackNormalmapYW(in vec4 avNormalValue)
 {
 	vec3 vNormal = avNormalValue.wyx * 2 - 1;

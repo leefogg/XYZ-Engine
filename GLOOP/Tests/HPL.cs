@@ -24,7 +24,7 @@ namespace GLOOP.Tests
 {
     public class HPL : Window {
         private Camera Camera;
-        private Map map;
+        private Scene map;
 
         private FrameBuffer GBuffers;
         private FrameBuffer LightingBuffer;
@@ -202,7 +202,7 @@ namespace GLOOP.Tests
                 mapToLoad,
                 assimp,
                 deferredMaterial
-            );
+            ).ToScene();
             Console.WriteLine($"Time taken to load map {(DateTime.Now - beforeMapLoad).TotalSeconds} seconds");
             Console.WriteLine($"Time taken to load models {Metrics.TimeLoadingModels.TotalSeconds} seconds");
             Console.WriteLine($"Time taken to load textures {Metrics.TimeLoadingTextures.TotalSeconds} seconds");
@@ -720,11 +720,11 @@ namespace GLOOP.Tests
                     DebugLights = !DebugLights;
 
                 if (input.IsKeyDown(Keys.X))
-                    SOMAModel.Offset.X += 0.01f;
+                    HPLEntity.Offset.X += 0.01f;
                 if (input.IsKeyDown(Keys.Y))
-                    SOMAModel.Offset.Y += 0.01f;
+                    HPLEntity.Offset.Y += 0.01f;
                 if (input.IsKeyDown(Keys.Z))
-                    SOMAModel.Offset.Z += 0.01f;
+                    HPLEntity.Offset.Z += 0.01f;
 
                 if (input.IsKeyPressed(Keys.D0))
                     debugGBufferTexture = -1;

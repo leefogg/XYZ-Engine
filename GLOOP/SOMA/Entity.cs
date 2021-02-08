@@ -49,18 +49,18 @@ namespace GLOOP.SOMA
             }
         }
 
-        public SOMAModel Load(AssimpContext context, DeferredRenderingGeoMaterial shader) {
+        public HPLEntity Load(AssimpContext context, DeferredRenderingGeoMaterial shader) {
             var SOMAHome = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
             var fullPath = Path.Combine(SOMAHome, Model.Mesh.FileName);
-            var model = new SOMAModel(fullPath, context, shader);
+            var model = new HPLEntity(fullPath, context, shader);
             if (Model.Mesh.SubMeshes != null)
             {
-                if (Model.Mesh.SubMeshes.Length == model.Renderables.Count)
+                if (Model.Mesh.SubMeshes.Length == model.Models.Count)
                 {
                     for (int i = 0; i < Model.Mesh.SubMeshes.Length; i++)
                     {
                         var mesh = Model.Mesh.SubMeshes[i];
-                        var renderable = model.Renderables[0];
+                        var renderable = model.Models[0];
                         renderable.Transform.Position += mesh.Position.ParseVector3();
                         renderable.Transform.Rotation += new Quaternion(mesh.Rotation.ParseVector3().Negated());
                         renderable.Transform.Scale *= mesh.Scale.ParseVector3();

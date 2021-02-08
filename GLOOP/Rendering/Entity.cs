@@ -34,13 +34,13 @@ namespace GLOOP.Rendering
                     Transform.Scale.Z * OriginalBoundingBox.Size.Z
                 );
 
-        public List<Model> Renderables = new List<Model>();
+        public List<Model> Models = new List<Model>();
 
         public Entity(List<Model> renderables, Box3 boundingBox) 
             : this(renderables, Transform.Default, boundingBox) { }
         protected Entity(List<Model> renderables, Transform transform, Box3 originalBoundingBox)
         {
-            Renderables = renderables;
+            Models = renderables;
             Transform = transform;
             OriginalBoundingBox = originalBoundingBox;
         }
@@ -119,7 +119,7 @@ namespace GLOOP.Rendering
 
                 var materialInstance = material.Clone();
                 materialInstance.SetTextures(diffuseTex, normalTex, specularTex, illumTex);
-                Renderables.Add(new Model(Transform.Default, vao, materialInstance));
+                Models.Add(new Model(Transform.Default, vao, materialInstance));
             }
 
             Transform.Scale = Vector3.One;
@@ -165,8 +165,8 @@ namespace GLOOP.Rendering
 
         public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
-            foreach (var renderable in Renderables)
-                renderable.Render(projectionMatrix, viewMatrix, ref Transform);
+            foreach (var renderable in Models)
+                renderable.Render(projectionMatrix, viewMatrix);
         }
 
         public void RenderBoundingBox(Matrix4 projectionMatrix, Matrix4 viewMatrix)
@@ -178,6 +178,6 @@ namespace GLOOP.Rendering
             Primitives.Cube.Draw(OpenTK.Graphics.OpenGL4.PrimitiveType.Lines);
         }
 
-        public Entity Clone() => new Entity(Renderables, Transform, OriginalBoundingBox);
+        public Entity Clone() => new Entity(Models, Transform, OriginalBoundingBox);
     }
 }

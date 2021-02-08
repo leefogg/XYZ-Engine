@@ -42,17 +42,17 @@ namespace GLOOP.Tests
             //Model1.Scale = new Vector3(0.2f, 0.4f, 0.9f);
             Model1.Transform.Position.X = -1.5f;
             Model1.Transform.Position.Y = 0.5f;
-            Model1.Renderables[0].Material.SetTextures(TextureCache.Get("assets/textures/duck.bmp"), null, null, null);
+            Model1.Models[0].Material.SetTextures(TextureCache.Get("assets/textures/duck.bmp"), null, null, null);
 
             Model2 = new Entity("assets/models/sphere.obj", assimp, material);
             Model2.Transform.Position.X = 1.5f;
             Model2.Transform.Scale *= 0.1f;
-            Model2.Renderables[0].Material.SetTextures(TextureCache.Get("assets/textures/duck.bmp"), null, null, null);
+            Model2.Models[0].Material.SetTextures(TextureCache.Get("assets/textures/duck.bmp"), null, null, null);
 
             Plane = new Entity("assets/models/plane.dae", assimp, material);
             Plane.Transform.Scale *= new Vector3(100000f, 1f, 100000f);
             //Plane.Scale = new Vector3(1 / Plane.WorldScale.X, 1 / Plane.WorldScale.Y, 1 / Plane.WorldScale.Z);
-            Plane.Renderables[0].Material.SetTextures(TextureCache.Get("assets/textures/gray.png"), null, null, null);
+            Plane.Models[0].Material.SetTextures(TextureCache.Get("assets/textures/gray.png"), null, null, null);
 
             var singleColorShader = new SingleColorShader();
             singleColorMaterial = new SingleColorMaterial(singleColorShader);
