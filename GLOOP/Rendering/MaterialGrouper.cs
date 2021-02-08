@@ -4,8 +4,8 @@ using System.Text;
 
 namespace GLOOP.Rendering
 {
-    public abstract class MaterialGrouper<T, M> where T : Material
+    public abstract class MaterialGrouper<Mat> where Mat : Material
     {
-        public abstract IEnumerable<M> Sort(IEnumerable<(T, M)> materials);
+        public abstract IEnumerable<RenderBatch<Mat>> Sort(IEnumerable<Model> models);
     }
 }

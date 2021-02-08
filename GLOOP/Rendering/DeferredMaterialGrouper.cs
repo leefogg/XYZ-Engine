@@ -3,42 +3,49 @@ using System.Linq;
 
 namespace GLOOP.Rendering
 {
-    internal class DeferredMaterialGrouper<M> : MaterialGrouper<DeferredRenderingGeoMaterial, M>
+    internal class DeferredMaterialGrouper : MaterialGrouper<DeferredRenderingGeoMaterial>
     {
-        internal class Group<M>
+        internal class DeferredMaterialRenderBatch : RenderBatch<DeferredRenderingGeoMaterial>
         {
+            private readonly VAO vao;
             private readonly DeferredRenderingGeoMaterial material;
-            public List<M> Items = new List<M>();
 
-            public Group(DeferredRenderingGeoMaterial mat)
+            public DeferredMaterialRenderBatch(Model model)
             {
-                material = mat;
+                vao = model.VAO.container;
+                material = (DeferredRenderingGeoMaterial)model.Material;
+
+                Models.Add(model);
+            }
+            public override void BindState()
+            {
+                vao.Bind();
+                material.Commit();
             }
 
-            public bool IsSame(DeferredRenderingGeoMaterial mat) 
-                => material.DiffuseTexture == mat.DiffuseTexture 
-                && material.NormalTexture == mat.NormalTexture 
-                && material.SpecularTexture == mat.SpecularTexture 
-                && material.IlluminationTexture == mat.IlluminationTexture;
-        }
-
-        public DeferredMaterialGrouper()
-        {
-        }
-
-        public override IEnumerable<M> Sort(IEnumerable<(DeferredRenderingGeoMaterial, M)> materials)
-        {
-            var groups = new List<Group<M>>();
-
-            foreach (var set in materials)
+            public override bool IsSameBatch(Model model)
             {
-                var material = set.Item1;
+                var mat = (DeferredRenderingGeoMaterial)model.Material;
+                return vao == model.VAO.container
+                    && material.DiffuseTexture == mat.DiffuseTexture
+                    && material.NormalTexture == mat.NormalTexture
+                    && material.SpecularTexture == mat.SpecularTexture
+                    && material.IlluminationTexture == mat.IlluminationTexture;
+            }
+        }
+
+        public override IEnumerable<RenderBatch<DeferredRenderingGeoMaterial>> Sort(IEnumerable<Model> models)
+        {
+            var batches = new List<RenderBatch<DeferredRenderingGeoMaterial>>();
+
+            foreach (var model in models)
+            {
                 var added = false;
-                foreach (var group in groups)
+                foreach (var batch in batches)
                 {
-                    if (group.IsSame(set.Item1))
+                    if (batch.IsSameBatch(model))
                     {
-                        group.Items.Add(set.Item2);
+                        batch.Models.Add(model);
                         added = true;
                         break;
                     }
@@ -46,13 +53,12 @@ namespace GLOOP.Rendering
 
                 if (!added)
                 {
-                    var newGroup = new Group<M>(material);
-                    newGroup.Items.Add(set.Item2);
-                    groups.Add(newGroup);
+                    var newBatch = new DeferredMaterialRenderBatch(model);
+                    batches.Add(newBatch);
                 }
             }
 
-            return groups.SelectMany(g => g.Items);
+            return batches;
         }
     }
 }

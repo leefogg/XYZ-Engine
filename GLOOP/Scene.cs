@@ -11,13 +11,17 @@ namespace GLOOP
         public List<Model> Models = new List<Model>();
         public List<PointLight> PointLights = new List<PointLight>();
         public List<SpotLight> SpotLights = new List<SpotLight>();
+        public List<RenderBatch<DeferredRenderingGeoMaterial>> Batches;
 
         public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
-            foreach (var model in Models)
+            foreach (var batch in Batches)
             {
-                model.Render(projectionMatrix, viewMatrix);
-                // model.RenderBoundingBox(projectionMatrix, viewMatrix);
+                foreach (var model in batch.Models)
+                {
+                    model.Render(projectionMatrix, viewMatrix);
+                    // model.RenderBoundingBox(projectionMatrix, viewMatrix);
+                }
             }
         }
     }
