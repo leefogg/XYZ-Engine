@@ -203,10 +203,14 @@ namespace GLOOP.Tests
                 assimp,
                 deferredMaterial
             ).ToScene();
+            var afterMapLoad = DateTime.Now;
             var sorter = new DeferredMaterialGrouper<Model>();
+            var beforeMapSort = DateTime.Now;
             map.Models = sorter.Sort(map.Models.Select(model => ((DeferredRenderingGeoMaterial)model.Material, model))).ToList();
+            var afterMapSort = DateTime.Now;
 
-            Console.WriteLine($"Time taken to load map {(DateTime.Now - beforeMapLoad).TotalSeconds} seconds");
+            Console.WriteLine($"Time taken to sort map {(afterMapSort - beforeMapSort).TotalSeconds} seconds");
+            Console.WriteLine($"Time taken to load map {(afterMapLoad - beforeMapLoad).TotalSeconds} seconds");
             Console.WriteLine($"Time taken to load models {Metrics.TimeLoadingModels.TotalSeconds} seconds");
             Console.WriteLine($"Time taken to load textures {Metrics.TimeLoadingTextures.TotalSeconds} seconds");
             Console.WriteLine("Number of textures: " + Metrics.TextureCount);
