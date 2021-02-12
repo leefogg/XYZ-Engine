@@ -1,42 +1,39 @@
-#version 420
+#version 430
 
 in vec3 fragPos;
 in vec2 uv;
 in mat3 TBNMatrix;
-
-uniform vec2 textureOffset = vec2(0.0);
-uniform vec2 textureRepeat = vec2(1.0);
-uniform bool isWorldSpaceUVs = false;
-uniform float normalStrength = 1;
+flat in uint DrawID;
 uniform sampler2D diffuseTex;
 uniform sampler2D normalTex;
 uniform sampler2D specularTex;
 uniform sampler2D illumTex;
-// uniform uint diffuseSlice, normalSlice, specularSlice, illumSlice;
-uniform vec3 illuminationColor;
-uniform vec3 albedoColourTint;
 
 layout (location = 0) out vec3 diffuse;
 layout (location = 1) out vec4 position;
 layout (location = 2) out vec3 normal;
 layout (location = 3) out vec4 specular;
 layout (location = 4) out vec3 illum;
-/*
-layout (shared, binding = 5) uniform Material {
-	mat4 ModelMatrix;
-	uint DiffuseMapSlice;
-	uint NormalMapSlice;
-	uint SpecularMapSlice;
-	uint IlluminationMapSlice;
+
+struct Material {
+	//mat4 ModelMatrix;
+	//uint DiffuseMapSlice;
+	//uint NormalMapSlice;
+	//uint SpecularMapSlice;
+	//uint IlluminationMapSlice;
 	vec3 IlluminationColor;
-	vec3 AlbedoColorTint;
+	vec3 AlbedoColourTint;
 	vec2 TextureRepeat;
 	vec2 TextureOffset;
 	float NormalStrength;
 	bool IsWorldSpaceUVs;
 };
-*/
-vec3 UnpackNormalmapYW(in vec4 avNormalValue)
+
+layout (shared, binding = 2) buffer MaterialsBuffer {
+	Material[] Materials;
+};
+
+vec3 UnpackNormalmapYW(in vec4 avNormalValue, float normalStrength)
 {
 	vec3 vNormal = avNormalValue.wyx * 2 - 1;
 	vNormal.z = sqrt(1 - min(dot(vNormal.xy, vNormal.xy), 1)) / normalStrength;
@@ -46,25 +43,26 @@ vec3 UnpackNormalmapYW(in vec4 avNormalValue)
 
 void main()
 {
+	Material mat = Materials[DrawID];
 	vec2 textureCoord;
-	if (isWorldSpaceUVs) {
+	if (mat.IsWorldSpaceUVs) {
 		textureCoord = fragPos.xz;
 	} else {
 		textureCoord = uv;
 	}
-	textureCoord += textureOffset;
-	textureCoord *= textureRepeat;
+	textureCoord += mat.TextureOffset;
+	textureCoord *= mat.TextureRepeat;
 	
 	vec4 diff = texture(diffuseTex, textureCoord);
 	if (diff.a < 0.1)
 		discard;
-	diff.rgb *= albedoColourTint;
+	diff.rgb *= mat.AlbedoColourTint;
 
-	vec3 norm = UnpackNormalmapYW(texture(normalTex, textureCoord));
+	vec3 norm = UnpackNormalmapYW(texture(normalTex, textureCoord), mat.NormalStrength);
 	
 	specular = texture(specularTex, textureCoord);
 	position = vec4(fragPos, 0.0);
-	illum = texture(illumTex, textureCoord).rgb * illuminationColor;
+	illum = texture(illumTex, textureCoord).rgb * mat.IlluminationColor;
     diffuse = diff.rgb + illum;
 	normal = normalize(TBNMatrix * norm);
 }

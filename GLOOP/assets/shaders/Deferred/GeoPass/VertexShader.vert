@@ -8,21 +8,21 @@ layout (location = 3) in vec3 Tangent;
 out vec3 fragPos;
 out vec2 uv;
 out mat3 TBNMatrix;
+flat out uint DrawID;
 
 layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 ProjectionMatrix;
 	mat4 ViewMatrix;
 };
-uniform mat4 ModelMatrix;
 
-/*
-layout (shared, binding = 5) buffer ModelMatricies {
+layout (shared, binding = 1) buffer ModelMatricies {
 	mat4 Matricies[];
 };
-*/
+
 
 void main(void) {
-	//mat4 ModelMatrix = Matricies[gl_DrawID];
+	DrawID = gl_BaseInstance;
+    mat4 ModelMatrix = Matricies[DrawID];
 	vec4 worldspacePos = ModelMatrix * vec4(Position, 1.0);
 	gl_Position =  ProjectionMatrix * ViewMatrix * worldspacePos;
 

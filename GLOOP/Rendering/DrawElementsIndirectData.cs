@@ -5,14 +5,14 @@ using System.Text;
 
 namespace GLOOP.Rendering
 {
-    [StructLayout(LayoutKind.Sequential, Pack = 1, Size = sizeof(uint) * 5)]
+    [StructLayout(LayoutKind.Explicit, Size = 20)]
     public struct DrawElementsIndirectData
     {
-        public uint NumIndexes;
-        public uint NumInstances;
-        public uint FirstIndex;
-        public uint BaseVertex;
-        public uint BaseInstance;
+        [FieldOffset(00)] public uint NumIndexes;
+        [FieldOffset(04)] public uint NumInstances;
+        [FieldOffset(08)] public uint FirstIndex;
+        [FieldOffset(12)] public uint BaseVertex;
+        [FieldOffset(16)] public uint BaseInstance;
 
         public DrawElementsIndirectData(
             uint numIndexes,

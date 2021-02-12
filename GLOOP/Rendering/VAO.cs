@@ -161,7 +161,7 @@ namespace GLOOP.Rendering
             var normals = vertexNormals?.GetFloats().ToArray() ?? new float[0];
             var tangents = vertexTangents?.GetFloats().ToArray() ?? new float[0];
             var verts = createVertexArray(positions, uvs, normals, tangents);
-            var vertciesSize = verts.Length * sizeof(float);
+            var vertciesSize = verts.SizeInBytes();
             GL.NamedBufferSubData(VBO, (IntPtr)firstVertex, vertciesSize, verts);
             vertciesOffset += vertciesSize;
 

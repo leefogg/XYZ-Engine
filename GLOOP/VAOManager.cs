@@ -76,11 +76,15 @@ namespace GLOOP
             IEnumerable<Vector3> vertexNormals,
             IEnumerable<Vector3> vertexTangents)
         {
+            var estimatedNumIndicies = vertexIndicies.Count() * sizeof(uint);
+            var estimatedNumVertcies = shape.NumElements * sizeof(float) * vertexPositions.Count();
             var alloc = GetOrCreateAllocation(
                 shape, 
-                vertexIndicies.Count() * sizeof(uint),
-                shape.NumElements * sizeof(float) * vertexPositions.Count()
+                estimatedNumIndicies,
+                estimatedNumVertcies
             );
+            var numIndiciesBefore = alloc.UsedIndiciesBytes;
+            var numVertciesBefore = alloc.UsedVertciesBytes;
             var vao = alloc.vao.FillSubData(
                 ref alloc.UsedIndiciesBytes,
                 ref alloc.UsedVertciesBytes,
@@ -90,6 +94,9 @@ namespace GLOOP
                 vertexNormals,
                 vertexTangents
             );
+            if (alloc.UsedIndiciesBytes - numIndiciesBefore != estimatedNumIndicies || alloc.UsedVertciesBytes - numVertciesBefore != estimatedNumVertcies)
+                Console.WriteLine("Incorrect estimate");
+
             vao.description.BaseVertex /= (uint)shape.NumElements * sizeof(float);
             return vao;
         }

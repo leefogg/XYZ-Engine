@@ -19,8 +19,8 @@ namespace GLOOP.Rendering
             }
             public override void BindState()
             {
-                vao.Bind();
                 material.Commit();
+                vao.Bind();
             }
 
             public override bool IsSameBatch(Model model)
