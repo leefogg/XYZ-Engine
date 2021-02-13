@@ -138,13 +138,13 @@ namespace GLOOP.SOMA
             }
 
             if (diffuseTex == null)
-                diffuseTex = TextureCache.Get("assets/textures/error.png");
+                diffuseTex = BaseTexture.Error;
             if (normalTex == null)
-                normalTex = TextureCache.Get("assets/textures/gray.png");
+                normalTex = BaseTexture.Gray;
             if (specularTex == null)
-                specularTex = TextureCache.Get("assets/textures/black.png");
+                specularTex = BaseTexture.Black;
             if (illumTex == null)
-                illumTex = TextureCache.Get("assets/textures/black.png");
+                illumTex = BaseTexture.Black;
         }
 
         public new HPLEntity Clone() {

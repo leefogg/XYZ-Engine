@@ -11,6 +11,11 @@ namespace GLOOP.Rendering
         private static readonly int[] BoundTextures = new int[Globals.MaxTextureUnits];
         private static readonly int[] TexturesToBind = new int[BoundTextures.Length];
 
+        public static readonly Texture Error = TextureCache.Get("assets/textures/error.png");
+        public static readonly Texture Gray = TextureCache.Get("assets/textures/gray.png");
+        public static readonly Texture Black = TextureCache.Get("assets/textures/black.png");
+
+
         private Lazy<ulong> bindlessHandle;
         public readonly int Handle = GenTexture();
         public ulong BindlessHandle => bindlessHandle.Value;
