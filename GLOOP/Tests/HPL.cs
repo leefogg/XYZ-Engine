@@ -100,8 +100,8 @@ namespace GLOOP.Tests
             var introspection = deferredGeoShader.Introspect();
             var deferredMaterial = new DeferredRenderingGeoMaterial(deferredGeoShader);
             PointLightShader = new DynamicPixelShader(
-                "assets/shaders/deferred/LightPass/SingleLightVertexShader.vert",
-                "assets/shaders/deferred/LightPass/SingleLightFragmentShader.frag",
+                "assets/shaders/deferred/LightPass/VertexShader.vert",
+                "assets/shaders/deferred/LightPass/FragmentShader.frag",
                 new Dictionary<string, string>
                 {
                     { "LIGHTTYPE", "0" }
@@ -109,8 +109,8 @@ namespace GLOOP.Tests
                 "Deferred Point light"
             );
             SpotLightShader = new DynamicPixelShader(
-                "assets/shaders/deferred/LightPass/SingleLightVertexShader.vert",
-                "assets/shaders/deferred/LightPass/SingleLightFragmentShader.frag",
+                "assets/shaders/deferred/LightPass/VertexShader.vert",
+                "assets/shaders/deferred/LightPass/FragmentShader.frag",
                 new Dictionary<string, string>
                 {
                     { "LIGHTTYPE", "1" }

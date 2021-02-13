@@ -135,16 +135,10 @@
     <None Update="assets\shaders\Deferred\GeoPass\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Deferred\LightPass\SingleLightFragmentShader.frag">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="assets\shaders\Deferred\LightPass\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="assets\shaders\Deferred\LightPass\VertexShader.vert">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="assets\shaders\Deferred\LightPass\SingleLightVertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="assets\shaders\FinalCombine\fragment.frag">
