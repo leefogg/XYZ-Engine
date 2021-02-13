@@ -102,7 +102,7 @@ namespace GLOOP {
             dest.M34 = src.M34 * scale.Z;
         }
 
-        public static void Multiply(Matrix4 left, Matrix4 right, ref Matrix4 dest) {
+        public static void Multiply(in Matrix4 left, in Matrix4 right, ref Matrix4 dest) {
             if (dest == null)
                 dest = new Matrix4();
 

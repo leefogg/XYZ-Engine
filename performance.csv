@@ -23,4 +23,5 @@ New FPS counter: 125FPS
 GLBindTextures, 143, 2670, 208
 Sort by texture set, 160, 2670, 208
 MultiDrawIndirect 162, 2670, 208
-Sort batches by VAO 162, 2670, 208
+Sort batches by VAO, 162, 2670, 208
+ProjectionViewMatrix in UBO, 162, 2670, 208

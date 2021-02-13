@@ -14,6 +14,7 @@ flat out int instance;
 layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 ProjectionMatrix;
 	mat4 ViewMatrix;
+	mat4 ViewProjectionMatrix;
 };
 
 #if (LIGHTTYPE == POINT)
@@ -61,7 +62,7 @@ void main(void) {
 	modelMatrix[2][2] = light.radius * 2;
 	modelMatrix[3][3] = 1;
 	vec4 worldspacePos = modelMatrix * vec4(Position, 1.0);
-	clipSpace = ProjectionMatrix * ViewMatrix * worldspacePos;
+	clipSpace = ViewProjectionMatrix * worldspacePos;
 	gl_Position = clipSpace;
 
 	fragPos = worldspacePos.xyz;

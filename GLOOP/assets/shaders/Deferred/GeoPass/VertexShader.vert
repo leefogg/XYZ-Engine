@@ -13,6 +13,7 @@ flat out uint DrawID;
 layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 ProjectionMatrix;
 	mat4 ViewMatrix;
+	mat4 ViewProjectionMatrix;
 };
 
 layout (shared, binding = 1) buffer ModelMatricies {
@@ -24,7 +25,7 @@ void main(void) {
 	DrawID = gl_BaseInstance;
     mat4 ModelMatrix = Matricies[DrawID];
 	vec4 worldspacePos = ModelMatrix * vec4(Position, 1.0);
-	gl_Position =  ProjectionMatrix * ViewMatrix * worldspacePos;
+	gl_Position =  ViewProjectionMatrix * worldspacePos;
 
 	fragPos = worldspacePos.xyz;
 	uv = UV;

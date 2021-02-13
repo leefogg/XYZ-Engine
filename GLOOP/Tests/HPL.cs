@@ -387,7 +387,7 @@ namespace GLOOP.Tests
             cameraUBO = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.UniformBuffer, cameraUBO);
             GL.ObjectLabel(ObjectLabelIdentifier.Buffer, cameraUBO, 10, "CameraData");
-            var size = new Vector4[8].SizeInBytes();
+            var size = Marshal.SizeOf<Matrix4>() * 3;
             GL.NamedBufferData(cameraUBO, size, (IntPtr)0, BufferUsageHint.StreamRead);
             GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, cameraUBO, (IntPtr)0, size);
         }
@@ -482,16 +482,11 @@ namespace GLOOP.Tests
         {
             var projectionMatrix = Camera.ProjectionMatrix;
             var viewMatrix = Camera.ViewMatrix;
-            var data = new Vector4[]
+            var projectionView = new Matrix4();
+            MatrixExtensions.Multiply(projectionMatrix, viewMatrix, ref projectionView);
+            var data = new[]
             {
-                projectionMatrix.Row0,
-                projectionMatrix.Row1,
-                projectionMatrix.Row2,
-                projectionMatrix.Row3,
-                viewMatrix.Row0,
-                viewMatrix.Row1,
-                viewMatrix.Row2,
-                viewMatrix.Row3,
+                projectionMatrix, viewMatrix, projectionView
             };
             GL.NamedBufferData(cameraUBO, data.SizeInBytes(), data, BufferUsageHint.StreamRead);
         }
