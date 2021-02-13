@@ -207,7 +207,7 @@ namespace GLOOP.Tests
             var afterMapLoad = DateTime.Now;
             var sorter = new DeferredMaterialGrouper();
             var beforeMapSort = DateTime.Now;
-            map.Batches = sorter.Sort(map.Models).ToList();
+            map.Batches = sorter.Sort(map.Models).OrderBy(batch => batch.Models[0].VAO.container.Handle).ToList();
             var afterMapSort = DateTime.Now;
 
             Console.WriteLine($"Time taken to sort map {(afterMapSort - beforeMapSort).TotalSeconds} seconds");
