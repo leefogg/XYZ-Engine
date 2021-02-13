@@ -68,7 +68,7 @@ void main()
 	vec2 ndc = (clipSpace.xy / clipSpace.w) / 2.0 + 0.5;
 
 	vec3 fragPos = texture(positionTex, ndc).rgb;
-	vec3 normal = texture(normalTex, ndc).rgb;
+	vec3 normal = texture(normalTex, ndc).rgb * 2 - 1;
 	vec4 specular = texture(specularTex, ndc);
 	
 	vec3 vPos = fragPos - camPos;

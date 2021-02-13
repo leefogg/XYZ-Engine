@@ -65,4 +65,5 @@ void main()
 	illum = texture(illumTex, textureCoord).rgb * mat.IlluminationColor;
     diffuse = diff.rgb + illum;
 	normal = normalize(TBNMatrix * norm);
+	normal = (normal + 1) / 2;
 }

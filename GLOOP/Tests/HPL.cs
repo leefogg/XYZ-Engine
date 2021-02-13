@@ -77,7 +77,7 @@ namespace GLOOP.Tests
                 new[] { 
                     PixelInternalFormat.Srgb8Alpha8,// Diffuse
                     PixelInternalFormat.Rgb16f,     // Position
-                    PixelInternalFormat.Rgb16f,     // Normal
+                    PixelInternalFormat.Rgb8,       // Normal
                     PixelInternalFormat.Rgba,       // Specular
                     PixelInternalFormat.Rgb16f      // Illumnination
                 },
