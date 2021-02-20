@@ -13,5 +13,8 @@ namespace GLOOP.Rendering
         {
             
         }
+
+        public virtual int AverageSamplesPerFragment => 0;
+        public virtual int NumOutputTargets => 1;
     }
 }

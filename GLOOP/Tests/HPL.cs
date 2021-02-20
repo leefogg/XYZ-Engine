@@ -58,13 +58,15 @@ namespace GLOOP.Tests
         private Buffer<DrawElementsIndirectData> drawIndirectBuffer;
         private Matrix4[] ModelMatricies;
 
-        private Query GeoPassQuery, GeoPassedFragmentQuery;
+        private Query GeoPassQuery;
 
         private const int maxLights = 500;
         private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
         private Buffer<float> bloomBuffer;
         private readonly DateTime startTime = DateTime.Now;
+
+        private List<QueryPair> GeoStageQueries = new List<QueryPair>();
 
         public HPL(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings) {
             Camera = new DebugCamera(new Vector3(-17.039896f, 14.750014f, 64.48185f), new Vector3(), 90);
@@ -263,18 +265,19 @@ namespace GLOOP.Tests
 
             if (GeoPassQuery != null)
             {
-                while (!GeoPassQuery.IsResultAvailable()) { }
                 var time = GeoPassQuery.GetResult();
                 Console.WriteLine(time / 1000000f + "ms");
             }
-            if (GeoPassedFragmentQuery != null)
+            long totalNumTextureSamples = 0;
+            foreach (var pair in GeoStageQueries)
             {
-                while (!GeoPassedFragmentQuery.IsResultAvailable()) { }
-                var fragments = GeoPassedFragmentQuery.GetResult();
-                Console.WriteLine(fragments + " fragments");
+                var fragments = pair.Query.GetResult();
+                var avgTexReads = pair.shader.AverageSamplesPerFragment;
+                var texWrites = pair.shader.NumOutputTargets;
+                totalNumTextureSamples += fragments * avgTexReads * texWrites;
             }
+            Console.WriteLine(totalNumTextureSamples + " Texture samples");
 
-            using (GeoPassedFragmentQuery = queryPool.BeginScope(QueryTarget.SamplesPassed))
             using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
                 MultiDrawIndirect();
@@ -300,12 +303,26 @@ namespace GLOOP.Tests
 
             // TODO: Possibly put model matricies into a UBO. To do this the batchSize below would need a maximum to fit modelMatricies into uniform buffer.
             //GL.BindBuffer(BufferTarget.ShaderStorageBuffer, modelMatriciesSSBO);
-            
+
+            GeoStageQueries.Clear();
+            Query runningQuery = null;
             foreach (var batch in scene.Batches)
             {
                 var batchSize = batch.Models.Count;
 
+                var oldShader = Shader.Current;
                 batch.BindState();
+                if (Shader.Current != oldShader)
+                {
+                    if (runningQuery != null)
+                        runningQuery.EndScope();
+                    runningQuery = queryPool.BeginScope(QueryTarget.SamplesPassed);
+                    GeoStageQueries.Add(new QueryPair()
+                    {
+                        Query = runningQuery,
+                        shader =  (DeferredRenderingGeoShader)Shader.Current
+                    });
+                }
 
                 //GL.BindBufferRange(BufferRangeTarget.ShaderStorageBuffer, 5, modelMatriciesSSBO, modelMatrixPtr, batchSize * matrixSize);
                 // TODO: Set a min size, theres overhead for using the indirect buffer so only use it when theres a minimum number of things, otherwise do glDrawElements
@@ -320,6 +337,8 @@ namespace GLOOP.Tests
                 drawCommandPtr += batchSize * commandSize;
                 modelMatrixPtr += batchSize * matrixSize;
             }
+
+            runningQuery.EndScope();
         }
 
         private void setupBuffers()
@@ -903,6 +922,11 @@ namespace GLOOP.Tests
             Normal,
             Specular,
             Illumination
+        }
+        private struct QueryPair
+        {
+            public Query Query;
+            public DeferredRenderingGeoShader shader;
         }
     }
 }

@@ -11,7 +11,7 @@ namespace GLOOP.Rendering
     {
         public static readonly SingleColorShader SingleColorShader = new SingleColorShader();
 
-        private static int currentShaderHandle;
+        public static Shader Current { get; private set; }
 
         public int Handle { get; protected set; }
 
@@ -82,15 +82,15 @@ namespace GLOOP.Rendering
 
         public virtual void Use()
         {
-            Use(Handle);
+            Use(this);
         }
 
-        public static void Use(int handle)
+        public static void Use(Shader shader)
         {
-            if (currentShaderHandle != handle)
+            if (Current != shader)
             {
-                GL.UseProgram(handle);
-                currentShaderHandle = handle;
+                GL.UseProgram(shader.Handle);
+                Current = shader;
             }
         }
 

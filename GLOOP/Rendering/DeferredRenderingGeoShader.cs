@@ -120,5 +120,8 @@ namespace GLOOP.Rendering
 
             modelMatrix = new CachedUniform16f(this, "ModelMatrix");
         }
+
+        public override int AverageSamplesPerFragment => 4;
+        public override int NumOutputTargets => 4;
     }
 }
