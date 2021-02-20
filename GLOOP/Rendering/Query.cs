@@ -5,11 +5,16 @@ using System.Text;
 
 namespace GLOOP.Rendering
 {
-    public class Query
+    public class Query : IDisposable
     {
         private readonly int Handle = GL.GenQuery();
         private QueryTarget Type;
         public bool Running { get; private set; }
+
+        public Query(QueryTarget type)
+        {
+            BeginScope(type);
+        }
 
         public void BeginScope(QueryTarget type)
         {
@@ -44,5 +49,7 @@ namespace GLOOP.Rendering
             GL.GetQueryObject(Handle, GetQueryObjectParam.QueryResult, out int result);
             return result;
         }
+
+        public void Dispose() => EndScope();
     }
 }

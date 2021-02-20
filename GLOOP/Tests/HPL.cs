@@ -58,7 +58,7 @@ namespace GLOOP.Tests
         private Buffer<DrawElementsIndirectData> drawIndirectBuffer;
         private Matrix4[] ModelMatricies;
 
-        private Query GeoPassQuery;
+        private Query GeoPassQuery, GeoPassedFragmentQuery;
 
         private const int maxLights = 500;
         private int bloomDataStride = 1000;
@@ -265,11 +265,20 @@ namespace GLOOP.Tests
             {
                 while (!GeoPassQuery.IsResultAvailable()) { }
                 var time = GeoPassQuery.GetResult();
-                Console.WriteLine(time);
+                Console.WriteLine(time / 1000000f + "ms");
             }
-            GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed);
-            MultiDrawIndirect();
-            GeoPassQuery.EndScope();
+            if (GeoPassedFragmentQuery != null)
+            {
+                while (!GeoPassedFragmentQuery.IsResultAvailable()) { }
+                var fragments = GeoPassedFragmentQuery.GetResult();
+                Console.WriteLine(fragments + " fragments");
+            }
+
+            using (GeoPassedFragmentQuery = queryPool.BeginScope(QueryTarget.SamplesPassed))
+            using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
+            {
+                MultiDrawIndirect();
+            }
 
             FinishDeferredRendering(projectionMatrix, viewMatrix);
 
