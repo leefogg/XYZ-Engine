@@ -24,7 +24,7 @@ namespace GLOOP.Tests
 {
     public class HPL : Window {
         private Camera Camera;
-        private Scene map;
+        private Scene scene;
 
         private FrameBuffer GBuffers;
         private FrameBuffer LightingBuffer;
@@ -207,15 +207,16 @@ namespace GLOOP.Tests
 
             var assimp = new AssimpContext();
             var beforeMapLoad = DateTime.Now;
-            map = new Map(
+            var map = new Map(
                 mapToLoad,
                 assimp,
                 deferredMaterial
-            ).ToScene();
+            );
+            scene = map.ToScene();
             var afterMapLoad = DateTime.Now;
             var sorter = new DeferredMaterialGrouper();
             var beforeMapSort = DateTime.Now;
-            map.Batches = sorter.Sort(map.Models).OrderBy(batch => batch.Models[0].VAO.container.Handle).ToList();
+            scene.Batches = sorter.Sort(scene.Models).OrderBy(batch => batch.Models[0].VAO.container.Handle).ToList();
             var afterMapSort = DateTime.Now;
 
             Console.WriteLine($"Time taken to sort map {(afterMapSort - beforeMapSort).TotalSeconds} seconds");
@@ -226,6 +227,11 @@ namespace GLOOP.Tests
             Console.WriteLine("Textures: " + Metrics.TexturesBytesUsed / 1024 / 1024 + "MB");
             Console.WriteLine("Models vertcies: " + Metrics.ModelsBytesUsed / 1024 / 1024 + "MB");
             Console.WriteLine("Models indicies: " + Metrics.ModelsIndiciesBytesUsed/ 1024 / 1024 + "MB");
+            var numStatic = map.Entities.Where(e => e.IsStatic).Sum(e => e.Models.Count);
+            var numStaticOccluders = map.Entities.Where(e => e.IsStatic && e.IsOccluder).Sum(e => e.Models.Count);
+            var numDynamic = map.Entities.Where(e => !e.IsStatic).Sum(e => e.Models.Count);
+            var allModels = map.Entities.Sum(e => e.Models.Count);
+            Console.WriteLine($"Scene: {numStatic} Static, {numStaticOccluders} of which occlude. {numDynamic} Dynamic. {allModels} Total.");
 
             setupBuffers();
 
@@ -274,7 +280,7 @@ namespace GLOOP.Tests
             // TODO: Possibly put model matricies into a UBO. To do this the batchSize below would need a maximum to fit modelMatricies into uniform buffer.
             //GL.BindBuffer(BufferTarget.ShaderStorageBuffer, modelMatriciesSSBO);
             
-            foreach (var batch in map.Batches)
+            foreach (var batch in scene.Batches)
             {
                 var batchSize = batch.Models.Count;
 
@@ -304,7 +310,7 @@ namespace GLOOP.Tests
 
             setupBloomUBO();
 
-            var models = map.Batches.SelectMany(batch => batch.Models).ToArray();
+            var models = scene.Batches.SelectMany(batch => batch.Models).ToArray();
             setupMaterialBuffer(models);
             setupModelMatriciesBuffer(models.Length);
             setupDrawIndirectBuffer(models);
@@ -346,7 +352,7 @@ namespace GLOOP.Tests
         private void updateModelMatriciesBuffer()
         {
             var i = 0;
-            foreach (var batch in map.Batches)
+            foreach (var batch in scene.Batches)
                 foreach (var model in batch.Models)
                     ModelMatricies[i++] = MathFunctions.CreateModelMatrix(model.Transform.Position, model.Transform.Rotation, model.Transform.Scale);
 
@@ -387,9 +393,9 @@ namespace GLOOP.Tests
 
         private void setupLightingUBO()
         {
-            pointLightsBuffer = new Buffer<PointLight>(Math.Min(maxLights, map.PointLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "PointLights");
+            pointLightsBuffer = new Buffer<PointLight>(Math.Min(maxLights, scene.PointLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "PointLights");
             pointLightsBuffer.BindRange(0, 1);
-            spotLightsBuffer = new Buffer<SpotLight>(Math.Min(maxLights, map.SpotLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "SpotLights");
+            spotLightsBuffer = new Buffer<SpotLight>(Math.Min(maxLights, scene.SpotLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "SpotLights");
             spotLightsBuffer.BindRange(0, 2);
         }
 
@@ -466,10 +472,10 @@ namespace GLOOP.Tests
 
         private void updatePointLightsUBO()
         {
-            var lights = new PointLight[Math.Min(maxLights, map.PointLights.Count)];
+            var lights = new PointLight[Math.Min(maxLights, scene.PointLights.Count)];
             for (var i = 0; i < lights.Length; i++)
             {
-                var pointLight = map.PointLights[i];
+                var pointLight = scene.PointLights[i];
                 pointLight.GetLightingScalars(out float diffuseScalar, out float specularScalar);
                 lights[i] = new PointLight(
                     pointLight.Position,
@@ -487,10 +493,10 @@ namespace GLOOP.Tests
 
         private void updateSpotLightsUBO()
         {
-            var lights = new SpotLight[Math.Min(maxLights, map.SpotLights.Count)];
+            var lights = new SpotLight[Math.Min(maxLights, scene.SpotLights.Count)];
             for (var i = 0; i < lights.Length; i++)
             {
-                var spotLight = map.SpotLights[i];
+                var spotLight = scene.SpotLights[i];
                 spotLight.GetLightingScalars(out float diffuseScalar, out float specularScalar);
                 var dir = spotLight.Rotation * new Vector3(0, 0, 1);
                 lights[i] = new SpotLight(
@@ -656,7 +662,7 @@ namespace GLOOP.Tests
 
         private void RenderLights(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
-            if (map.PointLights.Any())
+            if (scene.PointLights.Any())
             {
                 var shader = PointLightShader;
                 shader.Use();
@@ -673,16 +679,16 @@ namespace GLOOP.Tests
                 shader.Set("camPos", Camera.Position);
                 //TODO: Could render a 2D circle in screenspace instead of a sphere
 
-                var numPointLights = Math.Min(maxLights, map.PointLights.Count);
+                var numPointLights = Math.Min(maxLights, scene.PointLights.Count);
 
                 Primitives.Sphere.Draw(numInstances: numPointLights);
 
                 // Debug light spheres
                 if (DebugLights)
                 {
-                    for (var i = 0; i < map.PointLights.Count; i++)
+                    for (var i = 0; i < scene.PointLights.Count; i++)
                     {
-                        var light = map.PointLights[i];
+                        var light = scene.PointLights[i];
                         var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, new OpenTK.Mathematics.Quaternion(), new Vector3(light.Radius * 2));
                         singleColorMaterial.ProjectionMatrix = projectionMatrix;
                         singleColorMaterial.ViewMatrix = viewMatrix;
@@ -693,9 +699,9 @@ namespace GLOOP.Tests
                 }
             }
 
-            if (map.SpotLights.Any())
+            if (scene.SpotLights.Any())
             {
-                var numSpotLights = Math.Min(maxLights, map.SpotLights.Count);
+                var numSpotLights = Math.Min(maxLights, scene.SpotLights.Count);
 
                 Shader shader = SpotLightShader;
                 shader.Use();
@@ -717,7 +723,7 @@ namespace GLOOP.Tests
                 {
                     for (var i = 0; i < numSpotLights; i++)
                     {
-                        var light = map.SpotLights[i];
+                        var light = scene.SpotLights[i];
                         var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, new OpenTK.Mathematics.Quaternion(), new Vector3(light.Radius * 2));
                         singleColorMaterial.ModelMatrix = modelMatrix;
                         singleColorMaterial.ProjectionMatrix = projectionMatrix;
