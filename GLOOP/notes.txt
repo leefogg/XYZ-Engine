@@ -25,30 +25,32 @@ vDiffuse *= fAttenuatuion;
 
 
 Optimizations:
-	Sort objects into groups of shader, then by texture sets
+	Min multidrawIndirect batch size
+	Replace Position buffer with depth buffer
+	Shader varients
+	Replace the illum GBuffer with an extracted one from the lighting buffer
+	Texture arrays
+	Bake staticObjects + static entities model matrix into geometry
+	Bake static objects per visibility area into same draw call
 	Render Query + BeginConditionalRender
-	MultiDrawIndirect
 	Instancing
 	Lazy model matrix'
 	Use OpenTK's Matrix methods
 	Clean up struct uses
-	Mip maps
 
 TODO:
 	Color
 		Colour correction / White Point / Exposure
-		SRGB
-			Gbuffer albedo to be SRGB8_Alpha8
 
 	Graphics
 		albedo color.w is translucentcy
-		Correct bloom weights + bias'
 
-	Decals
-	Make Gbuffer position local to camera [znear - zfar]
 	Time sections
+	Fix rotation of spotlights
+	Get line cube finished
+	Line pyramid for point lights
+	point light rotations
 	Refactor location of code into project layers and seperate projects for examples
-	Fix bloom light bleed
 	Add auditing
 		Add size to Buffer class
 		frame timings to CSV file
@@ -56,8 +58,6 @@ TODO:
 			All metrics in one new row
 	FPS graph
 	Investigate if materials have a global specular scaler
-	Replace the illum GBuffer with an extracted one from the lighting buffer
-	Diffuse, Specular, Diffuse+Specular lights
 	Box lights
 	Fog boxes
-	Fix rotation of spotlights
+	Decals
