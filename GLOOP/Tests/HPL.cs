@@ -42,7 +42,7 @@ namespace GLOOP.Tests
         private Shader FXAAShader;
         private Shader SSAOShader;
         private Shader ColorCorrectionShader;
-
+        private QueryPool queryPool;
         private bool DebugLights;
 
         private int debugGBufferTexture = -1;
@@ -50,17 +50,19 @@ namespace GLOOP.Tests
         private bool useFXAA = false;
         private bool useSSAO = false;
 
-        private Buffer<Matrix4> matrixBuffer;
-        private Buffer<DrawElementsIndirectData> drawIndirectBuffer;
-        private Matrix4[] ModelMatricies;
-
-        private const int maxLights = 500;
-        private int bloomDataStride = 1000;
-        private float elapsedMilliseconds = 0;
         private Buffer<Matrix4> cameraBuffer;
         private Buffer<SpotLight> spotLightsBuffer;
         private Buffer<PointLight> pointLightsBuffer;
         private Buffer<DeferredGeoMaterial> materialBuffer;
+        private Buffer<Matrix4> matrixBuffer;
+        private Buffer<DrawElementsIndirectData> drawIndirectBuffer;
+        private Matrix4[] ModelMatricies;
+
+        private Query GeoPassQuery;
+
+        private const int maxLights = 500;
+        private int bloomDataStride = 1000;
+        private float elapsedMilliseconds = 0;
         private Buffer<float> bloomBuffer;
         private readonly DateTime startTime = DateTime.Now;
 
@@ -176,6 +178,7 @@ namespace GLOOP.Tests
                 "assets/shaders/ColorCorrection/fragment.frag",
                 name: "Color Correction"
             );
+            queryPool = new QueryPool(5);
 
             var lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
             var bedroom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm";
@@ -257,7 +260,16 @@ namespace GLOOP.Tests
             updateCameraUBO();
 
             //map.Render(projectionMatrix, viewMatrix);
+
+            if (GeoPassQuery != null)
+            {
+                while (!GeoPassQuery.IsResultAvailable()) { }
+                var time = GeoPassQuery.GetResult();
+                Console.WriteLine(time);
+            }
+            GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed);
             MultiDrawIndirect();
+            GeoPassQuery.EndScope();
 
             FinishDeferredRendering(projectionMatrix, viewMatrix);
 
