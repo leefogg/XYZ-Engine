@@ -47,6 +47,7 @@ namespace GLOOP.Rendering
         public int GetResult()
         {
             GL.GetQueryObject(Handle, GetQueryObjectParam.QueryResult, out int result);
+            Running = false;
             return result;
         }
 
