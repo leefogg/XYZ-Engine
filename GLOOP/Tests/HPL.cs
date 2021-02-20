@@ -49,11 +49,19 @@ namespace GLOOP.Tests
         private bool debugLightBuffer;
         private bool useFXAA = false;
         private bool useSSAO = false;
-        private int cameraUBO, pointLightsUBO, spotLightsUBO, bloomUBO, materialSSBO, modelMatriciesSSBO;
+
+        private Buffer<Matrix4> matrixBuffer;
+        private Buffer<DrawElementsIndirectData> drawIndirectBuffer;
         private Matrix4[] ModelMatricies;
+
         private const int maxLights = 500;
-        private int bloomDataSize = 1000, bloomDataStride = 1000;
+        private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
+        private Buffer<Matrix4> cameraBuffer;
+        private Buffer<SpotLight> spotLightsBuffer;
+        private Buffer<PointLight> pointLightsBuffer;
+        private Buffer<DeferredGeoMaterial> materialBuffer;
+        private Buffer<float> bloomBuffer;
         private readonly DateTime startTime = DateTime.Now;
 
         public HPL(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings) {
@@ -306,10 +314,6 @@ namespace GLOOP.Tests
 
         private void setupMaterialBuffer(Model[] models)
         {
-            materialSSBO = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, materialSSBO);
-            GL.ObjectLabel(ObjectLabelIdentifier.Buffer, materialSSBO, 12, "MaterialData");
-
             var materials = new DeferredGeoMaterial[models.Length];
             var i = 0;
             foreach (var model in models)
@@ -326,20 +330,17 @@ namespace GLOOP.Tests
                 };
             }
 
-            
-            var size = materials.SizeInBytes();
-            GL.NamedBufferData(materialSSBO, size, materials, BufferUsageHint.StaticDraw);
-            GL.BindBufferRange(BufferRangeTarget.ShaderStorageBuffer, 2, materialSSBO, (IntPtr)0, size);
+            materialBuffer = new Buffer<DeferredGeoMaterial>(materials, BufferTarget.ShaderStorageBuffer, BufferUsageHint.StaticDraw, "MaterialData");
+            materialBuffer.BindRange(0, 2);
         }
 
         private void setupModelMatriciesBuffer(int numModels)
         {
-            modelMatriciesSSBO = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, modelMatriciesSSBO);
-            GL.ObjectLabel(ObjectLabelIdentifier.Buffer, modelMatriciesSSBO, 14, "ModelMatricies");
             ModelMatricies = new Matrix4[numModels];
-            GL.NamedBufferData(modelMatriciesSSBO, ModelMatricies.SizeInBytes(), ModelMatricies, BufferUsageHint.StreamDraw);
-            GL.BindBufferRange(BufferRangeTarget.ShaderStorageBuffer, 1, modelMatriciesSSBO, (IntPtr)0, ModelMatricies.SizeInBytes());
+
+            matrixBuffer = new Buffer<Matrix4>(ModelMatricies, BufferTarget.ShaderStorageBuffer, BufferUsageHint.StreamDraw, "ModelMatricies");
+            matrixBuffer.BindRange(0, 1);
+
         }
 
         private void updateModelMatriciesBuffer()
@@ -349,16 +350,12 @@ namespace GLOOP.Tests
                 foreach (var model in batch.Models)
                     ModelMatricies[i++] = MathFunctions.CreateModelMatrix(model.Transform.Position, model.Transform.Rotation, model.Transform.Scale);
 
-            GL.NamedBufferSubData(modelMatriciesSSBO, (IntPtr)0, ModelMatricies.SizeInBytes(), ModelMatricies);
+            matrixBuffer.Update(ModelMatricies);
         }
 
         private void setupDrawIndirectBuffer(Model[] models)
         {
-            var drawBuffer = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.DrawIndirectBuffer, drawBuffer);
-            GL.ObjectLabel(ObjectLabelIdentifier.Buffer, drawBuffer, 12, "DrawCommands");
             var drawCommands = new DrawElementsIndirectData[models.Length];
-
             for (uint i = 0; i < models.Length; i++)
             {
                 var command = models[i].VAO.description;
@@ -367,8 +364,8 @@ namespace GLOOP.Tests
                 drawCommands[i] = command;
             }
 
-            GL.BindBuffer(BufferTarget.DrawIndirectBuffer, drawBuffer);
-            GL.BufferData(BufferTarget.DrawIndirectBuffer, drawCommands.SizeInBytes(), drawCommands, BufferUsageHint.StaticDraw);
+            drawIndirectBuffer = new Buffer<DrawElementsIndirectData>(drawCommands, BufferTarget.DrawIndirectBuffer, BufferUsageHint.StaticDraw, "DrawCommands");
+            drawIndirectBuffer.Update(drawCommands, 0);
         }
 
         [StructLayout(LayoutKind.Explicit, Size = 64)]
@@ -384,34 +381,16 @@ namespace GLOOP.Tests
 
         private void setupCameraUniformBuffer()
         {
-            cameraUBO = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.UniformBuffer, cameraUBO);
-            GL.ObjectLabel(ObjectLabelIdentifier.Buffer, cameraUBO, 10, "CameraData");
-            var size = Marshal.SizeOf<Matrix4>() * 3;
-            GL.NamedBufferData(cameraUBO, size, (IntPtr)0, BufferUsageHint.StreamRead);
-            GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, cameraUBO, (IntPtr)0, size);
+            cameraBuffer = new Buffer<Matrix4>(3, BufferTarget.UniformBuffer, BufferUsageHint.StreamRead, "CameraData");
+            cameraBuffer.BindRange(0, 0);
         }
 
         private void setupLightingUBO()
         {
-            {
-                pointLightsUBO = GL.GenBuffer();
-                GL.BindBuffer(BufferTarget.UniformBuffer, pointLightsUBO);
-                GL.ObjectLabel(ObjectLabelIdentifier.Buffer, pointLightsUBO, 11, "PointLights");
-                var data = new PointLight[Math.Min(maxLights, map.PointLights.Count)];
-                var size = data.SizeInBytes();
-                GL.NamedBufferData(pointLightsUBO, size, (IntPtr)0, BufferUsageHint.StaticDraw);
-                GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 1, pointLightsUBO, (IntPtr)0, size);
-            }
-            {
-                spotLightsUBO = GL.GenBuffer();
-                GL.BindBuffer(BufferTarget.UniformBuffer, spotLightsUBO);
-                GL.ObjectLabel(ObjectLabelIdentifier.Buffer, spotLightsUBO, 10, "SpotLights");
-                var data = new SpotLight[Math.Min(maxLights, map.SpotLights.Count)];
-                var size = data.SizeInBytes();
-                GL.NamedBufferData(spotLightsUBO, size, (IntPtr)0, BufferUsageHint.StaticDraw);
-                GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 2, spotLightsUBO, (IntPtr)0, size);
-            }
+            pointLightsBuffer = new Buffer<PointLight>(Math.Min(maxLights, map.PointLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "PointLights");
+            pointLightsBuffer.BindRange(0, 1);
+            spotLightsBuffer = new Buffer<SpotLight>(Math.Min(maxLights, map.SpotLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "SpotLights");
+            spotLightsBuffer.BindRange(0, 2);
         }
 
         private void setupBloomUBO()
@@ -441,27 +420,21 @@ namespace GLOOP.Tests
                     structs.Add(weights[y, x]);
                     structs.Add(offsets[y, x]);
                 }
-                bloomDataSize = sizeof(float) * structs.Count;
                 while (sizeof(float) * structs.Count % Globals.UniformBufferOffsetAlignment != 0)
                     structs.Add(0);
                 bloomDataStride = Math.Min(sizeof(float) * structs.Count, bloomDataStride);
             }
 
             var data = structs.ToArray();
-            bloomUBO = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.UniformBuffer, bloomUBO);
-            GL.ObjectLabel(ObjectLabelIdentifier.Buffer, bloomUBO, 9, "BloomData");
-            var size = data.SizeInBytes();
-            GL.NamedBufferData(bloomUBO, size, data, BufferUsageHint.StreamDraw);
+            bloomBuffer = new Buffer<float>(data, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
         }
 
         private void setupRandomTexture()
         {
             const int randomTextureSize = 64;
             const int randomTexturePixels = randomTextureSize * randomTextureSize;
-            var r = new Random();
             var data = new byte[randomTexturePixels * 3];
-            r.NextBytes(data);
+            new Random().NextBytes(data);
 
             var texParams = new TextureParams()
             {
@@ -474,7 +447,6 @@ namespace GLOOP.Tests
                 PixelFormat = PixelFormat.Rgb,
                 Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
             };
-
             NoiseMap = new Texture(randomTextureSize, randomTextureSize, texParams);
         }
 
@@ -488,17 +460,18 @@ namespace GLOOP.Tests
             {
                 projectionMatrix, viewMatrix, projectionView
             };
-            GL.NamedBufferData(cameraUBO, data.SizeInBytes(), data, BufferUsageHint.StreamRead);
+
+            cameraBuffer.Update(data);
         }
 
         private void updatePointLightsUBO()
         {
-            var data = new PointLight[Math.Min(maxLights, map.PointLights.Count)];
-            for (var i = 0; i < data.Length; i++)
+            var lights = new PointLight[Math.Min(maxLights, map.PointLights.Count)];
+            for (var i = 0; i < lights.Length; i++)
             {
                 var pointLight = map.PointLights[i];
                 pointLight.GetLightingScalars(out float diffuseScalar, out float specularScalar);
-                data[i] = new PointLight(
+                lights[i] = new PointLight(
                     pointLight.Position,
                     pointLight.Color,
                     pointLight.Brightness,
@@ -508,18 +481,19 @@ namespace GLOOP.Tests
                     specularScalar
                 );
             }
-            GL.NamedBufferSubData(pointLightsUBO, (IntPtr)0, data.SizeInBytes(), data);
+
+            pointLightsBuffer.Update(lights);
         }
 
         private void updateSpotLightsUBO()
         {
-            var data = new SpotLight[Math.Min(maxLights, map.SpotLights.Count)];
-            for (var i = 0; i < data.Length; i++)
+            var lights = new SpotLight[Math.Min(maxLights, map.SpotLights.Count)];
+            for (var i = 0; i < lights.Length; i++)
             {
                 var spotLight = map.SpotLights[i];
                 spotLight.GetLightingScalars(out float diffuseScalar, out float specularScalar);
                 var dir = spotLight.Rotation * new Vector3(0, 0, 1);
-                data[i] = new SpotLight(
+                lights[i] = new SpotLight(
                     spotLight.Position,
                     spotLight.Color,
                     dir,
@@ -533,7 +507,7 @@ namespace GLOOP.Tests
                 );
             }
 
-            GL.NamedBufferSubData(spotLightsUBO, (IntPtr)0, data.SizeInBytes(), data);
+            spotLightsBuffer.Update(lights);
         }
 
         private void FinishDeferredRendering(Matrix4 projectionMatrix, Matrix4 viewMatrix)
@@ -593,7 +567,7 @@ namespace GLOOP.Tests
         private void DoBloomPass()
         {
             GL.Enable(EnableCap.FramebufferSrgb);
-            GL.BindBuffer(BufferTarget.UniformBuffer, pointLightsUBO);
+            bloomBuffer.Bind();
 
             int width = Width,
                 height = Height;
@@ -612,7 +586,7 @@ namespace GLOOP.Tests
                     shader.Use();
                     BloomBuffers[i].Use();
 
-                    GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 3, bloomUBO, (IntPtr)(bloomDataStride * i), bloomDataSize);
+                    bloomBuffer.BindRange(bloomDataStride * i, 3);
 
                     previousTexture.Use(TextureUnit.Texture0);
                     shader.Set("diffuseMap", TextureUnit.Texture0);

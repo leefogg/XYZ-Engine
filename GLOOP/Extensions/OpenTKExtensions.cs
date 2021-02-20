@@ -55,6 +55,18 @@ namespace GLOOP.Extensions
             };
         }
 
+        public static BufferRangeTarget ToRangedTarget(this BufferTarget self)
+        {
+            return self switch
+            {
+                BufferTarget.UniformBuffer => BufferRangeTarget.UniformBuffer,
+                BufferTarget.ShaderStorageBuffer => BufferRangeTarget.ShaderStorageBuffer,
+                BufferTarget.TransformFeedbackBuffer => BufferRangeTarget.TransformFeedbackBuffer,
+                BufferTarget.AtomicCounterBuffer => BufferRangeTarget.AtomicCounterBuffer,
+                _ => throw new NotSupportedException("No equv buffer range target")
+            };
+        }
+
         public static void AsFloats(this Vector2 self, float[] dest, ref int start)
         {
             dest[start++] = self.X;
