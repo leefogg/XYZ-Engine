@@ -287,7 +287,6 @@ namespace GLOOP.Tests
 
             SwapBuffers();
             NewFrame();
-            FrameNumber++;
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
             Title = FPS.ToString() + "FPS";
         }
@@ -324,8 +323,6 @@ namespace GLOOP.Tests
                     });
                 }
 
-                //GL.BindBufferRange(BufferRangeTarget.ShaderStorageBuffer, 5, modelMatriciesSSBO, modelMatrixPtr, batchSize * matrixSize);
-                // TODO: Set a min size, theres overhead for using the indirect buffer so only use it when theres a minimum number of things, otherwise do glDrawElements
                 GL.MultiDrawElementsIndirect(
                     OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles,
                     DrawElementsType.UnsignedInt,
@@ -567,7 +564,6 @@ namespace GLOOP.Tests
             }
             else
             {
-                GL.Disable(EnableCap.FramebufferSrgb);
                 DoLightPass(projectionMatrix, viewMatrix, new Vector3(0.00f));
 
                 if (debugLightBuffer) {
@@ -581,6 +577,8 @@ namespace GLOOP.Tests
                     LightingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
                     shader.Set("texture0", TextureUnit.Texture0);
                     Primitives.Quad.Draw();
+
+                    GL.Disable(EnableCap.FramebufferSrgb);
                 } else {
                     StagingBuffer.Use();
                     GL.ClearColor(0, 0, 0, 1);
@@ -612,7 +610,6 @@ namespace GLOOP.Tests
 
         private void DoBloomPass()
         {
-            GL.Enable(EnableCap.FramebufferSrgb);
             bloomBuffer.Bind();
 
             int width = Width,
@@ -676,6 +673,8 @@ namespace GLOOP.Tests
             GBuffers.ColorBuffers[buffer].Use(TextureUnit.Texture0);
             shader.Set("texture0", 0);
             Primitives.Quad.Draw();
+
+            GL.Disable(EnableCap.FramebufferSrgb);
         }
 
         public void DoLightPass(Matrix4 projectionMatrix, Matrix4 viewMatrix, Vector3 ambientColor)
