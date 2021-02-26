@@ -7,14 +7,9 @@ namespace GLOOP.Rendering
 {
     public abstract class Material
     {
-        protected readonly Shader shader;
+        public abstract Shader Shader { get; }
 
         public Matrix4 ModelMatrix = Matrix4.Identity;
-
-        public Material(Shader shader) 
-        {
-            this.shader = shader;
-        }
 
         public virtual void SetTextures(Texture diffuse, Texture normal, Texture specular, Texture illumination)
         {

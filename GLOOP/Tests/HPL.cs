@@ -108,9 +108,7 @@ namespace GLOOP.Tests
             };
             StagingBuffer = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgb16f);
 
-            var deferredGeoShader = new DeferredRenderingGeoShader();
-            var introspection = deferredGeoShader.Introspect();
-            var deferredMaterial = new DeferredRenderingGeoMaterial(deferredGeoShader);
+            var deferredMaterial = new DeferredRenderingGeoMaterial();
             PointLightShader = new DynamicPixelShader(
                 "assets/shaders/deferred/LightPass/VertexShader.vert",
                 "assets/shaders/deferred/LightPass/FragmentShader.frag",
@@ -221,7 +219,17 @@ namespace GLOOP.Tests
             var afterMapLoad = DateTime.Now;
             var sorter = new DeferredMaterialGrouper();
             var beforeMapSort = DateTime.Now;
-            scene.Batches = sorter.Sort(scene.Models).OrderBy(batch => batch.Models[0].VAO.container.Handle).ToList();
+            var batches = GroupBy(scene.Models, (a, b) =>
+            {
+                var mat1 = (DeferredRenderingGeoMaterial)a.Material;
+                var mat2 = (DeferredRenderingGeoMaterial)b.Material;
+                return a.VAO.container.Handle == b.VAO.container.Handle
+                && mat1.DiffuseTexture == mat2.DiffuseTexture
+                && mat1.SpecularTexture == mat2.SpecularTexture
+                && mat1.NormalTexture == mat2.NormalTexture
+                && mat1.IlluminationColor == mat2.IlluminationColor;
+            }).OrderBy(b => b.Models[0].Material.Shader.Handle);
+            scene.Batches = batches.ToList();
             var afterMapSort = DateTime.Now;
 
             Console.WriteLine($"Time taken to sort map {(afterMapSort - beforeMapSort).TotalSeconds} seconds");
@@ -250,6 +258,30 @@ namespace GLOOP.Tests
             */
         }
 
+        public List<RenderBatch<DeferredRenderingGeoMaterial>> GroupBy(IEnumerable<Model> models, Func<Model, Model, bool> comparer)
+        {
+            var batches = new List<RenderBatch<DeferredRenderingGeoMaterial>>();
+
+            foreach (var model in models)
+            {
+                var foundBatch = false;
+                foreach (var batch in batches)
+                {
+                    if (comparer(batch.Models[0], model))
+                    {
+                        foundBatch = true;
+                        batch.Models.Add(model);
+                        break;
+                    }
+                }
+
+                if (!foundBatch)
+                    batches.Add(new RenderBatch<DeferredRenderingGeoMaterial>(new[] { model }));
+            }
+
+            return batches;
+        }
+
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             GBuffers.Use();
@@ -268,6 +300,8 @@ namespace GLOOP.Tests
                 var time = GeoPassQuery.GetResult();
                 Console.WriteLine(time / 1000000f + "ms");
             }
+
+            // TODO: Move this to end of frame
             long totalNumTextureSamples = 0;
             foreach (var pair in GeoStageQueries)
             {

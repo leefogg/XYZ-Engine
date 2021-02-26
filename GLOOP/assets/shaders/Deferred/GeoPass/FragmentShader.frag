@@ -58,12 +58,28 @@ void main()
 		discard;
 	diff.rgb *= mat.AlbedoColourTint;
 
+	diffuse = diff.rgb;
+
+#if (USE_NORMAL_MAP == 1)
 	vec3 norm = UnpackNormalmapYW(texture(normalTex, textureCoord), mat.NormalStrength);
-	
-	specular = texture(specularTex, textureCoord);
-	position = vec4(fragPos, 0.0);
-	illum = texture(illumTex, textureCoord).rgb * mat.IlluminationColor;
-    diffuse = diff.rgb + illum;
+#else
+	vec3 norm = vec3(0, 0, 1.0);
+#endif
 	normal = normalize(TBNMatrix * norm);
 	normal = (normal + 1) / 2;
+	
+#if (USE_SPECULAR_MAP == 1)
+	specular = texture(specularTex, textureCoord);
+#else
+	specular = vec4(0.0);
+#endif
+
+#if (USE_ILLUM_MAP == 1)
+	illum = texture(illumTex, textureCoord).rgb * mat.IlluminationColor;
+    diffuse += illum;
+#else
+	illum = vec3(0.0);
+#endif
+
+	position = vec4(fragPos, 0.0);
 }

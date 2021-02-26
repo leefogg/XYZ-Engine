@@ -9,10 +9,13 @@ namespace GLOOP.Rendering
     {
         public Matrix4 ProjectionMatrix, ViewMatrix;
         public Vector4 Color;
+        private SingleColorShader shader;
 
-        public SingleColorMaterial(SingleColorShader shader) : base(shader)
+        public override Shader Shader => shader;
+
+        public SingleColorMaterial(SingleColorShader shader)
         {
-
+            this.shader = shader;
         }
 
         public override void SetCameraUniforms(Matrix4 projectionMatrix, Matrix4 viewMatrix, Matrix4 modelMatrix)
@@ -24,7 +27,6 @@ namespace GLOOP.Rendering
 
         public override void Commit()
         {
-            var shader = (SingleColorShader)base.shader;
             shader.Use();
 
             shader.ProjectionMatrix = ProjectionMatrix;
@@ -35,7 +37,7 @@ namespace GLOOP.Rendering
 
         public override Material Clone()
         {
-            return new SingleColorMaterial((SingleColorShader)shader)
+            return new SingleColorMaterial(shader)
             {
                 Color = Color
             };

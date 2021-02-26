@@ -11,6 +11,7 @@ namespace GLOOP.Rendering
             private readonly DeferredRenderingGeoMaterial material;
 
             public DeferredMaterialRenderBatch(Model model)
+                : base(new[] { model })
             {
                 vao = model.VAO.container;
                 material = (DeferredRenderingGeoMaterial)model.Material;
@@ -23,10 +24,11 @@ namespace GLOOP.Rendering
                 vao.Bind();
             }
 
-            public override bool IsSameBatch(Model model)
+            public bool IsSameBatch(Model model)
             {
                 var mat = (DeferredRenderingGeoMaterial)model.Material;
                 return vao == model.VAO.container
+                    && material.Shader == mat.Shader
                     && material.DiffuseTexture == mat.DiffuseTexture
                     && material.NormalTexture == mat.NormalTexture
                     && material.SpecularTexture == mat.SpecularTexture
@@ -36,7 +38,7 @@ namespace GLOOP.Rendering
 
         public override IEnumerable<RenderBatch<DeferredRenderingGeoMaterial>> Sort(IEnumerable<Model> models)
         {
-            var batches = new List<RenderBatch<DeferredRenderingGeoMaterial>>();
+            var batches = new List<DeferredMaterialRenderBatch>();
 
             foreach (var model in models)
             {

@@ -10,10 +10,13 @@ namespace GLOOP.Rendering
     {
         public Matrix4 ProjectionMatrix, ViewMatrix;
         public Texture diffuse;
+        private FullbrightShader shader;
 
-        public FullbrightMaterial(FullbrightShader shader) : base(shader)
+        public override Shader Shader => shader;
+
+        public FullbrightMaterial(FullbrightShader shader)
         {
-
+            this.shader = shader;
         }
 
         public override void SetTextures(Texture diffuse, Texture normal, Texture specular, Texture illumination)
@@ -30,7 +33,6 @@ namespace GLOOP.Rendering
 
         public override void Commit()
         {
-            var shader = (FullbrightShader)this.shader;
             shader.Use();
 
             shader.ProjectionMatrix = ProjectionMatrix;
@@ -41,7 +43,7 @@ namespace GLOOP.Rendering
 
         public override Material Clone()
         {
-            return new FullbrightMaterial((FullbrightShader)shader)
+            return new FullbrightMaterial(shader)
             {
                 diffuse = diffuse
             };

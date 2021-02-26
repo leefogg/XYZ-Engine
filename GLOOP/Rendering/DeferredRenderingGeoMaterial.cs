@@ -1,12 +1,25 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace GLOOP.Rendering
 {
     public class DeferredRenderingGeoMaterial : Material
     {
+        private const string USE_NORMAL = "USE_NORMAL_MAP";
+        private const string USE_SPECULAR = "USE_SPECULAR_MAP";
+        private const string USE_ILLUM = "USE_ILLUM_MAP";
+        private static readonly ShaderFactory<DeferredRenderingGeoShader> factory = new ShaderFactory<DeferredRenderingGeoShader>(
+            defines => new DeferredRenderingGeoShader(defines), 
+            new[] {
+                USE_NORMAL,
+                USE_SPECULAR,
+                USE_ILLUM
+            }
+        );
+
         public Vector2 TextureOffset;
         public Vector2 TextureRepeat = new Vector2(1, 1);
         public Vector3 IlluminationColor = new Vector3(1, 1, 1);
@@ -34,28 +47,26 @@ namespace GLOOP.Rendering
             set => Textures[3] = value;
         }
 
-        public DeferredRenderingGeoMaterial(DeferredRenderingGeoShader shader) : base(shader)
+        public override Shader Shader => factory.GetVarient(
+            NormalTexture != BaseTexture.Gray, 
+            SpecularTexture != BaseTexture.Black, 
+            IlluminationTexture != BaseTexture.Black
+        );
+
+        public DeferredRenderingGeoMaterial()
         {
         }
 
         public override void Commit()
         {
-            var shader = (DeferredRenderingGeoShader)this.shader;
+            var shader = (DeferredRenderingGeoShader)Shader;
             shader.Use();
-            shader.ModelMatrix = ModelMatrix;
-
-            shader.TextureOffset = TextureOffset;
-            shader.TextureRepeat = TextureRepeat;
-            shader.HasWorldpaceUVs = HasWorldpaceUVs;
-            shader.IlluminationColor = IlluminationColor;
-            shader.AlbedoColourTint = AlbedoColourTint;
 
 #if BINDLESSTEXTURES
             shader.DiffuseTexture = DiffuseTexture.BindlessHandle;
             shader.NormalTexture = NormalTexture.BindlessHandle;
             shader.SpecularTexture = SpecularTexture.BindlessHandle;
             shader.IlluminationTexture = IlluminationTexture.BindlessHandle;
-
 #else
             BaseTexture.Use(Textures, TextureUnit.Texture0);
             shader.DiffuseTexture = TextureUnit.Texture0;
@@ -63,11 +74,6 @@ namespace GLOOP.Rendering
             shader.SpecularTexture = TextureUnit.Texture2;
             shader.IlluminationTexture = TextureUnit.Texture3;
 #endif
-        }
-
-        public override void SetCameraUniforms(Matrix4 projectionMatrix, Matrix4 viewMatrix, Matrix4 modelMatrix)
-        {
-            ModelMatrix = modelMatrix;
         }
 
         public override void SetTextures(Texture diffuse, Texture normal, Texture specular, Texture illumination)
@@ -79,7 +85,7 @@ namespace GLOOP.Rendering
         }
 
         public override Material Clone() 
-            => new DeferredRenderingGeoMaterial((DeferredRenderingGeoShader)shader)
+            => new DeferredRenderingGeoMaterial()
             {
                 AlbedoColourTint = AlbedoColourTint,
                 DiffuseTexture = DiffuseTexture,

@@ -1,4 +1,4 @@
-Test, FPS, TextureSizeMB, ModelSizeMB
+Test, FPS, TextureSizeMB, ModelSizeMB, Texture samples
 Without optimization, 39
 Removed Error.Check(), 44, 35254, 176
 Nessersary shader change, 74, 35254, 176
@@ -25,4 +25,5 @@ Sort by texture set, 160, 2670, 208
 MultiDrawIndirect 162, 2670, 208
 Sort batches by VAO, 162, 2670, 208
 ProjectionViewMatrix in UBO, 162, 2670, 208
-Normalized normals range in GBuffer, 165, 2670, 208
+Normalized normals range in GBuffer, 165, 2670, 208, 58546464
+Shader varients, 165, 165, 2670, 23009956
