@@ -8,20 +8,20 @@ namespace GLOOP.Rendering
     public class Query : IDisposable
     {
         private readonly int Handle = GL.GenQuery();
-        private QueryTarget Type;
+        public readonly QueryTarget Type;
         public bool Running { get; private set; }
 
         public Query(QueryTarget type)
         {
-            BeginScope(type);
+            Type = type;
+            BeginScope();
         }
 
-        public void BeginScope(QueryTarget type)
+        public void BeginScope()
         {
             if (Running)
                 return;
 
-            Type = type;
             GL.BeginQuery(Type, Handle);
             Running = true;
         }

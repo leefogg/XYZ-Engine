@@ -25,9 +25,9 @@ namespace GLOOP.Rendering
                 } 
                 else
                 {
-                    if (!Queries[i].Running)
+                    if (Queries[i].Type == target && !Queries[i].Running)
                     {
-                        Queries[i].BeginScope(target);
+                        Queries[i].BeginScope();
                         return Queries[i];
                     }
                 }
