@@ -26,4 +26,5 @@ MultiDrawIndirect 162, 2670, 208
 Sort batches by VAO, 162, 2670, 208
 ProjectionViewMatrix in UBO, 162, 2670, 208
 Normalized normals range in GBuffer, 165, 2670, 208, 58546464
-Shader varients, 165, 165, 2670, 23009956
+Shader varients, 165, 2670, 208, 23009956
+Replaced illum GBuffer with extracting bright shader, 166, 2670, 208, 17257467

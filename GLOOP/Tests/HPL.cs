@@ -29,13 +29,14 @@ namespace GLOOP.Tests
         private FrameBuffer GBuffers;
         private FrameBuffer LightingBuffer;
         private FrameBuffer[] BloomBuffers;
-        private FrameBuffer StagingBuffer;
+        private FrameBuffer StagingBuffer1, StagingBuffer2;
         private Shader PointLightShader;
         private Shader SpotLightShader;
         private Texture NoiseMap;
         private SingleColorMaterial singleColorMaterial;
         private Shader FinalCombineShader;
         private Shader FullBrightShader;
+        private Shader ExtractBright;
         private Shader VerticalBlurShader;
         private Shader HorizontalBlurShader;
         private Shader BloomCombineShader;
@@ -91,7 +92,6 @@ namespace GLOOP.Tests
                     PixelInternalFormat.Rgb16f,     // Position
                     PixelInternalFormat.Rgb8,       // Normal
                     PixelInternalFormat.Rgba,       // Specular
-                    PixelInternalFormat.Rgb16f      // Illumnination
                 },
                 true,
                 "GBuffers"
@@ -106,7 +106,8 @@ namespace GLOOP.Tests
                 new FrameBuffer(Width / 8, Height / 8, false, PixelInternalFormat.Rgb, name: "Vertical blur pass @ (1/8)"),
                 new FrameBuffer(Width / 8, Height / 8, false, PixelInternalFormat.Rgb, name: "Horizonal blur pass @ (1/8)"),
             };
-            StagingBuffer = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgb16f);
+            StagingBuffer1 = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgb16f);
+            StagingBuffer2 = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgb16f);
 
             var deferredMaterial = new DeferredRenderingGeoMaterial();
             PointLightShader = new DynamicPixelShader(
@@ -139,6 +140,11 @@ namespace GLOOP.Tests
                 "assets/shaders/FullBright/2D/VertexShader.vert",
                 "assets/shaders/FullBright/2D/FragmentShader.frag",
                 name: "Fullbright"
+            );
+            ExtractBright = new StaticPixelShader(
+                "assets/shaders/Bloom/Extract/vertex.vert",
+               "assets/shaders/Bloom/Extract/fragment.frag",
+                name: "Extract brightness"
             );
             VerticalBlurShader = new StaticPixelShader(
                "assets/shaders/Blur/VertexShader.vert",
@@ -298,7 +304,7 @@ namespace GLOOP.Tests
             if (GeoPassQuery != null)
             {
                 var time = GeoPassQuery.GetResult();
-                Console.WriteLine(time / 1000000f + "ms");
+                //Console.WriteLine(time / 1000000f + "ms");
             }
 
             // TODO: Move this to end of frame
@@ -310,7 +316,7 @@ namespace GLOOP.Tests
                 var texWrites = pair.shader.NumOutputTargets;
                 totalNumTextureSamples += fragments * avgTexReads * texWrites;
             }
-            Console.WriteLine(totalNumTextureSamples + " Texture samples");
+            //Console.WriteLine(totalNumTextureSamples + " Texture samples");
 
             using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
@@ -614,11 +620,11 @@ namespace GLOOP.Tests
 
                     GL.Disable(EnableCap.FramebufferSrgb);
                 } else {
-                    StagingBuffer.Use();
+                    StagingBuffer1.Use();
                     GL.ClearColor(0, 0, 0, 1);
                     GL.Clear(ClearBufferMask.ColorBufferBit);
 
-                    Shader shader = FinalCombineShader;
+                    var shader = FinalCombineShader;
                     shader.Use();
                     LightingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
                     GBuffers.ColorBuffers[0].Use(TextureUnit.Texture1);
@@ -632,7 +638,7 @@ namespace GLOOP.Tests
                     GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
                     shader = useFXAA ? FXAAShader : ColorCorrectionShader;
                     shader.Use();
-                    StagingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
+                    StagingBuffer1.ColorBuffers[0].Use(TextureUnit.Texture0);
                     shader.Set("Texture", TextureUnit.Texture0);
                     Primitives.Quad.Draw();
                 }
@@ -644,11 +650,21 @@ namespace GLOOP.Tests
 
         private void DoBloomPass()
         {
+            // Extract bright parts
+            StagingBuffer2.Use();
+            ExtractBright.Use();
+            StagingBuffer1.ColorBuffers[0].Use(TextureUnit.Texture0);
+            ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
+            ExtractBright.Set("avInvScreenSize", new Vector2(1f / Width, 1f / Height));
+            ExtractBright.Set("afBrightPass", 15f);
+            Primitives.Quad.Draw();
+
+            // Take bright parts and blur
             bloomBuffer.Bind();
 
             int width = Width,
                 height = Height;
-            var previousTexture = GBuffers.ColorBuffers[(int)GBufferTexture.Illumination];
+            var previousTexture = StagingBuffer2.ColorBuffers[0];
             Shader shader;
             for (var i = 0; i < BloomBuffers.Length;)
             {
@@ -677,7 +693,7 @@ namespace GLOOP.Tests
 
             // Add all to finished frame
             GL.Viewport(0, 0, Width, Height);
-            StagingBuffer.Use();
+            StagingBuffer1.Use();
             GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
 
             shader = BloomCombineShader;

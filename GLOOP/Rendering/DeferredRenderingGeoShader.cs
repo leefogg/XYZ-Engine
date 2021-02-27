@@ -66,6 +66,6 @@ namespace GLOOP.Rendering
         }
 
         public override int AverageSamplesPerFragment => numSamples;
-        public override int NumOutputTargets => 4;
+        public override int NumOutputTargets => 3;
     }
 }

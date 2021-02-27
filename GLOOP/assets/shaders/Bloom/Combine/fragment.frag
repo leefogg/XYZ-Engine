@@ -25,7 +25,7 @@ void main()
 {
 	vec4 vNoise = texture(noiseMap, vec2(rand(texCoord), rand(texCoord)) + vec2(timeMilliseconds));
 
-	vec2 vBloomNoise = (vNoise.rg - vec2(0.5)) * 10 * avInvScreenSize;
+	vec2 vBloomNoise = (vNoise.rg - vec2(0.5)) * 5 * avInvScreenSize;
 
 	vec4 vBlurColor0 = texture(blurMap0, texCoord + vBloomNoise * 1);
 	vec4 vBlurColor1 = texture(blurMap1, texCoord + vBloomNoise * 2);

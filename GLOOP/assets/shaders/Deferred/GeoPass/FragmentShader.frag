@@ -13,7 +13,6 @@ layout (location = 0) out vec3 diffuse;
 layout (location = 1) out vec4 position;
 layout (location = 2) out vec3 normal;
 layout (location = 3) out vec4 specular;
-layout (location = 4) out vec3 illum;
 
 struct Material {
 	//mat4 ModelMatrix;
@@ -75,10 +74,8 @@ void main()
 #endif
 
 #if (USE_ILLUM_MAP == 1)
-	illum = texture(illumTex, textureCoord).rgb * mat.IlluminationColor;
+	vec3 illum = texture(illumTex, textureCoord).rgb * mat.IlluminationColor;
     diffuse += illum;
-#else
-	illum = vec3(0.0);
 #endif
 
 	position = vec4(fragPos, 0.0);
