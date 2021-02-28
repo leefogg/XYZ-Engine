@@ -6,25 +6,25 @@ using System.Text;
 namespace GLOOP.Rendering
 {
     [StructLayout(LayoutKind.Explicit, Size = 20)]
-    public struct DrawElementsIndirectData
+    public readonly struct DrawElementsIndirectData
     {
-        [FieldOffset(00)] public uint NumIndexes;
-        [FieldOffset(04)] public uint NumInstances;
-        [FieldOffset(08)] public uint FirstIndex;
-        [FieldOffset(12)] public uint BaseVertex;
-        [FieldOffset(16)] public uint BaseInstance;
+        [FieldOffset(00)] public readonly uint NumIndexes;
+        [FieldOffset(04)] public readonly uint NumInstances;
+        [FieldOffset(08)] public readonly uint FirstIndex;
+        [FieldOffset(12)] public readonly uint BaseVertex;
+        [FieldOffset(16)] public readonly uint BaseInstance;
 
         public DrawElementsIndirectData(
             uint numIndexes,
-            uint instanceCount,
             uint firstIndex,
             uint baseVertex,
+            uint numInstances,
             uint baseInstance)
         {
             NumIndexes = numIndexes;
-            NumInstances = instanceCount;
             FirstIndex = firstIndex;
             BaseVertex = baseVertex;
+            NumInstances = numInstances;
             BaseInstance = baseInstance;
         }
     }

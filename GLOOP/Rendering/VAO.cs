@@ -129,8 +129,8 @@ namespace GLOOP.Rendering
             var indiciesOffset = 0;
             var vertciesOffset = 0;
             FillSubData(
-                ref indiciesOffset,
-                ref vertciesOffset,
+                indiciesOffset,
+                vertciesOffset,
                 vertexIndicies, 
                 vertexPositions,
                 vertexUVs, 
@@ -139,22 +139,18 @@ namespace GLOOP.Rendering
             );
         }
 
-        public VirtualVAO FillSubData(
-            ref int indiciesOffset,
-            ref int vertciesOffset,
+        public (int, int, int) FillSubData(
+            int firstIndex,
+            int firstVertex,
             IEnumerable<int> vertexIndicies, 
             IEnumerable<Vector3> vertexPositions,
             IEnumerable<Vector2> vertexUVs,
             IEnumerable<Vector3> vertexNormals, 
             IEnumerable<Vector3> vertexTangents)
         {
-            var firstIndex = indiciesOffset;
-            var firstVertex = vertciesOffset;
-
             var indicies = vertexIndicies.ToArray();
             var indiciesSize = indicies.SizeInBytes();
             GL.NamedBufferSubData(EBO, (IntPtr)firstIndex, indiciesSize, indicies);
-            indiciesOffset += indiciesSize;
 
             var positions = vertexPositions.GetFloats().ToArray();
             var uvs = vertexUVs.GetFloats().ToArray();
@@ -163,19 +159,8 @@ namespace GLOOP.Rendering
             var verts = createVertexArray(positions, uvs, normals, tangents);
             var vertciesSize = verts.SizeInBytes();
             GL.NamedBufferSubData(VBO, (IntPtr)firstVertex, vertciesSize, verts);
-            vertciesOffset += vertciesSize;
 
-            return new VirtualVAO(
-                new DrawElementsIndirectData
-                {
-                    NumIndexes = (uint)indicies.Count(),
-                    FirstIndex = (uint)firstIndex,
-                    BaseVertex = (uint)firstVertex,
-                    NumInstances = 1,
-                    BaseInstance = 0
-                },
-                this
-            );
+            return (indicies.Count(), indiciesSize, vertciesSize);
         }
 
         public void Allocate(int sizeOfIndicies, int sizeOfVertcies)

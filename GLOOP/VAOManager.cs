@@ -85,19 +85,32 @@ namespace GLOOP
             );
             var numIndiciesBefore = alloc.UsedIndiciesBytes;
             var numVertciesBefore = alloc.UsedVertciesBytes;
-            var vao = alloc.vao.FillSubData(
-                ref alloc.UsedIndiciesBytes,
-                ref alloc.UsedVertciesBytes,
+            (int indiciesCount, int usedIndiciesBytes, int usedVertciesBytes) = alloc.vao.FillSubData(
+                alloc.UsedIndiciesBytes,
+                alloc.UsedVertciesBytes,
                 vertexIndicies,
                 vertexPositions,
                 vertexUVs,
                 vertexNormals,
                 vertexTangents
             );
+
+            var vao = new VirtualVAO(
+                new DrawElementsIndirectData(
+                    (uint)indiciesCount,
+                    (uint)numIndiciesBefore,
+                    (uint)numVertciesBefore / ((uint)shape.NumElements * sizeof(float)),
+                    1,
+                    0
+                ),
+                alloc.vao
+            );
+
+            alloc.UsedIndiciesBytes += usedIndiciesBytes;
+            alloc.UsedVertciesBytes += usedVertciesBytes;
             if (alloc.UsedIndiciesBytes - numIndiciesBefore != estimatedNumIndicies || alloc.UsedVertciesBytes - numVertciesBefore != estimatedNumVertcies)
                 Console.WriteLine("Incorrect estimate");
 
-            vao.description.BaseVertex /= (uint)shape.NumElements * sizeof(float);
             return vao;
         }
     }

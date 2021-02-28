@@ -442,9 +442,13 @@ namespace GLOOP.Tests
             for (uint i = 0; i < models.Length; i++)
             {
                 var command = models[i].VAO.description;
-                command.BaseInstance = i;
-                command.FirstIndex /= sizeof(uint);
-                drawCommands[i] = command;
+                drawCommands[i] = new DrawElementsIndirectData(
+                    command.NumIndexes,
+                    command.FirstIndex / sizeof(uint),
+                    command.BaseVertex,
+                    command.NumInstances,
+                    i
+                );
             }
 
             drawIndirectBuffer = new Buffer<DrawElementsIndirectData>(drawCommands, BufferTarget.DrawIndirectBuffer, BufferUsageHint.StaticDraw, "DrawCommands");
