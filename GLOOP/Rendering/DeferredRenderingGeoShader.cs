@@ -59,6 +59,10 @@ namespace GLOOP.Rendering
             specular = new CachedUniformTexture(this, "specularTex");
             illumination = new CachedUniformTexture(this, "illumTex");
 #endif
+            diffuse.Set(TextureUnit.Texture0);
+            normal.Set(TextureUnit.Texture1);
+            specular.Set(TextureUnit.Texture2);
+            illumination.Set(TextureUnit.Texture3);
 
             foreach (var value in defines.Values)
                 if (value == "1")

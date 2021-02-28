@@ -8,9 +8,10 @@ namespace GLOOP.Rendering
 {
     public class DeferredRenderingGeoMaterial : Material
     {
-        private const string USE_NORMAL = "USE_NORMAL_MAP";
-        private const string USE_SPECULAR = "USE_SPECULAR_MAP";
-        private const string USE_ILLUM = "USE_ILLUM_MAP";
+        private const string 
+            USE_NORMAL = "USE_NORMAL_MAP",
+            USE_SPECULAR = "USE_SPECULAR_MAP",
+            USE_ILLUM = "USE_ILLUM_MAP";
         private static readonly ShaderFactory<DeferredRenderingGeoShader> factory = new ShaderFactory<DeferredRenderingGeoShader>(
             defines => new DeferredRenderingGeoShader(defines), 
             new[] {
@@ -69,10 +70,6 @@ namespace GLOOP.Rendering
             shader.IlluminationTexture = IlluminationTexture.BindlessHandle;
 #else
             BaseTexture.Use(Textures, TextureUnit.Texture0);
-            shader.DiffuseTexture = TextureUnit.Texture0;
-            shader.NormalTexture = TextureUnit.Texture1;
-            shader.SpecularTexture = TextureUnit.Texture2;
-            shader.IlluminationTexture = TextureUnit.Texture3;
 #endif
         }
 
