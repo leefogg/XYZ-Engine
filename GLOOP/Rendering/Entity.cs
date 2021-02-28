@@ -94,6 +94,7 @@ namespace GLOOP.Rendering
                 );
                 Metrics.TimeLoadingTextures += DateTime.Now - beforeLoadingTextures;
 
+                var startSavingModel = DateTime.Now;
                 var vaoName = $"{path}[{i}]";
                 VirtualVAO vao;
                 if (!VAOCache.Get(vaoName, out vao))
@@ -120,6 +121,8 @@ namespace GLOOP.Rendering
                 var materialInstance = material.Clone();
                 materialInstance.SetTextures(diffuseTex, normalTex, specularTex, illumTex);
                 Models.Add(new Model(Transform.Default, vao, materialInstance));
+
+                Metrics.TimeLoadingModels += DateTime.Now - startSavingModel;
             }
 
             Transform.Scale = Vector3.One;
