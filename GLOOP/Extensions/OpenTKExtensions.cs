@@ -17,10 +17,12 @@ namespace GLOOP.Extensions
                 PixelInternalFormat.Rg8 => floatSize * 2,
                 PixelInternalFormat.Rgb => floatSize * 3,
                 PixelInternalFormat.Rgb8 => floatSize * 3,
+                PixelInternalFormat.Srgb8 => floatSize * 3,
                 PixelInternalFormat.Rgb16 => floatSize * 2 * 3,
                 PixelInternalFormat.Rgb16f => floatSize * 2 * 3,
                 PixelInternalFormat.Rgba => floatSize * 4,
                 PixelInternalFormat.Rgba8 => floatSize * 4,
+                PixelInternalFormat.Srgb8Alpha8 => floatSize * 4,
                 PixelInternalFormat.Rgba16 => floatSize * 2 * 4,
                 PixelInternalFormat.Rgba16f => floatSize * 2 * 4,
                 PixelInternalFormat.CompressedRg => 1,
@@ -28,6 +30,8 @@ namespace GLOOP.Extensions
                 PixelInternalFormat.CompressedRgbaS3tcDxt1Ext => 1, 
                 PixelInternalFormat.CompressedRgbaS3tcDxt3Ext => 1,
                 PixelInternalFormat.CompressedRgbaS3tcDxt5Ext => 1,
+                PixelInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext => 1,
+                PixelInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext => 1,
                 PixelInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext => 1,
                 (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext => 1,
                 _ => floatSize * 4
@@ -42,6 +46,8 @@ namespace GLOOP.Extensions
                 PixelInternalFormat.Rg8 => SizedInternalFormat.Rg8,
                 PixelInternalFormat.Rgb => (SizedInternalFormat)All.Rgb8, // Missing. Unimplemented.
                 PixelInternalFormat.Rgb8 => (SizedInternalFormat)All.Rgb8, // Missing. Unimplemented.
+                PixelInternalFormat.Srgb => SizedInternalFormat.Rgba8,
+                PixelInternalFormat.Srgb8 => SizedInternalFormat.Rgba8,
                 PixelInternalFormat.Rgb16 => (SizedInternalFormat)All.Rgb16, // Missing. Unimplemented.
                 PixelInternalFormat.Rgb16f => (SizedInternalFormat)All.Rgb16f, // Missing. Unimplemented.
                 PixelInternalFormat.Rgba => SizedInternalFormat.Rgba8,
