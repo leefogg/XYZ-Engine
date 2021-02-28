@@ -91,7 +91,7 @@ namespace GLOOP.Tests
                     PixelInternalFormat.Srgb8Alpha8,// Diffuse
                     PixelInternalFormat.Rgb16f,     // Position
                     PixelInternalFormat.Rgb8,       // Normal
-                    PixelInternalFormat.Rgba,       // Specular
+                    PixelInternalFormat.Srgb8Alpha8,// Specular
                 },
                 true,
                 "GBuffers"
