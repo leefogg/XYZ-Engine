@@ -40,8 +40,8 @@ namespace GLOOP
 
             return Create(
                 shape,
-                Math.Max(3 * sizeof(uint) * 1024 * 1024, requiredIndiciesBytes),
-                Math.Max(23 * sizeof(float) * 1024 * 1024, requiredVertciesBytes)
+                Math.Max(6 * sizeof(uint) * 1024 * 1024, requiredIndiciesBytes),
+                Math.Max(45 * sizeof(float) * 1024 * 1024, requiredVertciesBytes)
             );
         }
         private static VAOAllocation Create(VAOShape shape, int numIndiciesBytes, int numVertciesBytes)

@@ -169,7 +169,7 @@ namespace GLOOP.Rendering
             Metrics.ModelsIndiciesBytesUsed += (ulong)sizeOfIndicies;
 
             GL.NamedBufferData(VBO, sizeOfVertcies, (IntPtr)0, BufferUsageHint.StaticDraw);
-            Metrics.ModelsBytesUsed += (ulong)sizeOfVertcies;
+            Metrics.ModelsVertciesBytesUsed += (ulong)sizeOfVertcies;
         }
 
         private Type getSmallestDataFormat(uint count)
