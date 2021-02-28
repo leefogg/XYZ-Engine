@@ -333,10 +333,10 @@ namespace GLOOP.Tests
 
         private void MultiDrawIndirect()
         {
-            updateModelMatriciesBuffer();
+            //updateModelMatriciesBuffer();
 
             var drawCommandPtr = (IntPtr)0;
-            var modelMatrixPtr = (IntPtr)0;
+            var modelMatrixPtr = 0;
             var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
             var matrixSize = Marshal.SizeOf<Matrix4>();
 
@@ -345,6 +345,7 @@ namespace GLOOP.Tests
 
             GeoStageQueries.Clear();
             Query runningQuery = null;
+            int i = 0;
             foreach (var batch in scene.Batches)
             {
                 var batchSize = batch.Models.Count;
@@ -363,6 +364,7 @@ namespace GLOOP.Tests
                     });
                 }
 
+                matrixBuffer.BindRange(modelMatrixPtr, 1, batchSize * matrixSize);
                 GL.MultiDrawElementsIndirect(
                     OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles,
                     DrawElementsType.UnsignedShort,
@@ -371,8 +373,18 @@ namespace GLOOP.Tests
                     0
                 );
 
+                var batchMatrixSize = batchSize * matrixSize;
+                var offAlignment = batchMatrixSize % Globals.UniformBufferOffsetAlignment;
+                if (offAlignment > 0)
+                {
+                    var bytesToAdd = Globals.UniformBufferOffsetAlignment - offAlignment;
+                    var entriesToAdd = bytesToAdd / matrixSize;
+                    batchSize += entriesToAdd;
+                }
+
                 drawCommandPtr += batchSize * commandSize;
                 modelMatrixPtr += batchSize * matrixSize;
+                i++;
             }
 
             runningQuery.EndScope();
@@ -387,43 +399,57 @@ namespace GLOOP.Tests
 
             setupBloomUBO();
 
-            var models = scene.Batches.SelectMany(batch => batch.Models).ToArray();
-            setupMaterialBuffer(models);
-            setupModelMatriciesBuffer(models.Length);
-            setupDrawIndirectBuffer(models);
+            var batches = scene.Batches;
+            //var batchSizes = scene.Batches.Select(b => b.Models.Count()).ToArray();
+            //var numModels = batchSizes.Sum();
+            //setupMaterialBuffer(models, numModels);
+            //setupModelMatriciesBuffer(batchSizes);
+            //setupDrawIndirectBuffer(models, numModels);
+            loadFrameData(batches);
 
             setupRandomTexture();
         }
 
-        private void setupMaterialBuffer(Model[] models)
+        private void setupMaterialBuffer(List<RenderBatch<DeferredRenderingGeoMaterial>> batches, int numModels)
         {
-            var materials = new DeferredGeoMaterial[models.Length];
-            var i = 0;
-            foreach (var model in models)
+            var materials = new DeferredGeoMaterial[numModels];
+
+            int i = 0;
+            foreach (var batch in batches)
             {
-                var mat = (DeferredRenderingGeoMaterial)model.Material;
-                materials[i++] = new DeferredGeoMaterial()
+                foreach (var model in batch.Models)
                 {
-                    AlbedoColourTint = mat.AlbedoColourTint,
-                    IlluminationColor = mat.IlluminationColor,
-                    IsWorldSpaceUVs = mat.HasWorldpaceUVs,
-                    TextureOffset = mat.TextureOffset,
-                    TextureRepeat = mat.TextureRepeat,
-                    NormalStrength = 1,
-                };
+                    var mat = (DeferredRenderingGeoMaterial)model.Material;
+                    materials[i++] = new DeferredGeoMaterial()
+                    {
+                        AlbedoColourTint = mat.AlbedoColourTint,
+                        IlluminationColor = mat.IlluminationColor,
+                        IsWorldSpaceUVs = mat.HasWorldpaceUVs,
+                        TextureOffset = mat.TextureOffset,
+                        TextureRepeat = mat.TextureRepeat,
+                        NormalStrength = 1,
+                    };
+                }
             }
 
             materialBuffer = new Buffer<DeferredGeoMaterial>(materials, BufferTarget.ShaderStorageBuffer, BufferUsageHint.StaticDraw, "MaterialData");
             materialBuffer.BindRange(0, 2);
         }
 
-        private void setupModelMatriciesBuffer(int numModels)
+        private void setupModelMatriciesBuffer(int[] batchSizes)
         {
-            ModelMatricies = new Matrix4[numModels];
+            int totalSize = 0;
+            foreach (var size in batchSizes)
+            {
+                var s = size * Marshal.SizeOf<Matrix4>();
+                var offset = s % Globals.UniformBufferOffsetAlignment;
+                if (offset > 0)
+                    s += Globals.UniformBufferOffsetAlignment - offset;
+                totalSize += s;
+            }
 
-            matrixBuffer = new Buffer<Matrix4>(ModelMatricies, BufferTarget.ShaderStorageBuffer, BufferUsageHint.StreamDraw, "ModelMatricies");
+            matrixBuffer = new Buffer<Matrix4>(ModelMatricies, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "ModelMatricies");
             matrixBuffer.BindRange(0, 1);
-
         }
 
         private void updateModelMatriciesBuffer()
@@ -436,23 +462,92 @@ namespace GLOOP.Tests
             matrixBuffer.Update(ModelMatricies);
         }
 
-        private void setupDrawIndirectBuffer(Model[] models)
+        private void setupDrawIndirectBuffer(List<RenderBatch<DeferredRenderingGeoMaterial>> batches, int numModels)
         {
-            var drawCommands = new DrawElementsIndirectData[models.Length];
-            for (uint i = 0; i < models.Length; i++)
+            var drawCommands = new DrawElementsIndirectData[numModels];
+
+            foreach (var batch in batches)
             {
-                var command = models[i].VAO.description;
-                drawCommands[i] = new DrawElementsIndirectData(
-                    command.NumIndexes,
-                    command.FirstIndex / sizeof(ushort),
-                    command.BaseVertex,
-                    command.NumInstances,
-                    i
-                );
+                uint i = 0;
+                foreach (var model in batch.Models)
+                {
+                    var command = model.VAO.description;
+                    drawCommands[i] = new DrawElementsIndirectData(
+                        command.NumIndexes,
+                        command.FirstIndex / sizeof(ushort),
+                        command.BaseVertex,
+                        command.NumInstances,
+                        i
+                    );
+
+                    i++;
+                }
             }
 
             drawIndirectBuffer = new Buffer<DrawElementsIndirectData>(drawCommands, BufferTarget.DrawIndirectBuffer, BufferUsageHint.StaticDraw, "DrawCommands");
-            drawIndirectBuffer.Update(drawCommands, 0);
+            //drawIndirectBuffer.Update(drawCommands, 0);
+        }
+
+        private void loadFrameData(List<RenderBatch<DeferredRenderingGeoMaterial>> batches)
+        {
+            var sizeOfMatrix = Marshal.SizeOf<Matrix4>();
+
+            var modelMatricies = new List<Matrix4>();
+            var drawCommands = new List<DrawElementsIndirectData>();
+            var materials = new List<DeferredGeoMaterial>();
+            foreach (var batch in batches)
+            {
+                uint i = 0;
+                foreach (var model in batch.Models)
+                {
+                    modelMatricies.Add(MathFunctions.CreateModelMatrix(model.Transform.Position, model.Transform.Rotation, model.Transform.Scale));
+
+                    var mat = (DeferredRenderingGeoMaterial)model.Material;
+                    materials.Add(new DeferredGeoMaterial()
+                    {
+                        AlbedoColourTint = mat.AlbedoColourTint,
+                        IlluminationColor = mat.IlluminationColor,
+                        IsWorldSpaceUVs = mat.HasWorldpaceUVs,
+                        TextureOffset = mat.TextureOffset,
+                        TextureRepeat = mat.TextureRepeat,
+                        NormalStrength = 1,
+                    });
+
+                    var command = model.VAO.description;
+                    drawCommands.Add(new DrawElementsIndirectData(
+                        command.NumIndexes,
+                        command.FirstIndex / sizeof(ushort),
+                        command.BaseVertex,
+                        command.NumInstances,
+                        i++
+                    ));
+                }
+
+                var batchMatrixSize = i * sizeOfMatrix;
+                var offAlignment = batchMatrixSize % Globals.UniformBufferOffsetAlignment;
+                if (offAlignment > 0)
+                {
+                    var bytesToAdd = Globals.UniformBufferOffsetAlignment - offAlignment;
+                    var entriesToAdd = bytesToAdd / sizeOfMatrix;
+                    for (i = 0; i < entriesToAdd; i++)
+                    {
+                        modelMatricies.Add(new Matrix4());
+                        materials.Add(new DeferredGeoMaterial());
+                        drawCommands.Add(new DrawElementsIndirectData());
+                    }
+                }
+            }
+
+            ModelMatricies = modelMatricies.ToArray();
+            matrixBuffer = new Buffer<Matrix4>(ModelMatricies, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "ModelMatricies");
+            matrixBuffer.BindRange(0, 1);
+
+            var flattenedDrawCommands = drawCommands.ToArray();
+            drawIndirectBuffer = new Buffer<DrawElementsIndirectData>(flattenedDrawCommands, BufferTarget.DrawIndirectBuffer, BufferUsageHint.StaticDraw, "DrawCommands");
+
+            var flattenedMaterials = materials.ToArray();
+            materialBuffer = new Buffer<DeferredGeoMaterial>(flattenedMaterials, BufferTarget.ShaderStorageBuffer, BufferUsageHint.StaticDraw, "MaterialData");
+            materialBuffer.BindRange(0, 2);
         }
 
         [StructLayout(LayoutKind.Explicit, Size = 64)]
@@ -475,9 +570,9 @@ namespace GLOOP.Tests
         private void setupLightingUBO()
         {
             pointLightsBuffer = new Buffer<PointLight>(Math.Min(maxLights, scene.PointLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "PointLights");
-            pointLightsBuffer.BindRange(0, 1);
+            pointLightsBuffer.BindRange(0, 3);
             spotLightsBuffer = new Buffer<SpotLight>(Math.Min(maxLights, scene.SpotLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "SpotLights");
-            spotLightsBuffer.BindRange(0, 2);
+            spotLightsBuffer.BindRange(0, 4);
         }
 
         private void setupBloomUBO()
@@ -757,6 +852,7 @@ namespace GLOOP.Tests
         {
             if (scene.PointLights.Any())
             {
+                pointLightsBuffer.BindRange(0, 1);
                 var shader = PointLightShader;
                 shader.Use();
                 Texture.Use(new[] {
@@ -794,6 +890,7 @@ namespace GLOOP.Tests
 
             if (scene.SpotLights.Any())
             {
+                spotLightsBuffer.BindRange(0, 1);
                 var numSpotLights = Math.Min(maxLights, scene.SpotLights.Count);
 
                 Shader shader = SpotLightShader;

@@ -67,7 +67,7 @@ namespace GLOOP.Rendering
             GL.BindBufferRange((BufferRangeTarget)Type, slot, Handle, (IntPtr)start, Length);
         }
 
-        public void BindRange(uint start, int slot, int length)
+        public void BindRange(int start, int slot, int length)
         {
             GL.BindBufferRange((BufferRangeTarget)Type, slot, Handle, (IntPtr)start, length);
         }

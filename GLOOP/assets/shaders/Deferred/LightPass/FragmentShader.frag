@@ -37,7 +37,7 @@ out vec3 fragColor;
 		float diffuseScalar;
 		float specularScalar;
 	};
-	layout (std140, binding = 2) uniform spotlights {
+	layout (std140, binding = 1) uniform spotlights {
 		SpotLight[500] spotLights;
 	};
 #endif

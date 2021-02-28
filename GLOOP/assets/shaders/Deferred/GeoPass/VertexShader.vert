@@ -16,8 +16,8 @@ layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 ViewProjectionMatrix;
 };
 
-layout (shared, binding = 1) buffer ModelMatricies {
-	mat4 Matricies[];
+layout (shared, binding = 1) uniform ModelMatricies {
+	mat4 Matricies[1024];
 };
 
 
