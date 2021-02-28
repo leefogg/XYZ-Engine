@@ -134,10 +134,10 @@ namespace GLOOP.Rendering
             string specularPath,
             string illumPath,
             string currentFolder,
-            out Texture diffuseTex,
-            out Texture normalTex,
-            out Texture specularTex,
-            out Texture illumTex)
+            out Texture2D diffuseTex,
+            out Texture2D normalTex,
+            out Texture2D specularTex,
+            out Texture2D illumTex)
         {
             diffuseTex = null;
             specularTex = null;

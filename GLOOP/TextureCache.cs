@@ -10,7 +10,7 @@ namespace GLOOP
     public static class TextureCache
     {
         private static Dictionary<string, TextureSlice> TexturesSlices = new Dictionary<string, TextureSlice>();
-        private static Dictionary<string, Texture> Textures = new Dictionary<string, Texture>();
+        private static Dictionary<string, Texture2D> Textures = new Dictionary<string, Texture2D>();
 
         public static TextureSlice GetSlice(
             string path,
@@ -31,7 +31,7 @@ namespace GLOOP
             );
         }
 
-        public static Texture Get(
+        public static Texture2D Get(
             string path,
             PixelInternalFormat format = PixelInternalFormat.Rgba,
             TextureMinFilter minFilter = TextureMinFilter.Linear,
@@ -39,11 +39,11 @@ namespace GLOOP
             TextureWrapMode wrapMode = TextureWrapMode.Repeat,
             bool hasMipMaps = false
         ) {
-            if (Textures.TryGetValue(path, out Texture tex))
+            if (Textures.TryGetValue(path, out Texture2D tex))
                 return tex;
 
             try { 
-                return Textures[path] = new Texture(
+                return Textures[path] = new Texture2D(
                     path,
                     new TextureParams()
                     {
@@ -63,6 +63,6 @@ namespace GLOOP
         }
 
         public static bool TryGet(string name, out TextureSlice tex) => TexturesSlices.TryGetValue(name, out tex);
-        public static bool TryGet(string name, out Texture tex) => Textures.TryGetValue(name, out tex);
+        public static bool TryGet(string name, out Texture2D tex) => Textures.TryGetValue(name, out tex);
     }
 }

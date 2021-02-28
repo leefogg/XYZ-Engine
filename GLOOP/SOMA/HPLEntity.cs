@@ -36,10 +36,10 @@ namespace GLOOP.SOMA
             string specularPath,
             string illumPath,
             string currentFolder,
-            out Texture diffuseTex,
-            out Texture normalTex,
-            out Texture specularTex,
-            out Texture illumTex)
+            out Texture2D diffuseTex,
+            out Texture2D normalTex,
+            out Texture2D specularTex,
+            out Texture2D illumTex)
         {
             getTextures(
                 diffusePath,
@@ -60,10 +60,10 @@ namespace GLOOP.SOMA
             string specularPath,
             string illumPath, 
             string currentFolder,
-            out Texture diffuseTex, 
-            out Texture normalTex,
-            out Texture specularTex, 
-            out Texture illumTex)
+            out Texture2D diffuseTex, 
+            out Texture2D normalTex,
+            out Texture2D specularTex, 
+            out Texture2D illumTex)
         {
             diffuseTex = null;
             specularTex = null;
@@ -74,9 +74,9 @@ namespace GLOOP.SOMA
             {
                 var extension = "dds";
                 var texturesFolder = @"C:\" + extension;
-                Texture findTex(string[] names, PixelInternalFormat format)
+                Texture2D findTex(string[] names, PixelInternalFormat format)
                 {
-                    Texture tex = null;
+                    Texture2D tex = null;
 
                     foreach (var name in names)
                     {
@@ -114,7 +114,7 @@ namespace GLOOP.SOMA
                 } 
                 else
                 {
-                    diffuseTex = BaseTexture.Error;
+                    diffuseTex = Texture.Error;
                     diffuseName = string.Empty;
                 }
 
@@ -148,13 +148,13 @@ namespace GLOOP.SOMA
             }
 
             if (diffuseTex == null)
-                diffuseTex = BaseTexture.Error;
+                diffuseTex = Texture.Error;
             if (normalTex == null)
-                normalTex = BaseTexture.Gray;
+                normalTex = Texture.Gray;
             if (specularTex == null)
-                specularTex = BaseTexture.Black;
+                specularTex = Texture.Black;
             if (illumTex == null)
-                illumTex = BaseTexture.Black;
+                illumTex = Texture.Black;
         }
 
         public new HPLEntity Clone() {

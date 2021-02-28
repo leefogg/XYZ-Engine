@@ -32,7 +32,7 @@ namespace GLOOP.Tests
         {
             base.OnLoad();
 
-            new Texture("assets/textures/black.png", PixelInternalFormat.Rgb);
+            new Texture2D("assets/textures/black.png", PixelInternalFormat.Rgb);
 
             var assimp = new Assimp.AssimpContext();
             var shader = new FullbrightShader();

@@ -32,7 +32,7 @@ namespace GLOOP.Tests
         private FrameBuffer StagingBuffer1, StagingBuffer2;
         private Shader PointLightShader;
         private Shader SpotLightShader;
-        private Texture NoiseMap;
+        private Texture2D NoiseMap;
         private SingleColorMaterial singleColorMaterial;
         private Shader FinalCombineShader;
         private Shader FullBrightShader;
@@ -534,7 +534,7 @@ namespace GLOOP.Tests
                 PixelFormat = PixelFormat.Rgb,
                 Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
             };
-            NoiseMap = new Texture(randomTextureSize, randomTextureSize, texParams);
+            NoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
         }
 
         private void updateCameraUBO()
@@ -702,7 +702,7 @@ namespace GLOOP.Tests
 
             shader = BloomCombineShader;
             shader.Use();
-            BaseTexture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], NoiseMap }, TextureUnit.Texture0);
+            Texture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], NoiseMap }, TextureUnit.Texture0);
             shader.Set("blurMap0", TextureUnit.Texture0);
             shader.Set("blurMap1", TextureUnit.Texture1);
             shader.Set("blurMap2", TextureUnit.Texture2);
@@ -759,7 +759,7 @@ namespace GLOOP.Tests
             {
                 var shader = PointLightShader;
                 shader.Use();
-                BaseTexture.Use(new[] {
+                Texture.Use(new[] {
                     GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Position],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
@@ -798,7 +798,7 @@ namespace GLOOP.Tests
 
                 Shader shader = SpotLightShader;
                 shader.Use();
-                BaseTexture.Use(new[] {
+                Texture.Use(new[] {
                     GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Position],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Normal],

@@ -26,32 +26,32 @@ namespace GLOOP.Rendering
         public Vector3 IlluminationColor = new Vector3(1, 1, 1);
         public Vector3 AlbedoColourTint = new Vector3(1, 1, 1);
         public bool HasWorldpaceUVs;
-        private Texture[] Textures = new Texture[4];
-        public Texture DiffuseTexture
+        private Texture2D[] Textures = new Texture2D[4];
+        public Texture2D DiffuseTexture
         {
             get => Textures[0];
             set => Textures[0] = value;
         }
-        public Texture NormalTexture
+        public Texture2D NormalTexture
         {
             get => Textures[1];
             set => Textures[1] = value;
         }
-        public Texture SpecularTexture
+        public Texture2D SpecularTexture
         {
             get => Textures[2];
             set => Textures[2] = value;
         }
-        public Texture IlluminationTexture
+        public Texture2D IlluminationTexture
         {
             get => Textures[3];
             set => Textures[3] = value;
         }
 
         public override Shader Shader => factory.GetVarient(
-            NormalTexture != BaseTexture.Gray, 
-            SpecularTexture != BaseTexture.Black, 
-            IlluminationTexture != BaseTexture.Black
+            NormalTexture != Texture.Gray, 
+            SpecularTexture != Texture.Black, 
+            IlluminationTexture != Texture.Black
         );
 
         public DeferredRenderingGeoMaterial()
@@ -69,11 +69,11 @@ namespace GLOOP.Rendering
             shader.SpecularTexture = SpecularTexture.BindlessHandle;
             shader.IlluminationTexture = IlluminationTexture.BindlessHandle;
 #else
-            BaseTexture.Use(Textures, TextureUnit.Texture0);
+            Texture.Use(Textures, TextureUnit.Texture0);
 #endif
         }
 
-        public override void SetTextures(Texture diffuse, Texture normal, Texture specular, Texture illumination)
+        public override void SetTextures(Texture2D diffuse, Texture2D normal, Texture2D specular, Texture2D illumination)
         {
             DiffuseTexture = diffuse;
             NormalTexture = normal;

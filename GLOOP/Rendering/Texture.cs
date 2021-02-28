@@ -1,159 +1,83 @@
-﻿using System;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Runtime.InteropServices;
-using GLOOP.Extensions;
-using OpenTK.Graphics.OpenGL4;
-using Pfim;
-using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
+﻿using OpenTK.Graphics.OpenGL4;
+using System;
+using System.Linq;
+using static OpenTK.Graphics.OpenGL4.GL;
+using static OpenTK.Graphics.OpenGL4.GL.Arb;
 
 namespace GLOOP.Rendering
 {
-    public class Texture : BaseTexture
+    public abstract class Texture : IDisposable
     {
-        public Texture(string path, PixelInternalFormat internalFormat = PixelInternalFormat.Rgba)
-            : this(path, new TextureParams() { InternalFormat = internalFormat })
-        {}
+        private static readonly int[] BoundTextures = new int[Globals.MaxTextureUnits];
+        private static readonly int[] TexturesToBind = new int[BoundTextures.Length];
 
-        public Texture(string path, TextureParams settings)
-            : base(TextureTarget.Texture2D)
+        public static readonly Texture2D Error = TextureCache.Get("assets/textures/error.png");
+        public static readonly Texture2D Gray = TextureCache.Get("assets/textures/gray.png");
+        public static readonly Texture2D Black = TextureCache.Get("assets/textures/black.png");
+
+
+        private Lazy<ulong> bindlessHandle;
+        public readonly int Handle = GenTexture();
+        public ulong BindlessHandle => bindlessHandle.Value;
+        public readonly TextureTarget Type;
+
+        public Texture(TextureTarget type)
         {
-            Use(); // Might not be needed
+            Type = type;
 
-            if (string.IsNullOrEmpty(settings.Name))
-                settings.Name = Path.GetFileName(path);
+            bindlessHandle = new Lazy<ulong>(makeTexureResident);
+        }
 
-            if (Path.GetExtension(path).ToLower().EndsWith("dds"))
+        public void Dispose()
+        {
+            DeleteTexture(Handle);
+        }
+
+        public void Use(TextureUnit unit = TextureUnit.Texture0)
+        {
+            Use(Type, Handle, unit);
+        }
+
+        public static void Use(TextureTarget type, int handle, TextureUnit unit = TextureUnit.Texture0)
+        {
+            if (BoundTextures[unit - TextureUnit.Texture0] != handle)
             {
-                using var image = (CompressedDds)Pfim.Pfim.FromFile(path, new PfimConfig(decompress: false));
-                var data = Marshal.UnsafeAddrOfPinnedArrayElement(image.Data, 0);
-                settings.Data = data;
-                settings.CompressedDataLength = image.Data.Length;
-                settings.InternalFormat = image.Header.PixelFormat.FourCC switch
-                {
-                    CompressionAlgorithm.D3DFMT_DXT1 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext,
-                    CompressionAlgorithm.D3DFMT_DXT3 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext,
-                    CompressionAlgorithm.D3DFMT_DXT5 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext,
-                    CompressionAlgorithm.ATI2 => (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext, // Not sure
-                    CompressionAlgorithm.BC5U => (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext
-                };
-                
-                construct(image.Width, image.Height, settings);
-            }
-            else
-            {
-                using var image = new Bitmap(path);
-                var data = image.LockBits(
-                    new Rectangle(0, 0, image.Width, image.Height),
-                    ImageLockMode.ReadOnly,
-                    System.Drawing.Imaging.PixelFormat.Format32bppArgb
-                );
+                ActiveTexture(unit);
+                BindTexture(type, handle);
 
-                settings.PixelFormat = PixelFormat.Bgra;
-                settings.Data = data.Scan0;
-                construct(image.Width, image.Height, settings);
+                BoundTextures[unit - TextureUnit.Texture0] = handle;
             }
         }
 
-        public Texture(int width, int height, TextureParams settings)
-            : base(TextureTarget.Texture2D)
+        public static void Use(Texture2D[] textures, TextureUnit firstUnit)
         {
-            construct(width, height, settings);
-        }
-        
-        private void construct(int width, int height, TextureParams settings)
-        {
-            Use();
-
-            var name = settings.Name;
-            if (!string.IsNullOrEmpty(name))
+            var first = firstUnit - TextureUnit.Texture0;
+            var i = first;
+            var anyChanges = false;
+            foreach (var tex in textures)
             {
-                name = name.TrimLabelLength();
-                GL.ObjectLabel(ObjectLabelIdentifier.Texture, Handle, name.Length, name);
+                var handle = tex.Handle;
+                TexturesToBind[i] = handle;
+                anyChanges |= BoundTextures[i + first] != handle;
+                i++;
             }
 
-            int numPixels = 0;
-            if (settings.CompressedDataLength > 0)
-            {
-                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBaseLevel, 0);
-                var compressedBytesPerBlock = settings.InternalFormat switch
-                {
-                    PixelInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext => 8,
-                    PixelInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext => 16,
-                    PixelInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext => 16,
-                    (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext => 16
-                };
-                var offset = 0;
-                var i = 0;
-                while (offset < settings.CompressedDataLength)
-                {
-                    var size = Math.Max(1, (width + 3) / 4) * Math.Max(1, (height + 3) / 4) * compressedBytesPerBlock;
-                    GL.CompressedTexImage2D(
-                        TextureTarget.Texture2D,
-                        i,
-                        (InternalFormat)settings.InternalFormat,
-                        width,
-                        height,
-                        0,
-                        size,
-                        settings.Data + offset
-                    );
+            if (!anyChanges)
+                return;
 
-                    numPixels += width * height;
+            BindTextures(first, textures.Length, TexturesToBind);
 
-                    offset += size;
-                    i++;
-                    width = Math.Max(1, width / 2);
-                    height = Math.Max(1, height / 2);
-                }
-                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMaxLevel, i);
-            }
-            else
-            {
-                GL.TexImage2D(
-                    TextureTarget.Texture2D,
-                    0,
-                    settings.InternalFormat,
-                    width,
-                    height,
-                    0,
-                    settings.PixelFormat,
-                    PixelType.UnsignedByte,
-                    settings.Data
-                );
-                numPixels = width * height;
-            }
-
-            configureParams(settings.WrapMode, settings.MinFilter, settings.MagFilter);
-
-            if (settings.GenerateMips)
-                GenerateMips();
-
-            ResourceManager.Add(this);
-
-            Metrics.TexturesBytesUsed += (ulong)(settings.InternalFormat.GetSizeInBytes() * numPixels);
-            Metrics.TextureCount++;
+            for (i = 0; i < textures.Length; i++)
+                BoundTextures[i + first] = TexturesToBind[i];
         }
 
-        private void GenerateMips()
+        private ulong makeTexureResident()
         {
             Use();
 
-            GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+            var handle = (ulong)GetTextureHandle(Handle);
+            MakeTextureHandleResident(handle);
+            return handle;
         }
-
-        private static void configureParams(TextureWrapMode repeatMode, TextureMinFilter minFilter, TextureMinFilter magFilter)
-        {
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)minFilter);
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)magFilter);
-
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)repeatMode);
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)repeatMode);
-
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBorderColor, new[] { 0f, 0f, 0f });
-        }
-
-
     }
 }

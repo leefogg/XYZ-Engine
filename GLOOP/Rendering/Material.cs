@@ -11,7 +11,7 @@ namespace GLOOP.Rendering
 
         public Matrix4 ModelMatrix = Matrix4.Identity;
 
-        public virtual void SetTextures(Texture diffuse, Texture normal, Texture specular, Texture illumination)
+        public virtual void SetTextures(Texture2D diffuse, Texture2D normal, Texture2D specular, Texture2D illumination)
         {
 
         }

@@ -9,7 +9,7 @@ namespace GLOOP.Rendering
     {
         private readonly int Handle;
         private readonly int RBOHandle;
-        public readonly Texture[] ColorBuffers;
+        public readonly Texture2D[] ColorBuffers;
         public readonly int Width, Height;
 
 
@@ -34,13 +34,13 @@ namespace GLOOP.Rendering
                 GL.ObjectLabel(ObjectLabelIdentifier.Framebuffer, Handle, name.Length, name);
             }
 
-            ColorBuffers = new Texture[settings.Length];
+            ColorBuffers = new Texture2D[settings.Length];
             var enums = new DrawBuffersEnum[ColorBuffers.Length];
             for (var i = 0; i < ColorBuffers.Length; i++)
             {
                 var attachmentName = string.IsNullOrEmpty(name) ? null : (name + i).TrimLabelLength();
                 settings[i].Name = attachmentName;
-                ColorBuffers[i] = new Texture(width, height, settings[i]);
+                ColorBuffers[i] = new Texture2D(width, height, settings[i]);
                 GL.FramebufferTexture2D(
                     FramebufferTarget.Framebuffer,
                     FramebufferAttachment.ColorAttachment0 + i,

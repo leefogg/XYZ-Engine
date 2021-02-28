@@ -9,7 +9,7 @@ namespace GLOOP.Rendering
     public class FullbrightMaterial : Material
     {
         public Matrix4 ProjectionMatrix, ViewMatrix;
-        public Texture diffuse;
+        public Texture2D diffuse;
         private FullbrightShader shader;
 
         public override Shader Shader => shader;
@@ -19,7 +19,7 @@ namespace GLOOP.Rendering
             this.shader = shader;
         }
 
-        public override void SetTextures(Texture diffuse, Texture normal, Texture specular, Texture illumination)
+        public override void SetTextures(Texture2D diffuse, Texture2D normal, Texture2D specular, Texture2D illumination)
         {
             this.diffuse = diffuse;
         }

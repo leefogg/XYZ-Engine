@@ -9,7 +9,7 @@ using static OpenTK.Graphics.OpenGL.GL;
 
 namespace GLOOP.Rendering
 {
-    public class TextureArray : BaseTexture
+    public class TextureArray : Texture
     {
         private TextureShape shape;
 
