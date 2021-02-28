@@ -24,7 +24,7 @@ namespace GLOOP.Rendering
 
             if (!string.IsNullOrEmpty(name))
             {
-                name = name[..Math.Min(name.Length, Globals.MaxLabelLength)];
+                name = name.TrimLabelLength();
                 GL.ObjectLabel(ObjectLabelIdentifier.Buffer, Handle, name.Length, name);
             }
         }

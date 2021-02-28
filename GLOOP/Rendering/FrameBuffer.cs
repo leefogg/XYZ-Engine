@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using GLOOP.Extensions;
 using OpenTK.Graphics.OpenGL4;
 
 namespace GLOOP.Rendering
@@ -27,8 +28,9 @@ namespace GLOOP.Rendering
             Handle = GL.GenFramebuffer();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, Handle);
 
-            if (!string.IsNullOrEmpty(name)) {
-                name = name[..Math.Min(name.Length, Globals.MaxLabelLength)];
+            if (!string.IsNullOrEmpty(name))
+            {
+                name = name.TrimLabelLength();
                 GL.ObjectLabel(ObjectLabelIdentifier.Framebuffer, Handle, name.Length, name);
             }
 
@@ -36,7 +38,7 @@ namespace GLOOP.Rendering
             var enums = new DrawBuffersEnum[ColorBuffers.Length];
             for (var i = 0; i < ColorBuffers.Length; i++)
             {
-                var attachmentName = string.IsNullOrEmpty(name) ? null : name[..Math.Min(name.Length, Globals.MaxLabelLength - 2)] + i;
+                var attachmentName = string.IsNullOrEmpty(name) ? null : (name + i).TrimLabelLength();
                 settings[i].Name = attachmentName;
                 ColorBuffers[i] = new Texture(width, height, settings[i]);
                 GL.FramebufferTexture2D(

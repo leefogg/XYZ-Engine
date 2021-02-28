@@ -69,7 +69,7 @@ namespace GLOOP.Rendering
             var name = settings.Name;
             if (!string.IsNullOrEmpty(name))
             {
-                name = name[..Math.Min(name.Length, Globals.MaxLabelLength)];
+                name = name.TrimLabelLength();
                 GL.ObjectLabel(ObjectLabelIdentifier.Texture, Handle, name.Length, name);
             }
 

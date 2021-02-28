@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using GLOOP.Extensions;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -22,9 +23,10 @@ namespace GLOOP.Rendering
             Handle = handle;
 
             Use();
+
             if (!string.IsNullOrEmpty(name))
             {
-                name = name[..Math.Min(name.Length, Globals.MaxLabelLength)];
+                name = name.TrimLabelLength();
                 GL.ObjectLabel(ObjectLabelIdentifier.Program, Handle, name.Length, name);
             }
 

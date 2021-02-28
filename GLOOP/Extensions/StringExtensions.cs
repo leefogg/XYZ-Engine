@@ -43,5 +43,12 @@ namespace GLOOP.Extensions
             var w = float.Parse(parts[3]);
             return new Quaternion(x, y, z, w);
         }
+
+        public static string TrimLabelLength(this string label)
+        {
+            if (!string.IsNullOrEmpty(label))
+                return label[..Math.Min(label.Length, Globals.MaxLabelLength)];
+            return label;
+        }
     }
 }

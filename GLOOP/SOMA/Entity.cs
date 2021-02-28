@@ -68,7 +68,7 @@ namespace GLOOP.SOMA
                 }
                 else
                 {
-                    Console.WriteLine("Inconsistent meshes in model");
+                    //Console.WriteLine("Inconsistent meshes in model");
                 }
             }
             //TODO: Implement UserDefinedVariables posOffset, rotOffset, scaleOffset

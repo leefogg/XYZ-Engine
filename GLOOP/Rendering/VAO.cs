@@ -4,7 +4,6 @@ using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
 
 namespace GLOOP.Rendering
@@ -81,9 +80,11 @@ namespace GLOOP.Rendering
 
             GL.BindVertexArray(Handle);
 
+            vboName = vboName.TrimLabelLength();
             GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
             GL.ObjectLabel(ObjectLabelIdentifier.Buffer, VBO, vboName.Length, vboName);
 
+            eboName = eboName.TrimLabelLength();
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, EBO);
             GL.ObjectLabel(ObjectLabelIdentifier.Buffer, EBO, eboName.Length, eboName);
 
