@@ -104,12 +104,22 @@ namespace GLOOP.SOMA
 
                 diffusePath = Path.ChangeExtension(diffusePath, extension);
 
-                var diffuseName = Path.GetFileNameWithoutExtension(diffusePath);
-                diffusePath = Path.Combine(texturesFolder, Path.GetFileName(diffusePath));
-                if (File.Exists(diffusePath))
-                    diffuseTex = TextureCache.Get(diffusePath, PixelInternalFormat.CompressedRgbaS3tcDxt5Ext);
+                string diffuseName;
+                if (diffusePath != null)
+                {
+                    diffuseName = Path.GetFileNameWithoutExtension(diffusePath);
+                    diffusePath = Path.Combine(texturesFolder, Path.GetFileName(diffusePath));
+                    if (File.Exists(diffusePath))
+                        diffuseTex = TextureCache.Get(diffusePath, PixelInternalFormat.CompressedRgbaS3tcDxt5Ext);
+                } 
+                else
+                {
+                    diffuseTex = BaseTexture.Error;
+                    diffuseName = string.Empty;
+                }
 
                 var normNames = new[] {
+                    Path.GetFileNameWithoutExtension(normalPath ?? ""),
                     diffuseName + "_nrm",
                     diffuseName + "_norm",
                     diffuseName + "_norm",
