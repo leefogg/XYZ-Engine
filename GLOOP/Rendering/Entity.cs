@@ -103,7 +103,7 @@ namespace GLOOP.Rendering
                     if (!mesh.HasTextureCoords(0))
                         throw new Exception("No texture coords");
                     geo.UVs = mesh.TextureCoordinateChannels[0].Select(uv => new Vector2(uv.X, uv.Y)).ToList();
-                    geo.Indicies = new List<int>(mesh.GetIndices());
+                    geo.Indicies = mesh.GetIndices().Cast<uint>().ToList();
                     geo.Normals = mesh.Normals.Select(n => new Vector3(n.X, n.Y, n.Z)).ToList();
                     if (mesh.HasTangentBasis)
                         geo.Tangents = mesh.Tangents.Select(n => new Vector3(n.X, n.Y, n.Z)).ToList();

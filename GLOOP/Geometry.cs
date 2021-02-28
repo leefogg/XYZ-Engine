@@ -17,7 +17,7 @@ namespace GLOOP
         public List<Vector2> UVs;
         public List<Vector3> Normals;
         public List<Vector3> Tangents;
-        public List<int> Indicies;
+        public List<uint> Indicies;
 
         public void NormalizeScale()
         {
@@ -57,9 +57,9 @@ namespace GLOOP
         {
             Tangents = new List<Vector3>();
             for (var v=0; v < Indicies.Count;) {
-                var a = Indicies[v++];
-                var b = Indicies[v++];
-                var c = Indicies[v++];
+                var a = (int)Indicies[v++];
+                var b = (int)Indicies[v++];
+                var c = (int)Indicies[v++];
                 Tangents.Add(calculateVertexTangent(a, b, c));
                 Tangents.Add(calculateVertexTangent(b, c, a));
                 Tangents.Add(calculateVertexTangent(c, a, b));
@@ -93,9 +93,9 @@ namespace GLOOP
             Normals.Clear();
             for (var v = 0; v < Indicies.Count;)
             {
-                var pos1 = Positions[Indicies[v++]];
-                var pos2 = Positions[Indicies[v++]];
-                var pos3 = Positions[Indicies[v++]];
+                var pos1 = Positions[(int)Indicies[v++]];
+                var pos2 = Positions[(int)Indicies[v++]];
+                var pos3 = Positions[(int)Indicies[v++]];
                 //var normal = getFaceNormal(pos1, pos2, pos3);
                 //Normals.Add(normal);
                 //Normals.Add(normal);

@@ -57,7 +57,7 @@ namespace GLOOP
             {
                 Positions = mesh.Vertices.Select(v => new Vector3(v.X, v.Y, v.Z)).ToList(),
                 UVs = mesh.TextureCoordinateChannels[0].Select(uv => new Vector2(uv.X, uv.Y)).ToList(),
-                Indicies = new List<int>(mesh.GetIndices()),
+                Indicies = mesh.GetIndices().Cast<uint>().ToList(),
                 Normals = mesh.Normals.Select(n => new Vector3(n.X, n.Y, n.Z)).ToList(),
                 Tangents = mesh.Tangents.Select(n => new Vector3(n.X, n.Y, n.Z)).ToList()
             };
@@ -92,7 +92,7 @@ namespace GLOOP
                 new Vector3(0,0,1),
                 new Vector3(0,0,1),
             };
-            geo.Indicies = new List<int>() {
+            geo.Indicies = new List<uint>() {
                 0, 1, 3,
                 1, 2, 3
             };
@@ -105,7 +105,7 @@ namespace GLOOP
         {
             var geo = new Geometry()
             {
-                Indicies = new List<int> 
+                Indicies = new List<uint> 
                 {
                     3, 1, 0,
                     3, 2, 1

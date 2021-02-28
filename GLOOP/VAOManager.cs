@@ -40,7 +40,7 @@ namespace GLOOP
 
             return Create(
                 shape,
-                Math.Max(6 * sizeof(uint) * 1024 * 1024, requiredIndiciesBytes),
+                Math.Max(6 * sizeof(ushort) * 1024 * 1024, requiredIndiciesBytes),
                 Math.Max(45 * sizeof(float) * 1024 * 1024, requiredVertciesBytes)
             );
         }
@@ -70,13 +70,13 @@ namespace GLOOP
 
         public static VirtualVAO Get(
             VAOShape shape,
-            IEnumerable<int> vertexIndicies,
+            IEnumerable<uint> vertexIndicies,
             IEnumerable<Vector3> vertexPositions,
             IEnumerable<Vector2> vertexUVs,
             IEnumerable<Vector3> vertexNormals,
             IEnumerable<Vector3> vertexTangents)
         {
-            var estimatedNumIndicies = vertexIndicies.Count() * sizeof(uint);
+            var estimatedNumIndicies = vertexIndicies.Count() * sizeof(ushort);
             var estimatedNumVertcies = shape.NumElements * sizeof(float) * vertexPositions.Count();
             var alloc = GetOrCreateAllocation(
                 shape, 

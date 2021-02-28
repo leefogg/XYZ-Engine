@@ -365,7 +365,7 @@ namespace GLOOP.Tests
 
                 GL.MultiDrawElementsIndirect(
                     OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles,
-                    DrawElementsType.UnsignedInt,
+                    DrawElementsType.UnsignedShort,
                     drawCommandPtr,
                     batchSize,
                     0
@@ -444,7 +444,7 @@ namespace GLOOP.Tests
                 var command = models[i].VAO.description;
                 drawCommands[i] = new DrawElementsIndirectData(
                     command.NumIndexes,
-                    command.FirstIndex / sizeof(uint),
+                    command.FirstIndex / sizeof(ushort),
                     command.BaseVertex,
                     command.NumInstances,
                     i

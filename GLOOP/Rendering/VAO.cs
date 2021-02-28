@@ -116,7 +116,7 @@ namespace GLOOP.Rendering
         }
 
         public VAO(
-            IEnumerable<int> vertexIndicies,
+            IEnumerable<uint> vertexIndicies,
             IEnumerable<Vector3> vertexPositions,
             IEnumerable<Vector2> vertexUVs,
             IEnumerable<Vector3> vertexNormals,
@@ -126,7 +126,7 @@ namespace GLOOP.Rendering
         {
             NumIndicies = vertexIndicies.Count();
 
-            Allocate(NumIndicies * sizeof(uint), Shape.NumElements * sizeof(float) * vertexPositions.Count());
+            Allocate(NumIndicies * sizeof(ushort), Shape.NumElements * sizeof(float) * vertexPositions.Count());
             var indiciesOffset = 0;
             var vertciesOffset = 0;
             FillSubData(
@@ -143,13 +143,23 @@ namespace GLOOP.Rendering
         public (int, int, int) FillSubData(
             int firstIndex,
             int firstVertex,
-            IEnumerable<int> vertexIndicies, 
+            IEnumerable<uint> vertexIndicies, 
             IEnumerable<Vector3> vertexPositions,
             IEnumerable<Vector2> vertexUVs,
             IEnumerable<Vector3> vertexNormals, 
             IEnumerable<Vector3> vertexTangents)
         {
-            var indicies = vertexIndicies.ToArray();
+            var indicies = vertexIndicies.Select(x => (ushort)x).ToArray();
+            /*
+            var type = getSmallestDataFormat((uint)vertexIndicies.Max()).ToString();
+            switch (type)
+            {
+                case "System.Byte": byteSize++; break;
+                case "System.UInt16": shortSize++; break;
+                case "System.UInt32": intSize++; break;
+                default: break;
+            }
+            */
             var indiciesSize = indicies.SizeInBytes();
             GL.NamedBufferSubData(EBO, (IntPtr)firstIndex, indiciesSize, indicies);
 
@@ -224,9 +234,9 @@ namespace GLOOP.Rendering
             Bind();
 
             if (numInstances > 1)
-                GL.DrawElementsInstanced(renderMode, NumIndicies, DrawElementsType.UnsignedInt, (IntPtr)0, numInstances);
+                GL.DrawElementsInstanced(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0, numInstances);
             else
-                GL.DrawElements(renderMode, NumIndicies, DrawElementsType.UnsignedInt, (IntPtr)0);
+                GL.DrawElements(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0);
 
             //GL.DrawElementsBaseVertex(
             //    renderMode,
