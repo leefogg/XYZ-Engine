@@ -337,8 +337,10 @@ namespace GLOOP.Tests
 
             var drawCommandPtr = (IntPtr)0;
             var modelMatrixPtr = 0;
+            var materialPtr = 0;
             var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
             var matrixSize = Marshal.SizeOf<Matrix4>();
+            var materialSize = Marshal.SizeOf<DeferredGeoMaterial>();
 
             // TODO: Possibly put model matricies into a UBO. To do this the batchSize below would need a maximum to fit modelMatricies into uniform buffer.
             //GL.BindBuffer(BufferTarget.ShaderStorageBuffer, modelMatriciesSSBO);
@@ -365,6 +367,7 @@ namespace GLOOP.Tests
                 }
 
                 matrixBuffer.BindRange(modelMatrixPtr, 1, batchSize * matrixSize);
+                materialBuffer.BindRange(materialPtr, 2, batchSize * materialSize);
                 GL.MultiDrawElementsIndirect(
                     OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles,
                     DrawElementsType.UnsignedShort,
@@ -384,6 +387,7 @@ namespace GLOOP.Tests
 
                 drawCommandPtr += batchSize * commandSize;
                 modelMatrixPtr += batchSize * matrixSize;
+                materialPtr += batchSize * materialSize;
                 i++;
             }
 

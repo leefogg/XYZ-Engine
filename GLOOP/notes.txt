@@ -45,11 +45,12 @@ TODO:
 	Graphics
 		albedo color.w is translucentcy
 
+	Detail textures
+	Terrain
 	Time sections
 	Fix rotation of spotlights
 	Get line cube finished
 	Line pyramid for point lights
-	point light rotations
 	Refactor location of code into project layers and seperate projects for examples
 	Add auditing
 		Add size to Buffer class
