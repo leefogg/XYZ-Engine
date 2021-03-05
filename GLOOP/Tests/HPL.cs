@@ -50,6 +50,7 @@ namespace GLOOP.Tests
         private bool debugLightBuffer;
         private bool useFXAA = false;
         private bool useSSAO = false;
+        private bool showBoundingBoxes = true;
 
         private Buffer<Matrix4> cameraBuffer;
         private Buffer<SpotLight> spotLightsBuffer;
@@ -69,8 +70,12 @@ namespace GLOOP.Tests
 
         private List<QueryPair> GeoStageQueries = new List<QueryPair>();
 
+        private readonly Vector3
+            CustomMapCameraPosition = new Vector3(6.3353596f, 1.6000088f, 8.1601305f),
+            PhiMapCameraPosition = new Vector3(-17.039896f, 14.750014f, 64.48185f);
+
         public HPL(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(new Vector3(-17.039896f, 14.750014f, 64.48185f), new Vector3(), 90);
+            Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90);
         }
 
         protected override void OnLoad() {
@@ -325,6 +330,9 @@ namespace GLOOP.Tests
 
             FinishDeferredRendering(projectionMatrix, viewMatrix);
 
+            if (showBoundingBoxes)
+                scene.RenderBoundingBoxes(Camera.ProjectionMatrix, Camera.ViewMatrix);
+            
             SwapBuffers();
             NewFrame();
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
@@ -737,13 +745,31 @@ namespace GLOOP.Tests
 
                     DoBloomPass();
 
-                    // Blit to default frame buffer
-                    GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-                    shader = useFXAA ? FXAAShader : ColorCorrectionShader;
+                    StagingBuffer2.Use();
+                    shader = ColorCorrectionShader;
                     shader.Use();
                     StagingBuffer1.ColorBuffers[0].Use(TextureUnit.Texture0);
                     shader.Set("Texture", TextureUnit.Texture0);
                     Primitives.Quad.Draw();
+
+                    if (useFXAA)
+                    {
+                        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0);
+                        shader = FXAAShader;
+                        shader.Use();
+                        StagingBuffer2.ColorBuffers[0].Use(TextureUnit.Texture0);
+                        shader.Set("Texture", TextureUnit.Texture0);
+                        Primitives.Quad.Draw();
+
+                    } 
+                    else
+                    {
+                        // Blit to default frame buffer
+                        StagingBuffer2.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
+                    }
+                    
+                    // Blit to default frame buffer
+                    GBuffers.BlitTo(0, Width, Height, ClearBufferMask.DepthBufferBit);
                 }
             }
 
@@ -981,14 +1007,21 @@ namespace GLOOP.Tests
                     debugGBufferTexture = (int)GBufferTexture.Specular;
                 if (input.IsKeyReleased(Keys.D5))
                     debugGBufferTexture = (int)GBufferTexture.Illumination;
+
                 if (input.IsKeyReleased(Keys.D9))
                     debugLightBuffer = !debugLightBuffer;
+
                 if (input.IsKeyReleased(Keys.F))
                     useFXAA = !useFXAA;
+
                 if (input.IsKeyReleased(Keys.O))
                     useSSAO = !useSSAO;
+
                 if (input.IsKeyPressed(Keys.V))
-                    VSync = VSync == VSyncMode.Off ? VSyncMode.On : VSyncMode.Off; 
+                    VSync = VSync == VSyncMode.Off ? VSyncMode.On : VSyncMode.Off;
+
+                if (input.IsKeyPressed(Keys.B))
+                    showBoundingBoxes = !showBoundingBoxes;
             }
         }
 

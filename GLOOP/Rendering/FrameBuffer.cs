@@ -68,7 +68,7 @@ namespace GLOOP.Rendering
         {
             var RBOHandle = GL.GenRenderbuffer();
             GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, RBOHandle);
-            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent16, width, height);
+            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent, width, height);
             GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0);
 
             GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, RBOHandle);
@@ -87,6 +87,22 @@ namespace GLOOP.Rendering
         public void Use()
         {
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, Handle);
+        }
+
+        public void BlitTo(FrameBuffer destination, ClearBufferMask mask)
+        {
+            BlitTo(destination.Height, destination.Width, destination.Height, mask);
+        }
+        public void BlitTo(int handle, int width, int height, ClearBufferMask mask)
+        {
+            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, Handle);
+            GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, handle);
+            GL.BlitFramebuffer(
+                0, 0, Width, Height,
+                0, 0, width, height,
+                mask,
+                BlitFramebufferFilter.Nearest
+            );
         }
 
         public void Dispose()

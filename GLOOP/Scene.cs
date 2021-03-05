@@ -16,13 +16,15 @@ namespace GLOOP
         public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
             foreach (var batch in Batches)
-            {
                 foreach (var model in batch.Models)
-                {
                     model.Render(projectionMatrix, viewMatrix);
-                    // model.RenderBoundingBox(projectionMatrix, viewMatrix);
-                }
-            }
+        }
+
+        public void RenderBoundingBoxes(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        {
+            foreach (var batch in Batches)
+                foreach (var model in batch.Models)
+                    model.RenderBoundingBox(projectionMatrix, viewMatrix);
         }
     }
 }

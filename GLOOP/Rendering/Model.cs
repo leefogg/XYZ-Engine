@@ -9,6 +9,8 @@ namespace GLOOP.Rendering
 {
     public class Model
     {
+        private static readonly SingleColorMaterial boundingBoxMaterial = new SingleColorMaterial(Shader.SingleColorShader) { Color = new Vector4(1) };
+
         public Transform Transform = Transform.Default;
         public VirtualVAO VAO { get; set; }
         public Material Material { get; }
@@ -37,6 +39,15 @@ namespace GLOOP.Rendering
             Material.Commit();
            
             VAO.Draw();
+        }
+
+        public void RenderBoundingBox(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        {
+            var bb = VAO.BoundingBox;
+            var modelMatrix = MathFunctions.CreateModelMatrix(bb.Center + Transform.Position, Transform.Rotation, bb.Size);
+            boundingBoxMaterial.SetCameraUniforms(projectionMatrix, viewMatrix, modelMatrix);
+            boundingBoxMaterial.Commit();
+            Primitives.Cube.Draw(PrimitiveType.Lines);
         }
 
         public Model Clone() => new Model(Transform, VAO, Material.Clone());
