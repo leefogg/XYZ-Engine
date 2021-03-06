@@ -76,6 +76,8 @@ namespace GLOOP.Tests
 
         public HPL(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings) {
             Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90);
+            Camera.Width = Width;
+            Camera.Height = Height;
         }
 
         protected override void OnLoad() {
@@ -219,7 +221,6 @@ namespace GLOOP.Tests
                 }
             }
             */
-
             var assimp = new AssimpContext();
             var beforeMapLoad = DateTime.Now;
             var map = new Map(
@@ -470,7 +471,7 @@ namespace GLOOP.Tests
             var i = 0;
             foreach (var batch in scene.Batches)
                 foreach (var model in batch.Models)
-                    ModelMatricies[i++] = MathFunctions.CreateModelMatrix(model.Transform.Position, model.Transform.Rotation, model.Transform.Scale);
+                    ModelMatricies[i++] = model.Transform.Matrix;
 
             matrixBuffer.Update(ModelMatricies);
         }
@@ -768,7 +769,7 @@ namespace GLOOP.Tests
                         // Blit to default frame buffer
                         StagingBuffer2.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
                     }
-                    
+
                     // Blit to default frame buffer
                     GBuffers.BlitTo(0, Width, Height, ClearBufferMask.DepthBufferBit);
                 }

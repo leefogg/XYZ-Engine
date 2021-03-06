@@ -15,6 +15,7 @@ namespace GLOOP
         private float znear = 0.1f;
         private float zfar = 1000;
         private float fov = 90;
+        private Vector2i shape = new Vector2i();
 
         public float ZNear
         {
@@ -44,7 +45,25 @@ namespace GLOOP
             }
         }
 
-        private int Width, Height;
+        public int Width
+        {
+            get => shape.X;
+            set
+            {
+                shape.X = value;
+                lazyProjectionMatrix.Expire();
+            }
+        }
+
+        public int Height
+        {
+            get => shape.Y;
+            set
+            {
+                shape.Y = value;
+                lazyProjectionMatrix.Expire();
+            }
+        }
 
         public Matrix4 ViewMatrix => lazyViewMatrix.Value;
         protected Lazy<Matrix4> lazyViewMatrix;
@@ -69,7 +88,6 @@ namespace GLOOP
         {
             Width = size.X;
             Height = size.Y;
-            lazyProjectionMatrix.Expire();
         }
 
         public abstract void Update(KeyboardState keyboardState);

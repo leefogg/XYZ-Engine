@@ -19,5 +19,7 @@ namespace GLOOP.Rendering
             Scale = scale;
             Rotation = rotation;
         }
+
+        public Matrix4 Matrix => MathFunctions.CreateModelMatrix(Position, Rotation, Scale);
     }
 }
