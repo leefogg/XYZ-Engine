@@ -50,7 +50,7 @@ namespace GLOOP.Tests
         private bool debugLightBuffer;
         private bool useFXAA = false;
         private bool useSSAO = false;
-        private bool showBoundingBoxes = true;
+        private bool showBoundingBoxes = false;
 
         private Buffer<Matrix4> cameraBuffer;
         private Buffer<SpotLight> spotLightsBuffer;
@@ -199,6 +199,7 @@ namespace GLOOP.Tests
             var tau = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm";
             var phi = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm";
             var custom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm";
+            var boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
             var mapToLoad = phi;
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
 

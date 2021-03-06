@@ -9,7 +9,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
-using static OpenTK.Graphics.OpenGL.GL;
 
 namespace GLOOP.SOMA
 {
