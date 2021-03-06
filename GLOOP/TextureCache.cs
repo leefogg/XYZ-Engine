@@ -43,16 +43,17 @@ namespace GLOOP
                 return tex;
 
             try { 
+                var shape = new TextureParams()
+                {
+                    MinFilter = minFilter,
+                    MagFilter = magFilter,
+                    WrapMode = wrapMode,
+                    GenerateMips = hasMipMaps,
+                    InternalFormat = format
+                };
                 return Textures[path] = new Texture2D(
                     path,
-                    new TextureParams()
-                    {
-                        MinFilter = minFilter,
-                        MagFilter = magFilter,
-                        WrapMode = wrapMode,
-                        GenerateMips = hasMipMaps,
-                        InternalFormat = format
-                    }
+                    shape
                 );
             }
             catch (Exception ex)

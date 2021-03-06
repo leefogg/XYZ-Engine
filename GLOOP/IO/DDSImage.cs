@@ -10,13 +10,23 @@ namespace GLOOP.IO
 {
     public static class DDSImage
     {
-        public static IImage Load(string path, TextureParams settings)
+        public static IImage Load(string path, TextureParams settings, bool decompress)
         {
-            var image = (CompressedDds)Pfim.Pfim.FromFile(path, new PfimConfig(decompress: false));
+            var image = Pfim.Pfim.FromFile(path, new PfimConfig(decompress: decompress));
+            if (decompress || image is UncompressedDds)
+            {
+                return loadUncompressed((UncompressedDds)image, settings);
+            }
+            else
+            {
+                return loadCompressed((CompressedDds)image, settings);
+            }
+        }
+
+        private static IImage loadCompressed(CompressedDds image, TextureParams settings)
+        {
             var data = Marshal.UnsafeAddrOfPinnedArrayElement(image.Data, 0);
-            settings.Data = data;
-            settings.CompressedDataLength = image.Data.Length;
-            settings.InternalFormat = image.Header.PixelFormat.FourCC switch
+            var internalFormat = image.Header.PixelFormat.FourCC switch
             {
                 CompressionAlgorithm.D3DFMT_DXT1 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext,
                 CompressionAlgorithm.D3DFMT_DXT3 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext,
@@ -25,7 +35,28 @@ namespace GLOOP.IO
                 CompressionAlgorithm.BC5U => (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext
             };
 
+            settings.InternalFormat = internalFormat;
+            settings.Data = data;
+            settings.CompressedDataLength = image.Data.Length;
             return image;
+        }
+
+        private static IImage loadUncompressed(UncompressedDds uncompressedDDS, TextureParams settings)
+        {
+            var internalFormat = uncompressedDDS.Format switch
+            {
+                ImageFormat.Rgba16 => PixelInternalFormat.Rgba4,
+                ImageFormat.Rgb24 => PixelInternalFormat.Rgb8
+            };
+            var pixelFormat = uncompressedDDS.Format switch
+            {
+                ImageFormat.Rgb24 => PixelFormat.Rgb
+            };
+
+            settings.InternalFormat = internalFormat;
+            settings.PixelFormat = pixelFormat;
+            settings.Data = Marshal.UnsafeAddrOfPinnedArrayElement(uncompressedDDS.Data, 0);
+            return uncompressedDDS;
         }
     }
 }

@@ -21,7 +21,7 @@ namespace GLOOP.Rendering
 
             if (Path.GetExtension(path).ToLower().EndsWith("dds"))
             {
-                using var image = IO.DDSImage.Load(path, settings);
+                using var image = IO.DDSImage.Load(path, settings, false);
                 construct(image.Width, image.Height, settings);
             }
             else
@@ -36,7 +36,7 @@ namespace GLOOP.Rendering
         {
             construct(width, height, settings);
         }
-        
+
         private void construct(int width, int height, TextureParams settings)
         {
             Use();
