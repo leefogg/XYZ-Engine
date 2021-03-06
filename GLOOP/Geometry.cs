@@ -88,19 +88,34 @@ namespace GLOOP
             return tangent;
         }
 
+        // https://www.iquilezles.org/www/articles/normals/normals.htm
         public void CalculateFaceNormals()
         {
             Normals.Clear();
-            for (var v = 0; v < Indicies.Count;)
+            for (int i = 0; i < Positions.Count; i++)
+                Normals.Add(new Vector3(0));
+
+            for (var i = 0; i < Indicies.Count;)
             {
-                var pos1 = Positions[(int)Indicies[v++]];
-                var pos2 = Positions[(int)Indicies[v++]];
-                var pos3 = Positions[(int)Indicies[v++]];
-                //var normal = getFaceNormal(pos1, pos2, pos3);
-                //Normals.Add(normal);
-                //Normals.Add(normal);
-                //Normals.Add(normal);
+                var ia = (int)Indicies[i++];
+                var ib = (int)Indicies[i++];
+                var ic = (int)Indicies[i++];
+
+                var pos1 = Positions[ia];
+                var pos2 = Positions[ib];
+                var pos3 = Positions[ic];
+
+                var e1 = pos1 - pos2;
+                var e2 = pos3 - pos2;
+                var no = Vector3.Cross(e2, e1);
+
+                Normals[ia] += no;
+                Normals[ib] += no;
+                Normals[ic] += no;
             }
+
+            foreach (var normal in Normals)
+                normal.Normalize();
         }
 
         private Vector3 getFaceNormal(Vector3 v1, Vector3 v2, Vector3 v3)
