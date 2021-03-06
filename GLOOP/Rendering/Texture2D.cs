@@ -1,12 +1,7 @@
 ﻿using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
-using System.Runtime.InteropServices;
 using GLOOP.Extensions;
 using OpenTK.Graphics.OpenGL4;
-using Pfim;
-using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
 
 namespace GLOOP.Rendering
 {
@@ -26,32 +21,12 @@ namespace GLOOP.Rendering
 
             if (Path.GetExtension(path).ToLower().EndsWith("dds"))
             {
-                using var image = (CompressedDds)Pfim.Pfim.FromFile(path, new PfimConfig(decompress: false));
-                var data = Marshal.UnsafeAddrOfPinnedArrayElement(image.Data, 0);
-                settings.Data = data;
-                settings.CompressedDataLength = image.Data.Length;
-                settings.InternalFormat = image.Header.PixelFormat.FourCC switch
-                {
-                    CompressionAlgorithm.D3DFMT_DXT1 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext,
-                    CompressionAlgorithm.D3DFMT_DXT3 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext,
-                    CompressionAlgorithm.D3DFMT_DXT5 => PixelInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext,
-                    CompressionAlgorithm.ATI2 => (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext, // Not sure
-                    CompressionAlgorithm.BC5U => (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext
-                };
-                
+                using var image = IO.DDSImage.Load(path, settings);
                 construct(image.Width, image.Height, settings);
             }
             else
             {
-                using var image = new Bitmap(path);
-                var data = image.LockBits(
-                    new Rectangle(0, 0, image.Width, image.Height),
-                    ImageLockMode.ReadOnly,
-                    System.Drawing.Imaging.PixelFormat.Format32bppArgb
-                );
-
-                settings.PixelFormat = PixelFormat.Bgra;
-                settings.Data = data.Scan0;
+                using var image = IO.CommonImage.Load(path, settings);
                 construct(image.Width, image.Height, settings);
             }
         }
