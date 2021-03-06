@@ -24,28 +24,10 @@ namespace GLOOP
         }
 
         private static VAO _sphere;
-        public static VAO Sphere
-        {
-            get
-            {
-                if (_sphere == null)
-                    _sphere = loadSimpleModel("assets/models/sphere.obj", "Internal_Sphere");
-
-                return _sphere;
-            }
-        }
+        public static VAO Sphere => _sphere ??= loadSimpleModel("assets/models/sphere.obj", "Internal_Sphere");
 
         private static VAO _cube;
-        public static VAO Cube
-        {
-            get
-            {
-                if (_cube == null)
-                    _cube = loadSimpleModel("assets/models/cube.obj", "Internal_Cube");
-
-                return _cube;
-            }
-        }
+        public static VAO Cube => _cube ??= loadSimpleModel("assets/models/cube.obj", "Internal_Cube");
 
         private static VAO loadSimpleModel(string path, string VAOName)
         {
