@@ -769,11 +769,11 @@ namespace GLOOP.Tests
                         // Blit to default frame buffer
                         StagingBuffer2.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
                     }
-
-                    // Blit to default frame buffer
-                    GBuffers.BlitTo(0, Width, Height, ClearBufferMask.DepthBufferBit);
                 }
             }
+
+            // Blit to default frame buffer
+            GBuffers.BlitTo(0, Width, Height, ClearBufferMask.DepthBufferBit);
 
             //GL.DepthMask(true);
             GL.Enable(EnableCap.DepthTest);
