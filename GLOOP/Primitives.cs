@@ -13,15 +13,7 @@ namespace GLOOP
     public static class Primitives
     {
         private static VAO _quad;
-        public static VAO Quad
-        {
-            get
-            {
-                if (_quad == null)
-                    _quad = CreateQuad();
-                return _quad;
-            }
-        }
+        public static VAO Quad => _quad ??= CreateQuad();
 
         private static VAO _sphere;
         public static VAO Sphere => _sphere ??= loadSimpleModel("assets/models/sphere.obj", "Internal_Sphere");
@@ -80,6 +72,50 @@ namespace GLOOP
             };
             geo.Scale(new Vector3(TLCorner.X, 1, TLCorner.Y));
 
+            return geo;
+        }
+
+        // https://www.patrykgalach.com/2019/07/29/procedural-terrain-pt1-plane/?cn-reloaded=1
+        public static Geometry CreatePlane(int xSections, int zSections)
+        {
+            var numVerts = (xSections + 1) * (zSections + 1);
+            var numIndicies = xSections * zSections * 2 * 3;
+            var geo = new Geometry
+            {
+                Positions = new List<Vector3>(numVerts),
+                UVs = new List<Vector2>(numVerts),
+                Indicies = new List<uint>(numIndicies)
+            };
+
+            var stepSize = new Vector2(1f / xSections, 1f / zSections);
+            for (int z = 0; z <= zSections; z++)
+            {
+                for (int x = 0; x <= xSections; x++)
+                {
+                    geo.Positions.Add(new Vector3(stepSize.X * z, 0, stepSize.Y * x));
+                    geo.UVs.Add(new Vector2(stepSize.X * z, stepSize.Y * x));
+                }
+            }
+
+            for (int i = 0; i < numIndicies; i++)
+                geo.Indicies.Add(0);
+
+            for (int z = 0; z < zSections; z++)
+            {
+                for (int x = 0; x < xSections; x++)
+                {
+                    var i = (z * xSections + x) * 6;
+
+                    geo.Indicies[i + 0] = (uint)(((z + 1) * (xSections + 1)) + x + 1);
+                    geo.Indicies[i + 1] = (uint)(((z + 1) * (xSections + 1)) + x);
+                    geo.Indicies[i + 2] = (uint)((z * (xSections + 1)) + x);
+                    geo.Indicies[i + 3] = (uint)((z * (xSections + 1)) + x + 1);
+                    geo.Indicies[i + 4] = (uint)(((z + 1) * (xSections + 1)) + x + 1);
+                    geo.Indicies[i + 5] = (uint)((z * (xSections + 1)) + x);
+                }
+            }
+
+            geo.CalculateFaceNormals();
             return geo;
         }
 
