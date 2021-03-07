@@ -929,8 +929,6 @@ namespace GLOOP.Tests
                     debugGBufferTexture = (int)GBufferTexture.Normal;
                 if (input.IsKeyReleased(Keys.D4))
                     debugGBufferTexture = (int)GBufferTexture.Specular;
-                if (input.IsKeyReleased(Keys.D5))
-                    debugGBufferTexture = (int)GBufferTexture.Illumination;
 
                 if (input.IsKeyReleased(Keys.D9))
                     debugLightBuffer = !debugLightBuffer;
@@ -1031,8 +1029,7 @@ namespace GLOOP.Tests
             Diffuse,
             Position,
             Normal,
-            Specular,
-            Illumination
+            Specular
         }
         private struct QueryPair
         {
