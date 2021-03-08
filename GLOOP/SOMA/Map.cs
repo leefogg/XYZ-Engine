@@ -15,6 +15,7 @@ namespace GLOOP.SOMA
     public class Map {
         private const string SOMARoot = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
         public List<HPLEntity> Entities = new List<HPLEntity>();
+        public List<Model> Models = new List<Model>();
         public List<GLOOP.PointLight> PointLights = new List<GLOOP.PointLight>();
         public List<GLOOP.SpotLight> SpotLights = new List<GLOOP.SpotLight>();
 
@@ -24,12 +25,84 @@ namespace GLOOP.SOMA
             loadEntities(mapPath + "_Entity", assimp, material);
             loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
+            loadTerrain(mapPath + "_Terrain", material);
 
             // Sort
             Entities = Entities
                 .OrderByDescending(m => m.IsStatic)
                 //.ThenByDescending(m => m.IsOccluder)
                 .ThenBy(m => m.ResourcePath).ToList();
+        }
+
+        private void loadTerrain(string heightmapPath, DeferredRenderingGeoMaterial material)
+        {
+            var heightMapMaterial = (DeferredRenderingGeoMaterial)material.Clone();
+            heightMapMaterial.DiffuseTexture = new Texture2D(@"c:\png\uv.png");
+
+            var pixelsPerChunk = heightmapPath = @"C:\dds\05_02_ARK_inside.hpm_Terrain_heightmap.dds";
+            var pixelData = IO.DDSImage.GetPixelData(heightmapPath, out var width, out var height);
+            var tex = new Texture2D(heightmapPath);
+
+            // Vertically flip pixel data
+            var heightmap = new byte[pixelData.Length / 3];
+            for (int i = 2; i < pixelData.Length; i += 3)
+                heightmap[i / 3] = pixelData[i];
+
+            var terrainResolution = new Vector2i(width, height);
+            var chunkResolution = new Vector2i(64, 64);
+            var numChunks = new Vector2(terrainResolution.X / chunkResolution.X, terrainResolution.Y / chunkResolution.Y);
+            var terrainSize = new Vector2(64,64);
+            var halfTerrainSize = new Vector3(terrainSize.X / 2, 0, terrainSize.Y / 2);
+            var chunkSize = new Vector3(terrainSize.X / numChunks.X, 10, terrainSize.Y / numChunks.Y);
+            var halfChunkSize = new Vector3(chunkSize.X / 2, 0, chunkSize.Y / 2);
+            var chunkUVScale = new Vector2(1f / numChunks.X, 1f / numChunks.Y);
+
+            for (int z = 0; z < numChunks.Y; z++)
+            {
+                for (int x = 0; x < numChunks.X; x++)
+                {
+                    var chunkPosition = new Vector2i(x, z);
+                    var chunk = GLOOP.Primitives.CreatePlane(chunkResolution.X-1, chunkResolution.Y-1);
+                    chunk.Scale(chunkSize);
+                    chunk.Move(new Vector3(chunkSize.X*x, 0, chunkSize.Z*z) - halfTerrainSize - halfChunkSize);
+                    chunk.UVs = chunk.UVs.Select(uv => uv * chunkUVScale + chunkUVScale * chunkPosition).ToList();
+                    var minUV = chunk.UVs[0];
+                    var maxUV = chunk.UVs[chunk.UVs.Count - 1];
+
+                    var startPixelX = chunkPosition.X * chunkResolution.X;
+                    var startPixelY = chunkPosition.Y * chunkResolution.Y;
+                    startPixelX -= chunkPosition.X;
+                    startPixelY -= chunkPosition.Y;
+
+                    var pixel = startPixelY * terrainResolution.X + startPixelX;
+                    var temp = pixel;
+                    for (int py = 0; py < chunkResolution.Y; py++)
+                    {
+                        for (int px = 0; px < chunkResolution.X; px++)
+                        {
+                            var vertexIndex = py * chunkResolution.X + px;
+
+                            var uv = chunk.UVs[vertexIndex];
+                            uv *= terrainResolution - new Vector2i(1);
+                            temp = (int)uv.Y * terrainResolution.X + (int)uv.X;
+                            
+                            temp = pixel + py * terrainResolution.X + px;
+
+                            var y = heightmap[temp] / 255f;
+                            y *= chunkSize.Y;
+
+                            var vertex = chunk.Positions[vertexIndex];
+                            vertex.Y = y;
+                            chunk.Positions[vertexIndex] = vertex;
+                        }
+                    }
+
+                    chunk.CalculateFaceNormals();
+                    var vao = chunk.ToVirtualVAO($"HeightMap[{x},{z}]");
+                    var model = new Model(Transform.Default, vao, heightMapMaterial);
+                    Models.Add(model);
+                }
+            }
         }
 
         private void loadLights(string lightsPath)
@@ -263,12 +336,12 @@ namespace GLOOP.SOMA
                         materialInstance.SpecularTexture = specularTex;
                         materialInstance.IlluminationTexture = illumTex;
 
-                        var renderable = new Model(Transform.Default, vao, materialInstance);
-                        var model = new HPLEntity(new List<Model> { renderable }, vao.BoundingBox);
-                        model.Transform.Position = plane.Position.ParseVector3();
+                        var model = new Model(Transform.Default, vao, materialInstance);
+                        var ent = new HPLEntity(new List<Model> { model }, vao.BoundingBox);
+                        ent.Transform.Position = plane.Position.ParseVector3();
                         //model.Rot += new OpenTK.Mathematics.Quaternion(plane.Rotation.ParseVector3().Negated());
 
-                        Entities.Add(model);
+                        Entities.Add(ent);
                         success++;
                     }
                     catch (Exception ex) { 
@@ -336,21 +409,24 @@ namespace GLOOP.SOMA
 
         public Scene ToScene()
         {
-            var s = new Scene()
+            var scene = new Scene()
             {
                 PointLights = PointLights,
-                SpotLights = SpotLights
+                SpotLights = SpotLights,
             };
+
+            scene.Models.AddRange(Models);
+
             foreach (var ent in Entities)
             {
                 foreach (var model in ent.Models)
                 {
                     model.Transform = ent.Transform;
-                    s.Models.Add(model);
+                    scene.Models.Add(model);
                 }
             }
 
-            return s;
+            return scene;
         }
     }
 }

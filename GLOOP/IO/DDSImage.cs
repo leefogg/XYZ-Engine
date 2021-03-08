@@ -23,6 +23,14 @@ namespace GLOOP.IO
             }
         }
 
+        public static byte[] GetPixelData(string path, out int width, out int height)
+        {
+            var image = (UncompressedDds)Pfim.Pfim.FromFile(path, new PfimConfig(decompress: true));
+            width = image.Width;
+            height = image.Height;
+            return image.Data;
+        }
+
         private static IImage loadCompressed(CompressedDds image, TextureParams settings)
         {
             var data = Marshal.UnsafeAddrOfPinnedArrayElement(image.Data, 0);
@@ -46,16 +54,19 @@ namespace GLOOP.IO
             var internalFormat = uncompressedDDS.Format switch
             {
                 ImageFormat.Rgba16 => PixelInternalFormat.Rgba4,
-                ImageFormat.Rgb24 => PixelInternalFormat.Rgb8
+                ImageFormat.Rgb24 => PixelInternalFormat.Rgb8,
+                ImageFormat.Rgba32 => PixelInternalFormat.Rgba8
             };
             var pixelFormat = uncompressedDDS.Format switch
             {
-                ImageFormat.Rgb24 => PixelFormat.Rgb
+                ImageFormat.Rgb24 => PixelFormat.Rgb,
+                ImageFormat.Rgba32 => PixelFormat.Rgba
             };
 
             settings.InternalFormat = internalFormat;
             settings.PixelFormat = pixelFormat;
             settings.Data = Marshal.UnsafeAddrOfPinnedArrayElement(uncompressedDDS.Data, 0);
+
             return uncompressedDDS;
         }
     }
