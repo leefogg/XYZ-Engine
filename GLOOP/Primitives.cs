@@ -92,7 +92,7 @@ namespace GLOOP
             {
                 for (int x = 0; x <= xSections; x++)
                 {
-                    geo.Positions.Add(new Vector3(stepSize.X * z, 0, stepSize.Y * x));
+                    geo.Positions.Add(new Vector3(stepSize.X * x, 0, stepSize.Y * z));
                     geo.UVs.Add(new Vector2(stepSize.X * z, stepSize.Y * x));
                 }
             }
@@ -106,12 +106,12 @@ namespace GLOOP
                 {
                     var i = (z * xSections + x) * 6;
 
-                    geo.Indicies[i + 0] = (uint)(((z + 1) * (xSections + 1)) + x + 1);
+                    geo.Indicies[i + 0] = (uint)((z * (xSections + 1)) + x);
                     geo.Indicies[i + 1] = (uint)(((z + 1) * (xSections + 1)) + x);
-                    geo.Indicies[i + 2] = (uint)((z * (xSections + 1)) + x);
-                    geo.Indicies[i + 3] = (uint)((z * (xSections + 1)) + x + 1);
+                    geo.Indicies[i + 2] = (uint)(((z + 1) * (xSections + 1)) + x + 1);
+                    geo.Indicies[i + 3] = (uint)((z * (xSections + 1)) + x);
                     geo.Indicies[i + 4] = (uint)(((z + 1) * (xSections + 1)) + x + 1);
-                    geo.Indicies[i + 5] = (uint)((z * (xSections + 1)) + x);
+                    geo.Indicies[i + 5] = (uint)((z * (xSections + 1)) + x + 1);
                 }
             }
 
