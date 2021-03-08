@@ -51,6 +51,13 @@ namespace GLOOP
             }
         }
 
+        public void Rotate(float x, float y, float z)
+        {
+            var matrix = Matrix4.CreateFromQuaternion(new Quaternion(MathHelper.DegreesToRadians(x), MathHelper.DegreesToRadians(y), MathHelper.DegreesToRadians(z)));
+            for (int i = 0; i < Positions.Count; i++)
+                Positions[i] = (matrix * new Vector4(Positions[i], 0)).Xyz;
+        }
+
         public Box3 GetBoundingBox() => Positions.ToBoundingBox();
 
         public void CalculateTangents()
@@ -91,7 +98,10 @@ namespace GLOOP
         // https://www.iquilezles.org/www/articles/normals/normals.htm
         public void CalculateFaceNormals()
         {
-            Normals.Clear();
+            if (Normals == null)
+                Normals = new List<Vector3>();
+            else
+                Normals.Clear();
             for (int i = 0; i < Positions.Count; i++)
                 Normals.Add(new Vector3(0));
 
