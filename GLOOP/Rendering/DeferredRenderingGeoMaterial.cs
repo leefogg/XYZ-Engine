@@ -26,7 +26,7 @@ namespace GLOOP.Rendering
         public Vector3 IlluminationColor = new Vector3(1, 1, 1);
         public Vector3 AlbedoColourTint = new Vector3(1, 1, 1);
         public bool HasWorldpaceUVs;
-        private Texture2D[] Textures = new Texture2D[4];
+        private Texture2D[] Textures = new Texture2D[4] { Texture.Error, Texture.Gray, Texture.Black, Texture.Black };
         public Texture2D DiffuseTexture
         {
             get => Textures[0];
