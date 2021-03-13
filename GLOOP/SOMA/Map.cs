@@ -49,7 +49,7 @@ namespace GLOOP.SOMA
                 heightmap[i / 3] = pixelData[i];
 
             var terrainResolution = new Vector2i(width, height);
-            var chunkResolution = new Vector2i(64, 64);
+            var chunkResolution = new Vector2i(128, 128);
             var numChunks = new Vector2(terrainResolution.X / chunkResolution.X, terrainResolution.Y / chunkResolution.Y);
             var terrainSize = new Vector2(64,64);
             var halfTerrainSize = new Vector3(terrainSize.X / 2, 0, terrainSize.Y / 2);
@@ -64,10 +64,9 @@ namespace GLOOP.SOMA
                     var chunkPosition = new Vector2i(x, z);
                     var chunk = GLOOP.Primitives.CreatePlane(chunkResolution.X-1, chunkResolution.Y-1);
                     chunk.Scale(chunkSize);
-                    chunk.Move(new Vector3(chunkSize.X*x, 0, chunkSize.Z*z) - halfTerrainSize - halfChunkSize);
-                    chunk.UVs = chunk.UVs.Select(uv => uv * chunkUVScale + chunkUVScale * chunkPosition).ToList();
+                    chunk.UVs = chunk.UVs.Select(uv => uv * chunkUVScale + chunkUVScale * new Vector2(chunkPosition.Y, chunkPosition.X)).Select(uv => new Vector2(uv.Y, uv.X)).ToList();
                     var minUV = chunk.UVs[0];
-                    var maxUV = chunk.UVs[chunk.UVs.Count - 1];
+                    var maxUV = chunk.UVs[^1];
 
                     var startPixelX = chunkPosition.X * chunkResolution.X;
                     var startPixelY = chunkPosition.Y * chunkResolution.Y;
@@ -75,20 +74,15 @@ namespace GLOOP.SOMA
                     startPixelY -= chunkPosition.Y;
 
                     var pixel = startPixelY * terrainResolution.X + startPixelX;
-                    var temp = pixel;
                     for (int py = 0; py < chunkResolution.Y; py++)
                     {
                         for (int px = 0; px < chunkResolution.X; px++)
                         {
                             var vertexIndex = py * chunkResolution.X + px;
-
-                            var uv = chunk.UVs[vertexIndex];
-                            uv *= terrainResolution - new Vector2i(1);
-                            temp = (int)uv.Y * terrainResolution.X + (int)uv.X;
                             
-                            temp = pixel + py * terrainResolution.X + px;
+                            var index = pixel + py * terrainResolution.X + px;
 
-                            var y = heightmap[temp] / 255f;
+                            var y = heightmap[index] / 255f;
                             y *= chunkSize.Y;
 
                             var vertex = chunk.Positions[vertexIndex];
@@ -100,6 +94,7 @@ namespace GLOOP.SOMA
                     chunk.CalculateFaceNormals();
                     var vao = chunk.ToVirtualVAO($"HeightMap[{x},{z}]");
                     var model = new Model(Transform.Default, vao, heightMapMaterial);
+                    model.Transform.Position = new Vector3(chunkSize.X * x, 0, chunkSize.Z * z) - halfTerrainSize - halfChunkSize;
                     Models.Add(model);
                 }
             }
