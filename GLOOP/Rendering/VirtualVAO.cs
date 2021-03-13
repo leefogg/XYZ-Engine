@@ -25,7 +25,7 @@ namespace GLOOP.Rendering
             GL.DrawElementsInstancedBaseVertexBaseInstance(
                 renderMode,
                 (int)description.NumIndexes,
-                DrawElementsType.UnsignedInt,
+                DrawElementsType.UnsignedShort,
                 (IntPtr)description.FirstIndex,
                 (int)description.NumInstances,
                 (int)description.BaseVertex,
