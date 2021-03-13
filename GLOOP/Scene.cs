@@ -11,6 +11,7 @@ namespace GLOOP
         public List<Model> Models = new List<Model>();
         public List<PointLight> PointLights = new List<PointLight>();
         public List<SpotLight> SpotLights = new List<SpotLight>();
+        public List<Model> Terrain = new List<Model>();
         public List<RenderBatch<DeferredRenderingGeoMaterial>> Batches;
 
         public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)

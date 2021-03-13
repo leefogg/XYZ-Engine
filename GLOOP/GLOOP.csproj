@@ -138,6 +138,12 @@
     <None Update="assets\shaders\Deferred\GeoPass\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="assets\shaders\Deferred\GeoPass\Terrain.frag">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="assets\shaders\Deferred\GeoPass\Terrain.vert">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="assets\shaders\Deferred\GeoPass\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

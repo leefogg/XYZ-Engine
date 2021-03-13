@@ -328,6 +328,9 @@ namespace GLOOP.Tests
             using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
                 MultiDrawIndirect();
+
+                foreach (var terrainPatch in scene.Terrain)
+                    terrainPatch.Render(projectionMatrix, viewMatrix);
             }
 
             FinishDeferredRendering(projectionMatrix, viewMatrix);
@@ -352,9 +355,6 @@ namespace GLOOP.Tests
             var matrixSize = Marshal.SizeOf<Matrix4>();
             var materialSize = Marshal.SizeOf<DeferredGeoMaterial>();
 
-            // TODO: Possibly put model matricies into a UBO. To do this the batchSize below would need a maximum to fit modelMatricies into uniform buffer.
-            //GL.BindBuffer(BufferTarget.ShaderStorageBuffer, modelMatriciesSSBO);
-
             GeoStageQueries.Clear();
             Query runningQuery = null;
             int i = 0;
@@ -372,7 +372,7 @@ namespace GLOOP.Tests
                     GeoStageQueries.Add(new QueryPair()
                     {
                         Query = runningQuery,
-                        shader =  (DeferredRenderingGeoShader)Shader.Current
+                        shader = (StaticPixelShader)Shader.Current
                     });
                 }
 
@@ -1034,7 +1034,7 @@ namespace GLOOP.Tests
         private struct QueryPair
         {
             public Query Query;
-            public DeferredRenderingGeoShader shader;
+            public StaticPixelShader shader;
         }
     }
 }

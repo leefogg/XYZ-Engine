@@ -16,6 +16,7 @@ namespace GLOOP.SOMA
         private const string SOMARoot = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
         public List<HPLEntity> Entities = new List<HPLEntity>();
         public List<Model> Models = new List<Model>();
+        public List<Model> Terrain = new List<Model>();
         public List<GLOOP.PointLight> PointLights = new List<GLOOP.PointLight>();
         public List<GLOOP.SpotLight> SpotLights = new List<GLOOP.SpotLight>();
 
@@ -24,8 +25,8 @@ namespace GLOOP.SOMA
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
             loadEntities(mapPath + "_Entity", assimp, material);
             loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
-            loadPrimitives(mapPath + "_Primitive", material);
             loadTerrain(mapPath + "_Terrain", material);
+            loadPrimitives(mapPath + "_Primitive", material);
 
             // Sort
             Entities = Entities
@@ -36,14 +37,15 @@ namespace GLOOP.SOMA
 
         private void loadTerrain(string heightmapPath, DeferredRenderingGeoMaterial material)
         {
-            var heightMapMaterial = (DeferredRenderingGeoMaterial)material.Clone();
-            heightMapMaterial.DiffuseTexture = new Texture2D(@"c:\png\uv.png");
+            var terrainShader = new DeferredSplatTerrainShader();
+            var uvmap = new Texture2D(@"c:\png\uv.png");
+            var grass = new Texture2D(@"c:\dds\00_01_outside_simon_apart_Grass.dds");
 
             var pixelsPerChunk = heightmapPath = @"C:\dds\05_02_ARK_inside.hpm_Terrain_heightmap.dds";
             var pixelData = IO.DDSImage.GetPixelData(heightmapPath, out var width, out var height);
             var tex = new Texture2D(heightmapPath);
 
-            // Vertically flip pixel data
+            // Extract heightmap
             var heightmap = new byte[pixelData.Length / 3];
             for (int i = 2; i < pixelData.Length; i += 3)
                 heightmap[i / 3] = pixelData[i];
@@ -93,9 +95,13 @@ namespace GLOOP.SOMA
 
                     chunk.CalculateFaceNormals();
                     var vao = chunk.ToVirtualVAO($"HeightMap[{x},{z}]");
-                    var model = new Model(Transform.Default, vao, heightMapMaterial);
-                    model.Transform.Position = new Vector3(chunkSize.X * x, 0, chunkSize.Z * z) - halfTerrainSize - halfChunkSize;
-                    Models.Add(model);
+                    //var terrainMaterial = (DeferredRenderingGeoMaterial)material.Clone();
+                    //terrainMaterial.DiffuseTexture = uvmap;
+                    var terrainMaterial = new DeferredSplatTerrainMaterial(terrainShader);
+                    terrainMaterial.BaseTexture = grass;
+                    var patch = new Model(Transform.Default, vao, terrainMaterial);
+                    patch.Transform.Position = new Vector3(chunkSize.X * x, 0, chunkSize.Z * z) - halfTerrainSize - halfChunkSize;
+                    Terrain.Add(patch);
                 }
             }
         }
@@ -408,6 +414,7 @@ namespace GLOOP.SOMA
             {
                 PointLights = PointLights,
                 SpotLights = SpotLights,
+                Terrain = Terrain
             };
 
             scene.Models.AddRange(Models);

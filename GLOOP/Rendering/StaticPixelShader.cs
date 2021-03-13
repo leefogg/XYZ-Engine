@@ -9,7 +9,8 @@ namespace GLOOP.Rendering
 {
     public class StaticPixelShader : Shader
     {
-        public StaticPixelShader(string vertPath, string fragPath, IDictionary<string, string> defines = null, string name = null) : base(load(vertPath, fragPath, defines), name)
+        public StaticPixelShader(string vertPath, string fragPath, IDictionary<string, string> defines = null, string name = null)
+            : base(load(vertPath, fragPath, defines), name)
         {
             
         }
