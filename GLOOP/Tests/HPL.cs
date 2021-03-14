@@ -19,6 +19,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using TextureWrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode;
+using GLOOP.Rendering.Materials;
 
 namespace GLOOP.Tests
 {

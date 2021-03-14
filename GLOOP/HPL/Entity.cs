@@ -1,11 +1,7 @@
 ﻿using Assimp;
 using GLOOP.Extensions;
-using GLOOP.Rendering;
-using OpenTK.Mathematics;
-using System;
-using System.Collections.Generic;
+using GLOOP.Rendering.Materials;
 using System.IO;
-using System.Text;
 using System.Xml.Serialization;
 using Quaternion = OpenTK.Mathematics.Quaternion;
 

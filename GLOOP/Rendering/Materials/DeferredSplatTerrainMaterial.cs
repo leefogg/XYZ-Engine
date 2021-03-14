@@ -1,9 +1,10 @@
-﻿using OpenTK.Mathematics;
+﻿
+using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP.Rendering
+namespace GLOOP.Rendering.Materials
 {
     public class DeferredSplatTerrainMaterial : Material
     {

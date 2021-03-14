@@ -1,16 +1,21 @@
 ﻿using GLOOP.Rendering.Uniforms;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP.Rendering
+namespace GLOOP.Rendering.Materials
 {
-    public class SingleColorShader : StaticPixelShader
+    public class FullbrightShader : StaticPixelShader
     {
         public readonly Uniform16f projectionMatrix, viewMatrix, modelMatrix;
-        private Uniform4f color;
+        public readonly UniformBindlessTexture diffuse;
 
+        public ulong DiffuseTexture
+        {
+            set => diffuse.Set(value);
+        }
         public Matrix4 ProjectionMatrix
         {
             set => projectionMatrix.Set(value);
@@ -23,20 +28,15 @@ namespace GLOOP.Rendering
         {
             set => modelMatrix.Set(value);
         }
-        public Vector4 Color
-        {
-            set => color.Set(value);
-        }
 
-        public SingleColorShader(IDictionary<string, string> defines = null, string name = null) 
-            : base("assets/shaders/SingleColor/basic.vert",
-                   "assets/shaders/SingleColor/basic.frag", defines, name)
+        public FullbrightShader() 
+            : base("assets/shaders/FullBright/3D/VertexShader.vert", "assets/shaders/FullBright/3D/FragmentShader.frag", name: "Fullbright")
         {
+            diffuse = new UniformBindlessTexture(this, "texture0");
+
             projectionMatrix = new Uniform16f(this, "ProjectionMatrix");
             viewMatrix = new Uniform16f(this, "ViewMatrix");
             modelMatrix = new Uniform16f(this, "ModelMatrix");
-
-            color = new Uniform4f(this, "color");
         }
     }
 }

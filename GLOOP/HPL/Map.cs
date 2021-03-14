@@ -1,6 +1,7 @@
 ﻿using Assimp;
 using GLOOP.Extensions;
 using GLOOP.Rendering;
+using GLOOP.Rendering.Materials;
 using OpenTK;
 using OpenTK.Mathematics;
 using System;
@@ -23,10 +24,10 @@ namespace GLOOP.HPL
         public Map(string mapPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             loadLights(mapPath + "_Light");
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
-            //loadEntities(mapPath + "_Entity", assimp, material);
-            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            loadEntities(mapPath + "_Entity", assimp, material);
+            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
-            //loadTerrain(mapPath);
+            loadTerrain(mapPath);
 
             // Sort
             Entities = Entities
@@ -43,7 +44,7 @@ namespace GLOOP.HPL
                 return;
 
             var baseMaterial = Deserialize<Material>(@"C:\mat\" + Path.GetFileName(terrainInfo.BaseMaterialFile));
-            var baseTexture = new Texture2D(@"C:\dds\" + Path.GetFileName(baseMaterial.Textures.Diffuse.Path));
+            var baseTexture = TextureCache.Get(@"C:\dds\" + Path.GetFileName(baseMaterial.Textures.Diffuse.Path));
 
             var splatTexture = new Texture2D(baseFilePath + "_Terrain_blendlayer_0.dds");
 
@@ -59,7 +60,7 @@ namespace GLOOP.HPL
                     var materialPath = @"C:\mat\" + Path.GetFileName(terrainInfo.BlendLayers.Materials[i].File);
                     var material = Deserialize<Material>(materialPath);
                     var texturePath = @"C:\dds\" + Path.GetFileName(material.Textures.Diffuse.Path);
-                    textures[i] = new Texture2D(texturePath);
+                    textures[i] = TextureCache.Get(texturePath);
                 }
             }
 

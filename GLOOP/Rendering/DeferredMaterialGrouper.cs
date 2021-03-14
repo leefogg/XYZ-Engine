@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using GLOOP.Rendering.Materials;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace GLOOP.Rendering

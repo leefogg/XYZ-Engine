@@ -1,4 +1,5 @@
 ﻿using GLOOP.Rendering;
+using GLOOP.Rendering.Materials;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;

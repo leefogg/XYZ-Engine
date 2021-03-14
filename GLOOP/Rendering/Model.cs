@@ -1,4 +1,5 @@
-﻿using OpenTK;
+﻿using GLOOP.Rendering.Materials;
+using OpenTK;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;

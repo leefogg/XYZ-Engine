@@ -1,21 +1,27 @@
-﻿using OpenTK.Mathematics;
+﻿using OpenTK.Graphics.OpenGL4;
+using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP.Rendering
+namespace GLOOP.Rendering.Materials
 {
-    public class SingleColorMaterial : Material
+    public class FullbrightMaterial : Material
     {
         public Matrix4 ProjectionMatrix, ViewMatrix;
-        public Vector4 Color;
-        private SingleColorShader shader;
+        public Texture2D diffuse;
+        private FullbrightShader shader;
 
         public override Shader Shader => shader;
 
-        public SingleColorMaterial(SingleColorShader shader)
+        public FullbrightMaterial(FullbrightShader shader)
         {
             this.shader = shader;
+        }
+
+        public override void SetTextures(Texture2D diffuse, Texture2D normal, Texture2D specular, Texture2D illumination)
+        {
+            this.diffuse = diffuse;
         }
 
         public override void SetCameraUniforms(Matrix4 projectionMatrix, Matrix4 viewMatrix, Matrix4 modelMatrix)
@@ -32,14 +38,14 @@ namespace GLOOP.Rendering
             shader.ProjectionMatrix = ProjectionMatrix;
             shader.ViewMatrix = ViewMatrix;
             shader.ModelMatrix = ModelMatrix;
-            shader.Color = Color;
+            shader.DiffuseTexture = diffuse.BindlessHandle;
         }
 
         public override Material Clone()
         {
-            return new SingleColorMaterial(shader)
+            return new FullbrightMaterial(shader)
             {
-                Color = Color
+                diffuse = diffuse
             };
         }
     }
