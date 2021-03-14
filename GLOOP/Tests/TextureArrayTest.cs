@@ -13,9 +13,9 @@ namespace GLOOP.Tests
     public class TextureArrayTest : Window
     {
         private DebugCamera Camera;
-        private Entity Model;
-        private Entity Model2;
-        private Entity Model3;
+        private Entity Plane1;
+        private Entity Plane2;
+        private Entity Plane3;
 
         public TextureArrayTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -58,22 +58,27 @@ namespace GLOOP.Tests
 
             var assimp = new Assimp.AssimpContext();
             var shader = new TextureArrayShader();
-            var material = new TextureArrayMaterial(shader);
-            material.TextureArray = textureArray;
-            Model = new Entity("assets/models/plane.dae", assimp, material.Clone());
-            Model.Transform.Scale *= 10000f;
-            Model.Transform.Position.X = -1.5f;
-            ((TextureArrayMaterial)Model.Models[0].Material).Slice = 0;
+            Plane1 = new Entity("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader) { 
+                TextureArray = textureArray, 
+                Slice = 0 
+            });
+            Plane1.Models[0].Transform.Scale *= 10000f;
+            Plane1.Models[0].Transform.Position.X = -1.5f;
 
-            Model2 = new Entity("assets/models/plane.dae", assimp, material.Clone());
-            Model2.Transform.Scale *= 10000f;
-            ((TextureArrayMaterial)Model2.Models[0].Material).Slice = 1;
+            Plane2 = new Entity("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
+            {
+                TextureArray = textureArray,
+                Slice = 1
+            });
+            Plane2.Models[0].Transform.Scale *= 10000f;
 
-            Model3 = new Entity("assets/models/plane.dae", assimp, material.Clone());
-            Model3.Transform.Position.X = 1.5f;
-            Model3.Transform.Scale *= 10000f;
-            ((TextureArrayMaterial)Model3.Models[0].Material).Slice = 2;
-
+            Plane3 = new Entity("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
+            {
+                TextureArray = textureArray,
+                Slice = 2
+            });
+            Plane3.Models[0].Transform.Position.X = 1.5f;
+            Plane3.Models[0].Transform.Scale *= 10000f;
 
             base.OnLoad();
         }
@@ -81,11 +86,11 @@ namespace GLOOP.Tests
         public override void Render()
         {
             // Have to do this here until I do a Material class
-            var projectionMatrix = MathFunctions.CreateProjectionMatrix(Size.X, Size.Y, Camera.FOV, 0.1f, 10000);
-            var viewMatrix = MathFunctions.CreateViewMatrix(Camera.Position, Camera.Rotation);
-            Model.Render(projectionMatrix, viewMatrix);
-            Model2.Render(projectionMatrix, viewMatrix);
-            Model3.Render(projectionMatrix, viewMatrix);
+            var projectionMatrix = Camera.ProjectionMatrix;
+            var viewMatrix = Camera.ViewMatrix;
+            Plane1.Render(projectionMatrix, viewMatrix);
+            Plane2.Render(projectionMatrix, viewMatrix);
+            Plane3.Render(projectionMatrix, viewMatrix);
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)
