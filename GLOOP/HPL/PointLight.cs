@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Xml.Serialization;
 
-namespace GLOOP.SOMA
+namespace GLOOP.HPL
 {
     public class PointLight : Light
     {

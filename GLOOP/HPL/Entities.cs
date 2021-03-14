@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Xml.Serialization;
 
-namespace GLOOP.SOMA {
+namespace GLOOP.HPL {
     [XmlRoot("HPLMapTrack_Entity")]
     public class Entities {
         [XmlElement("Section")]
@@ -41,7 +41,7 @@ namespace GLOOP.SOMA {
                 [XmlArrayItem("Var", typeof(EntityVariable))]
                 public EntityVariable[] Variables { get; set; }
 
-                public Dictionary<string, string> GetProperties(SOMA.Entity ent)
+                public Dictionary<string, string> GetProperties(HPL.Entity ent)
                 {
                     var dict = new Dictionary<string, string>();
                     foreach (var variable in ent.Variables)

@@ -10,7 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
 
-namespace GLOOP.SOMA
+namespace GLOOP.HPL
 {
     public class Map {
         private const string SOMARoot = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";

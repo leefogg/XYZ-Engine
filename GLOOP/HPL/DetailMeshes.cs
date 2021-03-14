@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
 
-namespace GLOOP.SOMA {
+namespace GLOOP.HPL {
     [XmlRoot("HPLMapTrack_DetailMeshes")]
     public class DetailMeshes
     {

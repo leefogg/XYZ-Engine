@@ -8,7 +8,7 @@ using System.Xml.Serialization;
 using Assimp;
 using GLOOP.Extensions;
 using GLOOP.Rendering;
-using GLOOP.SOMA;
+using GLOOP.HPL;
 using Newtonsoft.Json;
 using OpenTK;
 using OpenTK.Graphics;

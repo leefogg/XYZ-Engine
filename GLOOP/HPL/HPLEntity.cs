@@ -1,5 +1,5 @@
 ﻿using GLOOP.Rendering;
-using GLOOP.SOMA;
+using GLOOP.HPL;
 using OpenTK;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
@@ -10,7 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
 
-namespace GLOOP.SOMA
+namespace GLOOP.HPL
 {
     public class HPLEntity : Rendering.Entity {
         public static Vector3 Offset = new Vector3(0,0,0);

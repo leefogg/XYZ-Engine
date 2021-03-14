@@ -9,7 +9,7 @@ using System.Text;
 using System.Xml.Serialization;
 using Quaternion = OpenTK.Mathematics.Quaternion;
 
-namespace GLOOP.SOMA
+namespace GLOOP.HPL
 {
     [XmlRoot]
     public class Entity {

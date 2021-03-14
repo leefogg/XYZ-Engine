@@ -27,7 +27,7 @@ namespace GLOOP
                 3840 / 2 - nativeWindowSettings.Size.X / 2,
                 2160 / 2 - nativeWindowSettings.Size.Y / 2
             );
-            using var window = new HPL(gameWindowSettings, nativeWindowSettings);
+            using var window = new Tests.HPL(gameWindowSettings, nativeWindowSettings);
             window.VSync = VSyncMode.On;
             window.Run();
         }
