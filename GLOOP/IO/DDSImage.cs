@@ -59,8 +59,8 @@ namespace GLOOP.IO
             };
             var pixelFormat = uncompressedDDS.Format switch
             {
-                ImageFormat.Rgb24 => PixelFormat.Rgb,
-                ImageFormat.Rgba32 => PixelFormat.Rgba
+                ImageFormat.Rgb24 => PixelFormat.Bgr,
+                ImageFormat.Rgba32 => PixelFormat.Bgra
             };
 
             settings.InternalFormat = internalFormat;

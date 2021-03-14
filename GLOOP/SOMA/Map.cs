@@ -22,10 +22,10 @@ namespace GLOOP.SOMA
 
         public Map(string mapPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             loadLights(mapPath + "_Light");
+            loadTerrain(mapPath);
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
             loadEntities(mapPath + "_Entity", assimp, material);
             loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
-            loadTerrain(mapPath + "_Terrain", material);
             loadPrimitives(mapPath + "_Primitive", material);
 
             // Sort
@@ -35,15 +35,38 @@ namespace GLOOP.SOMA
                 .ThenBy(m => m.ResourcePath).ToList();
         }
 
-        private void loadTerrain(string heightmapPath, DeferredRenderingGeoMaterial material)
+        private void loadTerrain(string baseFilePath)
         {
-            var terrainShader = new DeferredSplatTerrainShader();
-            var uvmap = new Texture2D(@"c:\png\uv.png");
-            var grass = new Texture2D(@"c:\dds\00_01_outside_simon_apart_Grass.dds");
+            var heightmapInfoPath = baseFilePath + "_Terrain";
+            var terrainInfo = Deserialize<Terrain>(heightmapInfoPath).Info;
+            if (!terrainInfo.Active || string.IsNullOrEmpty(terrainInfo.BaseMaterialFile))
+                return;
 
-            var pixelsPerChunk = heightmapPath = @"C:\dds\05_02_ARK_inside.hpm_Terrain_heightmap.dds";
+            var baseMaterial = Deserialize<Material>(@"C:\mat\" + Path.GetFileName(terrainInfo.BaseMaterialFile));
+            var baseTexture = new Texture2D(@"C:\dds\" + Path.GetFileName(baseMaterial.Textures.Diffuse.Path));
+
+            var splatTexture = new Texture2D(baseFilePath + "_Terrain_blendlayer_0.dds");
+
+            var textures = new Texture2D[4];
+            for (int i = 0; i < 4; i++)
+            {
+                if (string.IsNullOrEmpty(terrainInfo.BlendLayers.Materials[i].File))
+                {
+                    textures[i] = Texture.Black;
+                } 
+                else
+                {
+                    var materialPath = @"C:\mat\" + Path.GetFileName(terrainInfo.BlendLayers.Materials[i].File);
+                    var material = Deserialize<Material>(materialPath);
+                    var texturePath = @"C:\dds\" + Path.GetFileName(material.Textures.Diffuse.Path);
+                    textures[i] = new Texture2D(texturePath);
+                }
+            }
+
+            var terrainShader = new DeferredSplatTerrainShader();
+
+            var heightmapPath = baseFilePath + "_Terrain_heightmap.dds";
             var pixelData = IO.DDSImage.GetPixelData(heightmapPath, out var width, out var height);
-            var tex = new Texture2D(heightmapPath);
 
             // Extract heightmap
             var heightmap = new byte[pixelData.Length / 3];
@@ -51,13 +74,19 @@ namespace GLOOP.SOMA
                 heightmap[i / 3] = pixelData[i];
 
             var terrainResolution = new Vector2i(width, height);
-            var chunkResolution = new Vector2i(128, 128);
+            var chunkResolution = new Vector2i(128);
             var numChunks = new Vector2(terrainResolution.X / chunkResolution.X, terrainResolution.Y / chunkResolution.Y);
-            var terrainSize = new Vector2(64,64);
+            var terrainSize = new Vector2(terrainInfo.HeightMapSize);
             var halfTerrainSize = new Vector3(terrainSize.X / 2, 0, terrainSize.Y / 2);
-            var chunkSize = new Vector3(terrainSize.X / numChunks.X, 10, terrainSize.Y / numChunks.Y);
+            var chunkSize = new Vector3(terrainSize.X / numChunks.X, terrainInfo.MaxHeight, terrainSize.Y / numChunks.Y);
             var halfChunkSize = new Vector3(chunkSize.X / 2, 0, chunkSize.Y / 2);
             var chunkUVScale = new Vector2(1f / numChunks.X, 1f / numChunks.Y);
+            var tileAmounts = new Vector4(
+                terrainInfo.BlendLayers.Materials[0].TileAmount / numChunks.X,
+                terrainInfo.BlendLayers.Materials[1].TileAmount / numChunks.X,
+                terrainInfo.BlendLayers.Materials[2].TileAmount / numChunks.X,
+                terrainInfo.BlendLayers.Materials[3].TileAmount / numChunks.X
+            );
 
             for (int z = 0; z < numChunks.Y; z++)
             {
@@ -65,7 +94,6 @@ namespace GLOOP.SOMA
                 {
                     var chunkPosition = new Vector2i(x, z);
                     var chunk = GLOOP.Primitives.CreatePlane(chunkResolution.X-1, chunkResolution.Y-1);
-                    chunk.Scale(chunkSize);
                     chunk.UVs = chunk.UVs.Select(uv => uv * chunkUVScale + chunkUVScale * new Vector2(chunkPosition.Y, chunkPosition.X)).Select(uv => new Vector2(uv.Y, uv.X)).ToList();
                     var minUV = chunk.UVs[0];
                     var maxUV = chunk.UVs[^1];
@@ -85,7 +113,6 @@ namespace GLOOP.SOMA
                             var index = pixel + py * terrainResolution.X + px;
 
                             var y = heightmap[index] / 255f;
-                            y *= chunkSize.Y;
 
                             var vertex = chunk.Positions[vertexIndex];
                             vertex.Y = y;
@@ -95,12 +122,21 @@ namespace GLOOP.SOMA
 
                     chunk.CalculateFaceNormals();
                     var vao = chunk.ToVirtualVAO($"HeightMap[{x},{z}]");
-                    //var terrainMaterial = (DeferredRenderingGeoMaterial)material.Clone();
-                    //terrainMaterial.DiffuseTexture = uvmap;
-                    var terrainMaterial = new DeferredSplatTerrainMaterial(terrainShader);
-                    terrainMaterial.BaseTexture = grass;
-                    var patch = new Model(Transform.Default, vao, terrainMaterial);
-                    patch.Transform.Position = new Vector3(chunkSize.X * x, 0, chunkSize.Z * z) - halfTerrainSize - halfChunkSize;
+                    var material = new DeferredSplatTerrainMaterial(terrainShader)
+                    {
+                        SpecularPower = terrainInfo.SpecularPower,
+                        BaseTexture = baseTexture,
+                        SplatTexture = splatTexture,
+                        BaseTextureTileAmount = terrainInfo.BaseMaterialTileAmount / numChunks.X,
+                        TileAmounts = tileAmounts,
+                        BlendLayer0Texture0 = textures[0],
+                        BlendLayer0Texture1 = textures[1],
+                        BlendLayer0Texture2 = textures[2],
+                        BlendLayer0Texture3 = textures[3],
+                    };
+                    var patch = new Model(Transform.Default, vao, material);
+                    patch.Transform.Position = new Vector3(chunkSize.X * x, 0, chunkSize.Z * z) - halfTerrainSize;
+                    patch.Transform.Scale = chunkSize;
                     Terrain.Add(patch);
                 }
             }
