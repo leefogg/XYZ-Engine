@@ -7,6 +7,7 @@ layout (location = 2) in vec3 Normal;
 out vec3 fragPos;
 out vec2 uv;
 out vec3 norm;
+out vec4 splat;
 
 layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 ProjectionMatrix;
@@ -15,6 +16,7 @@ layout (std140, binding = 0) uniform CameraMatricies {
 };
 
 uniform mat4 ModelMatrix;
+uniform sampler2D splatTex;
 
 void main(void) {
 	vec4 worldspacePos = ModelMatrix * vec4(Position, 1.0);
@@ -22,5 +24,7 @@ void main(void) {
 
 	fragPos = worldspacePos.xyz;
 	uv = UV;
-	norm = Normal;
+	norm = normalize(Normal);
+	norm = (norm + 1) / 2;
+	splat = texture(splatTex, UV);
 }
