@@ -38,13 +38,19 @@ namespace GLOOP
                 }
             }
 
-            return Create(
+            return create(
                 shape,
                 Math.Max(6 * sizeof(ushort) * 1024 * 1024, requiredIndiciesBytes),
                 Math.Max(45 * sizeof(float) * 1024 * 1024, requiredVertciesBytes)
             );
         }
-        private static VAOAllocation Create(VAOShape shape, int numIndiciesBytes, int numVertciesBytes)
+        public static void Create(VAOShape shape, int numIndicies, int numVertcies)
+        {
+            var numIndiciesBytes = numIndicies * sizeof(ushort);
+            var numVertciesBytes = numVertcies * sizeof(float) * shape.NumElements;
+            create(shape, numIndiciesBytes, numVertciesBytes);
+        }
+        private static VAOAllocation create(VAOShape shape, int numIndiciesBytes, int numVertciesBytes)
         {
             var vao = new VAO(shape, "PooledVAO" + Total, "PooledVAOEBO" + Total);
             Total++;

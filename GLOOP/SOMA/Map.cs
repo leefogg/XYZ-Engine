@@ -22,11 +22,11 @@ namespace GLOOP.SOMA
 
         public Map(string mapPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             loadLights(mapPath + "_Light");
-            loadTerrain(mapPath);
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
             loadEntities(mapPath + "_Entity", assimp, material);
             loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
+            //loadTerrain(mapPath);
 
             // Sort
             Entities = Entities
@@ -75,7 +75,7 @@ namespace GLOOP.SOMA
 
             var terrainResolution = new Vector2i(width, height);
             var chunkResolution = new Vector2i(128);
-            var numChunks = new Vector2(terrainResolution.X / chunkResolution.X, terrainResolution.Y / chunkResolution.Y);
+            var numChunks = new Vector2i(terrainResolution.X / chunkResolution.X, terrainResolution.Y / chunkResolution.Y);
             var terrainSize = new Vector2(terrainInfo.HeightMapSize);
             var halfTerrainSize = new Vector3(terrainSize.X / 2, 0, terrainSize.Y / 2);
             var chunkSize = new Vector3(terrainSize.X / numChunks.X, terrainInfo.MaxHeight, terrainSize.Y / numChunks.Y);
@@ -86,6 +86,13 @@ namespace GLOOP.SOMA
                 terrainInfo.BlendLayers.Materials[1].TileAmount / numChunks.X,
                 terrainInfo.BlendLayers.Materials[2].TileAmount / numChunks.X,
                 terrainInfo.BlendLayers.Materials[3].TileAmount / numChunks.X
+            );
+            int totalChunks = numChunks.X * numChunks.Y;
+
+            VAOManager.Create(
+                new VAO.VAOShape(true, true, true, false),
+                (chunkResolution.X-1) * (chunkResolution.Y-1) * totalChunks, 
+                chunkResolution.X * chunkResolution.Y * totalChunks
             );
 
             for (int z = 0; z < numChunks.Y; z++)
