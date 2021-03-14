@@ -1,11 +1,8 @@
-﻿using GLOOP.Rendering;
-using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL4;
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Text;
 
-namespace GLOOP
+namespace GLOOP.Rendering
 {
     public static class TextureCache
     {

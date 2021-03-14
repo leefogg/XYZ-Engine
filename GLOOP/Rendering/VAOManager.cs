@@ -1,12 +1,11 @@
-﻿using GLOOP.Rendering;
-using OpenTK.Mathematics;
+﻿using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using static GLOOP.Rendering.VAO;
 
-namespace GLOOP
+namespace GLOOP.Rendering
 {
     public class VAOManager
     {

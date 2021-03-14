@@ -1,7 +1,5 @@
 ﻿using GLOOP.Extensions;
-using GLOOP.Rendering;
 using OpenTK;
-using OpenTK.Graphics.ES30;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -9,7 +7,7 @@ using System.Linq;
 using System.Text;
 using static GLOOP.Extensions.Vector3Extensions;
 
-namespace GLOOP
+namespace GLOOP.Rendering
 {
     public class Geometry
     {

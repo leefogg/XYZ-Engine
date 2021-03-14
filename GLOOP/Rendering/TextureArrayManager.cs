@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
 
-namespace GLOOP
+namespace GLOOP.Rendering
 {
     public class TextureArrayManager
     {

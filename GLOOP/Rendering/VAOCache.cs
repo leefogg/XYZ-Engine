@@ -1,9 +1,8 @@
-﻿using GLOOP.Rendering;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP
+namespace GLOOP.Rendering
 {
     public static class VAOCache
     {
