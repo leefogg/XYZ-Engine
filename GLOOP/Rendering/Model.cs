@@ -19,11 +19,11 @@ namespace GLOOP.Rendering
         private Matrix4? ModelMatrix;
 
         public Model(
-            Transform transform,
             VirtualVAO vao,
-            Material material)
+            Material material,
+            Transform? transform = null)
         {
-            Transform = transform;
+            Transform = transform ?? Transform.Default;
             Material = material;
             VAO = vao;
         }
@@ -52,6 +52,6 @@ namespace GLOOP.Rendering
             Primitives.Cube.Draw(PrimitiveType.Lines);
         }
 
-        public Model Clone() => new Model(Transform, VAO, Material.Clone());
+        public Model Clone() => new Model(VAO, Material.Clone(), Transform);
     }
 }

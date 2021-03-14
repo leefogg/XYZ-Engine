@@ -142,7 +142,7 @@ namespace GLOOP.HPL
                         BlendLayer0Texture2 = textures[2],
                         BlendLayer0Texture3 = textures[3],
                     };
-                    var patch = new Model(Transform.Default, vao, material);
+                    var patch = new Model(vao, material);
                     patch.Transform.Position = new Vector3(chunkSize.X * x, 0, chunkSize.Z * z) - halfTerrainSize;
                     patch.Transform.Scale = chunkSize;
                     Terrain.Add(patch);
@@ -381,7 +381,7 @@ namespace GLOOP.HPL
                         materialInstance.SpecularTexture = specularTex;
                         materialInstance.IlluminationTexture = illumTex;
 
-                        var model = new Model(Transform.Default, vao, materialInstance);
+                        var model = new Model(vao, materialInstance);
                         var ent = new HPLEntity(new List<Model> { model }, vao.BoundingBox);
                         ent.Transform.Position = plane.Position.ParseVector3();
                         //model.Rot += new OpenTK.Mathematics.Quaternion(plane.Rotation.ParseVector3().Negated());

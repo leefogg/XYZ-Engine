@@ -121,7 +121,7 @@ namespace GLOOP.Rendering
 
                 var materialInstance = material.Clone();
                 materialInstance.SetTextures(diffuseTex, normalTex, specularTex, illumTex);
-                Models.Add(new Model(Transform.Default, vao, materialInstance));
+                Models.Add(new Model(vao, materialInstance));
 
                 Metrics.TimeLoadingModels += DateTime.Now - startSavingModel;
             }
@@ -171,15 +171,6 @@ namespace GLOOP.Rendering
         {
             foreach (var renderable in Models)
                 renderable.Render(projectionMatrix, viewMatrix);
-        }
-
-        public void RenderBoundingBox(Matrix4 projectionMatrix, Matrix4 viewMatrix)
-        {
-            var bb = BoundingBox;
-            var modelMatrix = MathFunctions.CreateModelMatrix(bb.Center + Transform.Position, Quaternion.Identity, bb.Size);
-            boundingBoxMaterial.SetCameraUniforms(projectionMatrix, viewMatrix, modelMatrix);
-            boundingBoxMaterial.Commit();
-            Primitives.Cube.Draw(OpenTK.Graphics.OpenGL4.PrimitiveType.Lines);
         }
 
         public Entity Clone() => new Entity(Models, Transform, OriginalBoundingBox);
