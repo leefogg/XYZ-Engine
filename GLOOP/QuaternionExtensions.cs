@@ -1,44 +1,8 @@
-﻿using OpenTK;
-using OpenTK.Mathematics;
+﻿using OpenTK.Mathematics;
 using System;
-using System.Collections.Generic;
-using System.Text;
-using static GLOOP.MatrixExtensions;
-
-namespace GLOOP {
+namespace GLOOP
+{
     public static class QuaternionExtensions {
-        public static Matrix4 ToRotationMatrix(Quaternion self) {
-            var matrix = new Matrix4();
-            ToIdentity(ref matrix);
-
-			float xy = self.X * self.Y;
-			float xz = self.X * self.Z;
-			float xw = self.X * self.W;
-			float yz = self.Y * self.Z;
-			float yw = self.Y * self.W;
-			float zw = self.Z * self.W;
-			float xSquared = self.X * self.X;
-			float ySquared = self.Y * self.Y;
-			float zSquared = self.Z * self.Z;
-			matrix.M11 = 1 - 2 * (ySquared + zSquared);
-			matrix.M12 = 2 * (xy - zw);
-			matrix.M13 = 2 * (xz + yw);
-			matrix.M14 = 0;
-			matrix.M21 = 2 * (xy + zw);
-			matrix.M22 = 1 - 2 * (xSquared + zSquared);
-			matrix.M23 = 2 * (yz - xw);
-			matrix.M24 = 0;
-			matrix.M31 = 2 * (xz - yw);
-			matrix.M32 = 2 * (yz + xw);
-			matrix.M33 = 1 - 2 * (xSquared + ySquared);
-			matrix.M34 = 0;
-			matrix.M41 = 0;
-			matrix.M42 = 0;
-			matrix.M43 = 0;
-			matrix.M44 = 1;
-
-			return matrix;
-		}
 
 		public static Vector3 GetAngles(this Quaternion rotation)
 		{

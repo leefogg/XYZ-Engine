@@ -22,7 +22,7 @@ namespace GLOOP
             ToIdentity(ref output);
 
             var aspectRatio = (float)width / (float)height;
-            var yscale = (float)(1f / Math.Tan(ToRadians(fov / 2f)) * aspectRatio);
+            var yscale = (float)(1f / Math.Tan(MathHelper.DegreesToRadians(fov / 2f)) * aspectRatio);
             var xscale = yscale / aspectRatio;
             var frustumlength = zfar - znear;
 
@@ -40,9 +40,9 @@ namespace GLOOP
         {
             var output = new Matrix4();
             ToIdentity(ref output);
-            Rotate(output, ref output, (float)ToRadians(rotation.X), RIGHT);
-            Rotate(output, ref output, (float)ToRadians(rotation.Y), UP);
-            Rotate(output, ref output, (float)ToRadians(rotation.Z), IN);
+            Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotation.X), RIGHT);
+            Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotation.Y), UP);
+            Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotation.Z), IN);
             Negate(ref position);
             Translate(output, ref output, position);
             Negate(ref position);
@@ -61,6 +61,38 @@ namespace GLOOP
             return output;
         }
 
-        public static double ToRadians(double angdeg) => angdeg / 180.0d * Math.PI;
+        public static Matrix4 ToRotationMatrix(Quaternion self)
+        {
+            var matrix = new Matrix4();
+            ToIdentity(ref matrix);
+
+            float xy = self.X * self.Y;
+            float xz = self.X * self.Z;
+            float xw = self.X * self.W;
+            float yz = self.Y * self.Z;
+            float yw = self.Y * self.W;
+            float zw = self.Z * self.W;
+            float xSquared = self.X * self.X;
+            float ySquared = self.Y * self.Y;
+            float zSquared = self.Z * self.Z;
+            matrix.M11 = 1 - 2 * (ySquared + zSquared);
+            matrix.M12 = 2 * (xy - zw);
+            matrix.M13 = 2 * (xz + yw);
+            matrix.M14 = 0;
+            matrix.M21 = 2 * (xy + zw);
+            matrix.M22 = 1 - 2 * (xSquared + zSquared);
+            matrix.M23 = 2 * (yz - xw);
+            matrix.M24 = 0;
+            matrix.M31 = 2 * (xz - yw);
+            matrix.M32 = 2 * (yz + xw);
+            matrix.M33 = 1 - 2 * (xSquared + ySquared);
+            matrix.M34 = 0;
+            matrix.M41 = 0;
+            matrix.M42 = 0;
+            matrix.M43 = 0;
+            matrix.M44 = 1;
+
+            return matrix;
+        }
     }
 }

@@ -68,64 +68,64 @@ namespace GLOOP {
                 if (forward && right && !left && !backward) {
                     float angle = Rotation.Y + 45;
                     float oblique = walkingspeed * timescaler;
-                    float adjacent = oblique * (float)Math.Cos(MathFunctions.ToRadians(angle));
-                    float opposite = (float)(Math.Sin(MathFunctions.ToRadians(angle)) * oblique);
+                    float adjacent = oblique * (float)Math.Cos(MathHelper.DegreesToRadians(angle));
+                    float opposite = (float)(Math.Sin(MathHelper.DegreesToRadians(angle)) * oblique);
                     additionalvelcity.Z -= adjacent;
                     additionalvelcity.X += opposite;
                 }
                 if (forward && left && !right && !backward) {
                     float angle = Rotation.Y - 45;
                     float oblique = walkingspeed * timescaler;
-                    float adjacent = oblique * (float)Math.Cos(MathFunctions.ToRadians(angle));
-                    float opposite = (float)(Math.Sin(MathFunctions.ToRadians(angle)) * oblique);
+                    float adjacent = oblique * (float)Math.Cos(MathHelper.DegreesToRadians(angle));
+                    float opposite = (float)(Math.Sin(MathHelper.DegreesToRadians(angle)) * oblique);
                     additionalvelcity.Z -= adjacent;
                     additionalvelcity.X += opposite;
                 }
                 if (forward && !left && !right && !backward) {
                     float angle = Rotation.Y;
                     float oblique = walkingspeed * timescaler;
-                    float adjacent = oblique * (float)Math.Cos(MathFunctions.ToRadians(angle));
-                    float opposite = (float)(Math.Sin(MathFunctions.ToRadians(angle)) * oblique);
+                    float adjacent = oblique * (float)Math.Cos(MathHelper.DegreesToRadians(angle));
+                    float opposite = (float)(Math.Sin(MathHelper.DegreesToRadians(angle)) * oblique);
                     additionalvelcity.X += opposite;
                     additionalvelcity.Z -= adjacent;
                 }
                 if (backward && left && !right && !forward) {
                     float angle = Rotation.Y - 135;
                     float oblique = walkingspeed * timescaler;
-                    float adjacent = oblique * (float)Math.Cos(MathFunctions.ToRadians(angle));
-                    float opposite = (float)(Math.Sin(MathFunctions.ToRadians(angle)) * oblique);
+                    float adjacent = oblique * (float)Math.Cos(MathHelper.DegreesToRadians(angle));
+                    float opposite = (float)(Math.Sin(MathHelper.DegreesToRadians(angle)) * oblique);
                     additionalvelcity.Z -= adjacent;
                     additionalvelcity.X += opposite;
                 }
                 if (backward && right && !left && !forward) {
                     float angle = Rotation.Y + 135;
                     float oblique = walkingspeed * timescaler;
-                    float adjacent = oblique * (float)Math.Cos(MathFunctions.ToRadians(angle));
-                    float opposite = (float)(Math.Sin(MathFunctions.ToRadians(angle)) * oblique);
+                    float adjacent = oblique * (float)Math.Cos(MathHelper.DegreesToRadians(angle));
+                    float opposite = (float)(Math.Sin(MathHelper.DegreesToRadians(angle)) * oblique);
                     additionalvelcity.Z -= adjacent;
                     additionalvelcity.X += opposite;
                 }
                 if (backward && !forward && !left && !right) {
                     float angle = Rotation.Y;
                     float oblique = -walkingspeed * timescaler;
-                    float adjacent = oblique * (float)Math.Cos(MathFunctions.ToRadians(angle));
-                    float opposite = (float)(Math.Sin(MathFunctions.ToRadians(angle)) * oblique);
+                    float adjacent = oblique * (float)Math.Cos(MathHelper.DegreesToRadians(angle));
+                    float opposite = (float)(Math.Sin(MathHelper.DegreesToRadians(angle)) * oblique);
                     additionalvelcity.Z -= adjacent;
                     additionalvelcity.X += opposite;
                 }
                 if (left && !right && !forward && !backward) {
                     float angle = Rotation.Y - 90;
                     float oblique = walkingspeed * timescaler;
-                    float adjacent = oblique * (float)Math.Cos(MathFunctions.ToRadians(angle));
-                    float opposite = (float)(Math.Sin(MathFunctions.ToRadians(angle)) * oblique);
+                    float adjacent = oblique * (float)Math.Cos(MathHelper.DegreesToRadians(angle));
+                    float opposite = (float)(Math.Sin(MathHelper.DegreesToRadians(angle)) * oblique);
                     additionalvelcity.Z -= adjacent;
                     additionalvelcity.X += opposite;
                 }
                 if (right && !left && !forward && !backward) {
                     float angle = Rotation.Y + 90;
                     float oblique = walkingspeed * timescaler;
-                    float adjacent = oblique * (float)Math.Cos(MathFunctions.ToRadians(angle));
-                    float opposite = (float)(Math.Sin(MathFunctions.ToRadians(angle)) * oblique);
+                    float adjacent = oblique * (float)Math.Cos(MathHelper.DegreesToRadians(angle));
+                    float opposite = (float)(Math.Sin(MathHelper.DegreesToRadians(angle)) * oblique);
                     additionalvelcity.Z -= adjacent;
                     additionalvelcity.X += opposite;
                 }

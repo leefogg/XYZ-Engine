@@ -438,7 +438,7 @@ namespace GLOOP.Tests
                 uint i = 0;
                 foreach (var model in batch.Models)
                 {
-                    modelMatricies.Add(MathFunctions.CreateModelMatrix(model.Transform.Position, model.Transform.Rotation, model.Transform.Scale));
+                    modelMatricies.Add(model.Transform.Matrix);
 
                     var mat = (DeferredRenderingGeoMaterial)model.Material;
                     materials.Add(new DeferredGeoMaterial()

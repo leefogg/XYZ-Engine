@@ -31,11 +31,7 @@ namespace GLOOP.Rendering
         public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
             //if (!ModelMatrix.HasValue)
-                ModelMatrix = MathFunctions.CreateModelMatrix(
-                    Transform.Position,
-                    Transform.Rotation,
-                    Transform.Scale
-                );
+                ModelMatrix = Transform.Matrix;
             Material.SetCameraUniforms(projectionMatrix, viewMatrix, ModelMatrix.Value);
             Material.Commit();
            
@@ -45,7 +41,7 @@ namespace GLOOP.Rendering
         public void RenderBoundingBox(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
             var bb = VAO.BoundingBox;
-            var modelsMatrix = MathFunctions.CreateModelMatrix(Transform.Position, Transform.Rotation, Transform.Scale);
+            var modelsMatrix = Transform.Matrix;
             var boundingBoxModelMatrix = Matrix4.CreateScale(bb.Size) * Matrix4.CreateTranslation(bb.Center) * modelsMatrix;
             boundingBoxMaterial.SetCameraUniforms(projectionMatrix, viewMatrix, boundingBoxModelMatrix);
             boundingBoxMaterial.Commit();
