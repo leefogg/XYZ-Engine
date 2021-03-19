@@ -94,7 +94,7 @@ namespace GLOOP.Rendering
                     height,
                     0,
                     settings.PixelFormat,
-                    PixelType.UnsignedByte,
+                    settings.ComponentSize,
                     settings.Data
                 );
                 numPixels = width * height;

@@ -11,6 +11,7 @@ namespace GLOOP.Extensions
         public static int GetSizeInBytes(this PixelInternalFormat format)
         {
             var floatSize = sizeof(float);
+            var intSize = sizeof(int);
             return format switch
             {
                 PixelInternalFormat.R8 => floatSize * 1,
@@ -25,6 +26,7 @@ namespace GLOOP.Extensions
                 PixelInternalFormat.Srgb8Alpha8 => floatSize * 4,
                 PixelInternalFormat.Rgba16 => floatSize * 2 * 4,
                 PixelInternalFormat.Rgba16f => floatSize * 2 * 4,
+                PixelInternalFormat.Rgb32i => intSize * 4,
                 PixelInternalFormat.CompressedRg => 1,
                 PixelInternalFormat.CompressedRgba => 1,
                 PixelInternalFormat.CompressedRgbaS3tcDxt1Ext => 1, 

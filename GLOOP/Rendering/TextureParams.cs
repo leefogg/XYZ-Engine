@@ -10,6 +10,7 @@ namespace GLOOP.Rendering
         public bool GenerateMips = false;
         public PixelInternalFormat InternalFormat = PixelInternalFormat.Rgb;
         public PixelFormat PixelFormat = PixelFormat.Rgb;
+        public PixelType ComponentSize = PixelType.UnsignedByte;
         public TextureMinFilter MinFilter = TextureMinFilter.Linear;
         public TextureMinFilter MagFilter = TextureMinFilter.Linear;
         public TextureWrapMode WrapMode = TextureWrapMode.Repeat;
