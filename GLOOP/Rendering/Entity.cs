@@ -158,13 +158,13 @@ namespace GLOOP.Rendering
                 normalTex = TextureCache.Get(normalPath);
 
             if (diffuseTex == null)
-                diffuseTex = TextureCache.Get("assets/textures/error.png");
+                diffuseTex = Texture.Error;
             if (normalTex == null)
-                normalTex = TextureCache.Get("assets/textures/gray.png");
+                normalTex = Texture.Gray;
             if (specularTex == null)
-                specularTex = TextureCache.Get("assets/textures/black.png");
+                specularTex = Texture.Black;
             if (illumTex == null)
-                illumTex = TextureCache.Get("assets/textures/black.png");
+                illumTex = Texture.Black;
         }
 
         public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
