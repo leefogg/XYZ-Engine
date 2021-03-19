@@ -57,9 +57,23 @@ namespace GLOOP.Rendering
             GL.NamedBufferSubData(Handle, (IntPtr)start, Marshal.SizeOf<T>() * data.Length - start, data);
         }
 
+        public void Read(ref T data, uint start = 0) {
+            GL.GetNamedBufferSubData(Handle, (IntPtr)start, Marshal.SizeOf<T>(), ref data);
+        }
+
+        public void Read(ref T[] data, uint start = 0)
+        {
+            GL.GetNamedBufferSubData(Handle, (IntPtr)start, Marshal.SizeOf<T>() * data.Length, data);
+        }
+
         public void Bind()
         {
             GL.BindBuffer(Type, Handle);
+        }
+
+        public void Bind(int index)
+        {
+            GL.BindBufferBase((BufferRangeTarget)Type, index, Handle);
         }
 
         public void BindRange(int start, int slot)
