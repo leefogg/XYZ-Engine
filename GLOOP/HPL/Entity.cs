@@ -13,8 +13,8 @@ namespace GLOOP.HPL
         public ModelData Model { get; set; }
 
         [XmlArray("UserDefinedVariables")]
-        [XmlArrayItem("Var", typeof(EntityVariable))]
-        public EntityVariable[] Variables { get; set; }
+        [XmlArrayItem("Var", typeof(Variable))]
+        public Variable[] Variables { get; set; }
 
         public class ModelData {
             [XmlElement("Mesh")]

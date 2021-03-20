@@ -1,4 +1,6 @@
-﻿using System;
+﻿using GLOOP.Extensions;
+using OpenTK.Mathematics;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Xml.Serialization;
@@ -29,6 +31,30 @@ namespace GLOOP.HPL
                 public bool Active { get; set; }
                 [XmlAttribute("AreaType")]
                 public AreaType Type { get; set; }
+
+                [XmlArray("UserVariables")]
+                [XmlArrayItem("Var")]
+                public Variable[] Variables { get; set; }
+
+                public Box3 GetBoundingBox()
+                {
+                    var centre = WorldPos.ParseVector3();
+                    var scale = Scale.ParseVector3();
+                    return new Box3()
+                    {
+                        Center = centre,
+                        Size = scale
+                    };
+                }
+
+                public Dictionary<string, string> GetProperties()
+                {
+                    var dict = new Dictionary<string, string>();
+                    foreach (var variable in Variables)
+                        dict.Add(variable.Name, variable.Value);
+
+                    return dict;
+                }
 
                 public enum AreaType
                 {

@@ -5,7 +5,7 @@ using System.Xml.Serialization;
 
 namespace GLOOP.HPL
 {
-    public class EntityVariable
+    public class Variable
     {
         [XmlAttribute("Name")]
         public string Name { get; set; }

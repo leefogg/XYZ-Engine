@@ -38,8 +38,8 @@ namespace GLOOP.HPL {
                 public string Scale { get; set; }
 
                 [XmlArray("UserVariables")]
-                [XmlArrayItem("Var", typeof(EntityVariable))]
-                public EntityVariable[] Variables { get; set; }
+                [XmlArrayItem("Var", typeof(Variable))]
+                public Variable[] Variables { get; set; }
 
                 public Dictionary<string, string> GetProperties(HPL.Entity ent)
                 {
