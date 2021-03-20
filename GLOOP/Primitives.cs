@@ -1,4 +1,5 @@
 ﻿using Assimp;
+using GLOOP.Extensions;
 using GLOOP.Rendering;
 using OpenTK;
 using OpenTK.Graphics.OpenGL;
@@ -20,6 +21,29 @@ namespace GLOOP
 
         private static VAO _cube;
         public static VAO Cube => _cube ??= loadSimpleModel("assets/models/cube.obj", "Internal_Cube");
+
+        private static VAO _wireframeCube;
+        public static VAO WireframeCube
+        {
+            get
+            {
+                if (_wireframeCube == null)
+                {
+                    var half = Vector3.One / 2f;
+                    // https://stackoverflow.com/questions/25195363/draw-cube-vertices-with-fewest-number-of-steps
+                    _wireframeCube = new Geometry
+                    {
+                        Positions = new Box3(-half, half).GetVertcies().ToList(),
+                        Indicies = new List<uint>()
+                        {
+                            0,4,4,6,6,7,7,3,3,2,2,0,0,1,1,5,5,4,4,6,6,2,2,3,3,1,1,5,5,7
+                        }
+                    }.ToVAO("_internal_wireframeCube");
+                }
+
+                return _wireframeCube;
+            }
+        }
 
         private static VAO loadSimpleModel(string path, string VAOName)
         {

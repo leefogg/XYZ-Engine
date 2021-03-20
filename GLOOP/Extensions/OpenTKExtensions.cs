@@ -121,16 +121,21 @@ namespace GLOOP.Extensions
 
         public static void GetCorners(this Box3 self, List<Vector3> destination)
         {
+            destination.AddRange(self.GetVertcies());
+        }
+
+        public static IEnumerable<Vector3> GetVertcies(this Box3 self)
+        {
             var min = self.Min;
             var max = self.Max;
-            destination.Add(new Vector3(min.X, min.Y, min.Z)); // Bottom near left
-            destination.Add(new Vector3(min.X, min.Y, max.Z)); // Bottom far left
-            destination.Add(new Vector3(min.X, max.Y, min.Z)); // Top near left
-            destination.Add(new Vector3(min.X, max.Y, max.Z)); // Top far left
-            destination.Add(new Vector3(max.X, min.Y, min.Z)); // Bottom near right
-            destination.Add(new Vector3(max.X, min.Y, max.Z)); // Bottom far right
-            destination.Add(new Vector3(max.X, max.Y, min.Z)); // Top near right
-            destination.Add(new Vector3(max.X, max.Y, max.Z)); // Top far right
+            yield return new Vector3(min.X, min.Y, min.Z); // Bottom near left
+            yield return new Vector3(min.X, min.Y, max.Z); // Bottom far left
+            yield return new Vector3(min.X, max.Y, min.Z); // Top near left
+            yield return new Vector3(min.X, max.Y, max.Z); // Top far left
+            yield return new Vector3(max.X, min.Y, min.Z); // Bottom near right
+            yield return new Vector3(max.X, min.Y, max.Z); // Bottom far right
+            yield return new Vector3(max.X, max.Y, min.Z); // Top near right
+            yield return new Vector3(max.X, max.Y, max.Z); // Top far right
         }
 
         public static Box3 ToBoundingBox(this IEnumerable<Vector3> self)

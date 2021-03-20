@@ -41,8 +41,7 @@ namespace GLOOP
             foreach (var area in VisibilityAreas)
             {
                 var modelMatrix = Matrix4.CreateScale(area.BoundingBox.Size) * Matrix4.CreateTranslation(area.BoundingBox.Center);
-                Draw.Box(projectionMatrix, viewMatrix, modelMatrix, areaColor);
-            }
+                Draw.BoundingBox(projectionMatrix, viewMatrix, modelMatrix, areaColor);
         }
     }
 }
