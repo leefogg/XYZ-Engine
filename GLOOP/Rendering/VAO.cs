@@ -53,6 +53,13 @@ namespace GLOOP.Rendering
                 HasNormals = hasNormals;
                 HasTangets = hasTangets;
             }
+            public VAOShape(Geometry geometry)
+            {
+                IsIndexed = geometry.IsIndexed;
+                HasUVs = geometry.HasUVs;
+                HasNormals = geometry.HasNormals;
+                HasTangets = geometry.HasTangents;
+            }
         }
 
         private static int CurrentlyBoundHandle;
@@ -95,9 +102,12 @@ namespace GLOOP.Rendering
             GL.EnableVertexAttribArray(0);
             var offset = 3;
 
-            GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, sizeof(float) * numElements, offset * sizeof(float));
-            GL.EnableVertexAttribArray(1);
-            offset += 2;
+            if (shape.HasUVs)
+            {
+                GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, sizeof(float) * numElements, offset * sizeof(float));
+                GL.EnableVertexAttribArray(1);
+                offset += 2;
+            }
 
             if (shape.HasNormals)
             {
@@ -116,27 +126,23 @@ namespace GLOOP.Rendering
         }
 
         public VAO(
-            IEnumerable<uint> vertexIndicies,
-            IEnumerable<Vector3> vertexPositions,
-            IEnumerable<Vector2> vertexUVs,
-            IEnumerable<Vector3> vertexNormals,
-            IEnumerable<Vector3> vertexTangents,
+            Geometry geometry,
             string vboName, string eboName)
-            : this(new VAOShape(true, vertexUVs?.Any() ?? false, vertexNormals?.Any() ?? false, vertexTangents?.Any() ?? false), vboName, eboName)
+            : this(new VAOShape(geometry), vboName, eboName)
         {
-            NumIndicies = vertexIndicies.Count();
+            NumIndicies = geometry.Indicies.Count();
 
-            Allocate(NumIndicies * sizeof(ushort), Shape.NumElements * sizeof(float) * vertexPositions.Count());
+            Allocate(NumIndicies * sizeof(ushort), Shape.NumElements * sizeof(float) * geometry.Positions.Count());
             var indiciesOffset = 0;
             var vertciesOffset = 0;
             FillSubData(
                 indiciesOffset,
                 vertciesOffset,
-                vertexIndicies, 
-                vertexPositions,
-                vertexUVs, 
-                vertexNormals,
-                vertexTangents
+                geometry.Indicies, 
+                geometry.Positions,
+                geometry.UVs, 
+                geometry.Normals,
+                geometry.Tangents
             );
         }
 
@@ -164,7 +170,7 @@ namespace GLOOP.Rendering
             GL.NamedBufferSubData(EBO, (IntPtr)firstIndex, indiciesSize, indicies);
 
             var positions = vertexPositions.GetFloats().ToArray();
-            var uvs = vertexUVs.GetFloats().ToArray();
+            var uvs = vertexUVs?.GetFloats().ToArray();
             var normals = vertexNormals?.GetFloats().ToArray() ?? new float[0];
             var tangents = vertexTangents?.GetFloats().ToArray() ?? new float[0];
             var verts = createVertexArray(positions, uvs, normals, tangents);
@@ -199,26 +205,31 @@ namespace GLOOP.Rendering
             var uvIndex = 0;
             var normalIndex = 0;
             var tangentIndex = 0;
+
+            bool hasUVs = uvs != null && uvs.Length > 0;
+            bool hasNormals = normals != null && normals.Length > 0;
+            bool hasTangents = tangents != null && tangents.Length > 0;
+
             for (var posIndex = 0; posIndex < positions.Length;)
             {
                 verts.Add(positions[posIndex++]);
                 verts.Add(positions[posIndex++]);
                 verts.Add(positions[posIndex++]);
 
-                if (uvs.Length > 0)
+                if (hasUVs)
                 {
                     verts.Add(uvs[uvIndex++]);
                     verts.Add(uvs[uvIndex++]);
                 }
 
-                if (normals.Length > 0)
+                if (hasNormals)
                 {
                     verts.Add(normals[normalIndex++]);
                     verts.Add(normals[normalIndex++]);
                     verts.Add(normals[normalIndex++]);
                 }
 
-                if (tangents.Length > 0)
+                if (hasTangents)
                 {
                     verts.Add(tangents[tangentIndex++]);
                     verts.Add(tangents[tangentIndex++]);

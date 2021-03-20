@@ -17,6 +17,11 @@ namespace GLOOP.Rendering
         public List<Vector3> Tangents;
         public List<uint> Indicies;
 
+        public bool HasUVs => UVs?.Any() ?? false;
+        public bool HasNormals => Normals?.Any() ?? false;
+        public bool HasTangents => Tangents?.Any() ?? false;
+        public bool IsIndexed => Indicies?.Any() ?? false;
+
         public void NormalizeScale()
         {
             var bb = GetBoundingBox();
@@ -150,7 +155,7 @@ namespace GLOOP.Rendering
                 eboName = eboName[^Globals.MaxLabelLength..];
             //CalculateFaceNormals();
 
-            return new VAO(Indicies, Positions, UVs, Normals, Tangents, vboName, vaoName);
+            return new VAO(this, vboName, vaoName);
         }
         internal VirtualVAO ToVirtualVAO(string vaoName)
         {
