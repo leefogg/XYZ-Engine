@@ -31,7 +31,7 @@ namespace GLOOP
                 foreach (var model in batch.Models)
                     model.RenderBoundingBox(projectionMatrix, viewMatrix);
 
-            var portalColor = new Vector4(1, 0, 0, 1);
+            var portalColor = new Vector4(1, 0, 0, 0.25f);
             var areaColor = new Vector4(0, 1, 0, 1);
             foreach (var area in VisibilityPortals)
             {
@@ -42,6 +42,7 @@ namespace GLOOP
             {
                 var modelMatrix = Matrix4.CreateScale(area.BoundingBox.Size) * Matrix4.CreateTranslation(area.BoundingBox.Center);
                 Draw.BoundingBox(projectionMatrix, viewMatrix, modelMatrix, areaColor);
+            }
         }
     }
 }

@@ -347,7 +347,11 @@ namespace GLOOP.Tests
             FinishDeferredRendering(projectionMatrix, viewMatrix);
 
             if (showBoundingBoxes)
+            {
+                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
                 scene.RenderBoundingBoxes(Camera.ProjectionMatrix, Camera.ViewMatrix);
+                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+            }
             
             SwapBuffers();
             NewFrame();
