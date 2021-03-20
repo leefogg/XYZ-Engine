@@ -16,6 +16,9 @@ namespace GLOOP.Rendering
         public VirtualVAO VAO { get; set; }
         public Material Material { get; }
 
+        public Matrix4 BoundingBoxMatrix 
+            => Matrix4.CreateScale(VAO.BoundingBox.Size) * Matrix4.CreateTranslation(VAO.BoundingBox.Center) * Transform.Matrix;
+
         private Matrix4? ModelMatrix;
 
         public Model(
@@ -40,10 +43,7 @@ namespace GLOOP.Rendering
 
         public void RenderBoundingBox(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
-            var bb = VAO.BoundingBox;
-            var modelsMatrix = Transform.Matrix;
-            var boundingBoxModelMatrix = Matrix4.CreateScale(bb.Size) * Matrix4.CreateTranslation(bb.Center) * modelsMatrix;
-            boundingBoxMaterial.SetCameraUniforms(projectionMatrix, viewMatrix, boundingBoxModelMatrix);
+            boundingBoxMaterial.SetCameraUniforms(projectionMatrix, viewMatrix, BoundingBoxMatrix);
             boundingBoxMaterial.Commit();
             Primitives.Cube.Draw(PrimitiveType.Lines);
         }

@@ -234,7 +234,9 @@ namespace GLOOP.Tests
             var afterMapLoad = DateTime.Now;
             var sorter = new DeferredMaterialGrouper();
             var beforeMapSort = DateTime.Now;
-            var batches = GroupBy(scene.Models, (a, b) =>
+            //var visibleObjects = GetVisibleModels(scene.Models);
+            var visibleObjects = scene.Models;
+            var batches = GroupBy(visibleObjects, (a, b) =>
             {
                 var mat1 = (DeferredRenderingGeoMaterial)a.Material;
                 var mat2 = (DeferredRenderingGeoMaterial)b.Material;
@@ -258,7 +260,7 @@ namespace GLOOP.Tests
             var numStatic = map.Entities.Where(e => e.IsStatic).Sum(e => e.Models.Count);
             var numStaticOccluders = map.Entities.Where(e => e.IsStatic && e.IsOccluder).Sum(e => e.Models.Count);
             var numDynamic = map.Entities.Where(e => !e.IsStatic).Sum(e => e.Models.Count);
-            var allModels = map.Entities.Sum(e => e.Models.Count);
+            var allModels = visibleObjects.Count();
             Console.WriteLine($"Scene: {numStatic} Static, {numStaticOccluders} of which occlude. {numDynamic} Dynamic. {allModels} Total.");
 
             setupBuffers();
@@ -271,6 +273,13 @@ namespace GLOOP.Tests
             var summaryJson = JsonConvert.SerializeObject(usedTextures);
             File.WriteAllText(metaFilePath, summaryJson);
             */
+        }
+
+        public IEnumerable<Model> GetVisibleModels(IEnumerable<Model> allModels)
+        {
+            var frustumPlanes = Camera.GetFrustumPlanes();
+
+            return allModels.Where(x => Camera.IsInsideFrustum(ref frustumPlanes, x.VAO.BoundingBox, x.Transform));
         }
 
         public List<RenderBatch<DeferredRenderingGeoMaterial>> GroupBy(IEnumerable<Model> models, Func<Model, Model, bool> comparer)
