@@ -43,9 +43,7 @@ namespace GLOOP.Rendering
 
         public void RenderBoundingBox(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {
-            boundingBoxMaterial.SetCameraUniforms(projectionMatrix, viewMatrix, BoundingBoxMatrix);
-            boundingBoxMaterial.Commit();
-            Primitives.Cube.Draw(PrimitiveType.Lines);
+            Debugging.Draw.Box(projectionMatrix, viewMatrix, BoundingBoxMatrix, Vector4.One);
         }
 
         public Model Clone() => new Model(VAO, Material.Clone(), Transform);

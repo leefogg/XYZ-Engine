@@ -20,8 +20,10 @@ namespace GLOOP.HPL
         public List<Model> Terrain = new List<Model>();
         public List<GLOOP.PointLight> PointLights = new List<GLOOP.PointLight>();
         public List<GLOOP.SpotLight> SpotLights = new List<GLOOP.SpotLight>();
+        public List<Box3> Areas = new List<Box3>();
 
         public Map(string mapPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
+            loadAreas(mapPath + "_Area");
             loadLights(mapPath + "_Light");
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
             loadEntities(mapPath + "_Entity", assimp, material);
@@ -34,6 +36,27 @@ namespace GLOOP.HPL
                 .OrderByDescending(m => m.IsStatic)
                 //.ThenByDescending(m => m.IsOccluder)
                 .ThenBy(m => m.ResourcePath).ToList();
+        }
+
+        private void loadAreas(string areaFilePath)
+        {
+            var areas = Deserialize<Areas>(areaFilePath);
+            foreach (var section in areas.sections)
+            {
+                foreach (var area in section.Areas)
+                {
+                    if (!area.Active)
+                        continue;
+
+                    var centre = area.WorldPos.ParseVector3();
+                    var scale = area.Scale.ParseVector3();
+                    Areas.Add(new Box3()
+                    {
+                        Center = centre,
+                        Size = scale
+                    });
+                }
+            }
         }
 
         private void loadTerrain(string baseFilePath)
@@ -458,7 +481,8 @@ namespace GLOOP.HPL
             {
                 PointLights = PointLights,
                 SpotLights = SpotLights,
-                Terrain = Terrain
+                Terrain = Terrain,
+                Areas = Areas
             };
 
             scene.Models.AddRange(Models);
