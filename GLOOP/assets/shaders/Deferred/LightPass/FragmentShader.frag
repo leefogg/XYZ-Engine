@@ -4,8 +4,6 @@
 #define SPOT 1
 
 in vec3 fragPos;
-in vec2 texCoord;
-in vec3 norm;
 in vec4 clipSpace;
 flat in int instance;
 
