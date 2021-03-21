@@ -27,5 +27,22 @@ namespace GLOOP.Rendering
             NumInstances = numInstances;
             BaseInstance = baseInstance;
         }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is DrawElementsIndirectData data)
+            {
+                return data.BaseInstance == BaseVertex
+                    && data.BaseInstance == BaseInstance
+                    && data.FirstIndex == FirstIndex
+                    && data.NumIndexes == NumIndexes
+                    && data.NumInstances == NumInstances;
+            }
+            else
+            {
+                return false;
+            }
+
+        }
     }
 }
