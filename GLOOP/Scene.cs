@@ -16,7 +16,7 @@ namespace GLOOP
         public List<Model> Terrain = new List<Model>();
         public List<VisibilityPortal> VisibilityPortals = new List<VisibilityPortal>();
         public List<VisibilityArea> VisibilityAreas = new List<VisibilityArea>();
-        public List<RenderBatch<DeferredRenderingGeoMaterial>> Batches;
+        public List<RenderBatch> Batches;
 
         public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
         {

@@ -10,11 +10,12 @@ namespace GLOOP.Rendering
 {
     public class Model
     {
-        private static readonly SingleColorMaterial boundingBoxMaterial = new SingleColorMaterial(Shader.SingleColorShader) { Color = new Vector4(1) };
-
         public Transform Transform = Transform.Default;
         public VirtualVAO VAO { get; set; }
         public Material Material { get; }
+        public bool IsStatic = false;
+        public bool IsOccluder = false;
+
 
         public Matrix4 BoundingBoxMatrix 
             => Matrix4.CreateScale(VAO.BoundingBox.Size) * Matrix4.CreateTranslation(VAO.BoundingBox.Center) * Transform.Matrix;

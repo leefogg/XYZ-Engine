@@ -139,7 +139,7 @@ namespace GLOOP.Tests
                 "Deferred Spot light"
             );
             singleColorMaterial = new SingleColorMaterial(Shader.SingleColorShader);
-            singleColorMaterial.Color = new Vector4(0.25f);
+            singleColorMaterial.Color = new Vector4(1f);
 
             FinalCombineShader = new StaticPixelShader(
                 "assets/shaders/FinalCombine/vertex.vert",
@@ -235,21 +235,33 @@ namespace GLOOP.Tests
             );
             scene = map.ToScene();
             var afterMapLoad = DateTime.Now;
-            var sorter = new DeferredMaterialGrouper();
             var beforeMapSort = DateTime.Now;
             //var visibleObjects = GetVisibleModels(scene.Models);
             var visibleObjects = scene.Models;
-            var batches = GroupBy(visibleObjects, (a, b) =>
+            var occluders = visibleObjects.Where(o => o.IsOccluder);
+            var notOccluders = visibleObjects.Where(o => !o.IsOccluder);
+            bool SameRenderBatch(Model a, Model b)
             {
                 var mat1 = (DeferredRenderingGeoMaterial)a.Material;
                 var mat2 = (DeferredRenderingGeoMaterial)b.Material;
                 return a.VAO.container.Handle == b.VAO.container.Handle
-                && mat1.DiffuseTexture == mat2.DiffuseTexture
-                && mat1.SpecularTexture == mat2.SpecularTexture
-                && mat1.NormalTexture == mat2.NormalTexture
-                && mat1.IlluminationColor == mat2.IlluminationColor;
-            }).OrderBy(b => b.Models[0].Material.Shader.Handle);
-            scene.Batches = batches.ToList();
+                    && mat1.DiffuseTexture == mat2.DiffuseTexture
+                    && mat1.SpecularTexture == mat2.SpecularTexture
+                    && mat1.NormalTexture == mat2.NormalTexture
+                    && mat1.IlluminationColor == mat2.IlluminationColor;
+            }
+            int averageDistanceToCamera(RenderBatch batch)
+            {
+                return (int)batch.Models.Average(model => (model.Transform.Position - Camera.Position).Length);
+            }
+            var occluderbatches = GroupBy(occluders, SameRenderBatch)
+                .OrderBy(b => b.Models[0].Material.Shader.Handle)
+                .ThenBy(averageDistanceToCamera);
+            var nonOccluderbatches = GroupBy(notOccluders, SameRenderBatch)
+                .OrderBy(b => b.Models[0].Material.Shader.Handle)
+                .ThenBy(averageDistanceToCamera);
+            scene.Batches = occluderbatches.ToList();
+            scene.Batches.AddRange(nonOccluderbatches);
             var afterMapSort = DateTime.Now;
 
             Console.WriteLine($"Time taken to sort map {(afterMapSort - beforeMapSort).TotalSeconds} seconds");
@@ -285,9 +297,9 @@ namespace GLOOP.Tests
             return allModels.Where(x => Camera.IsInsideFrustum(ref frustumPlanes, x.VAO.BoundingBox, x.Transform));
         }
 
-        public List<RenderBatch<DeferredRenderingGeoMaterial>> GroupBy(IEnumerable<Model> models, Func<Model, Model, bool> comparer)
+        public List<RenderBatch> GroupBy(IEnumerable<Model> models, Func<Model, Model, bool> comparer)
         {
-            var batches = new List<RenderBatch<DeferredRenderingGeoMaterial>>();
+            var batches = new List<RenderBatch>();
 
             foreach (var model in models)
             {
@@ -303,7 +315,7 @@ namespace GLOOP.Tests
                 }
 
                 if (!foundBatch)
-                    batches.Add(new RenderBatch<DeferredRenderingGeoMaterial>(new[] { model }));
+                    batches.Add(new RenderBatch(new[] { model }));
             }
 
             return batches;
@@ -312,7 +324,7 @@ namespace GLOOP.Tests
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             GBuffers.Use();
-            var clearColor = DebugLights ? 0.05f : 0;
+            var clearColor = DebugLights ? 0.2f : 0;
             GL.ClearColor(clearColor, clearColor, clearColor, 1);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
@@ -430,17 +442,12 @@ namespace GLOOP.Tests
             setupBloomUBO();
 
             var batches = scene.Batches;
-            //var batchSizes = scene.Batches.Select(b => b.Models.Count()).ToArray();
-            //var numModels = batchSizes.Sum();
-            //setupMaterialBuffer(models, numModels);
-            //setupModelMatriciesBuffer(batchSizes);
-            //setupDrawIndirectBuffer(models, numModels);
             loadFrameData(batches);
 
             setupRandomTexture();
         }
 
-        private void loadFrameData(List<RenderBatch<DeferredRenderingGeoMaterial>> batches)
+        private void loadFrameData(List<RenderBatch> batches)
         {
             var sizeOfMatrix = Marshal.SizeOf<Matrix4>();
 

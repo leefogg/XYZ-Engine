@@ -31,3 +31,4 @@ One VAO for all meshes, 166, 2670, 204, 17257467
 Store indicies as ushort, 169, 2670, 192, 17257467
 ----------------------------------------- Fixed TextureSizeMB: 3230MB
 Model matrix as UBO, 170, 3230, 192, 17257467
+Occuders first, 166, 3231, 192, 17257467

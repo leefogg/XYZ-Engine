@@ -29,13 +29,7 @@ namespace GLOOP.HPL
             loadEntities(mapPath + "_Entity", assimp, material);
             loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
-            loadTerrain(mapPath);
-
-            // Sort
-            Entities = Entities
-                .OrderByDescending(m => m.IsStatic)
-                //.ThenByDescending(m => m.IsOccluder)
-                .ThenBy(m => m.ResourcePath).ToList();
+            //loadTerrain(mapPath);
         }
 
         private void loadAreas(string areaFilePath)
@@ -475,6 +469,8 @@ namespace GLOOP.HPL
                 foreach (var model in ent.Models)
                 {
                     model.Transform = ent.Transform;
+                    model.IsOccluder = ent.IsOccluder;
+                    model.IsStatic = ent.IsStatic;
                     scene.Models.Add(model);
                 }
             }

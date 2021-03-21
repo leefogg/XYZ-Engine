@@ -4,7 +4,7 @@ using System.Text;
 
 namespace GLOOP.Rendering
 {
-    public class RenderBatch<T> where T : Material
+    public class RenderBatch
     {
         public List<Model> Models = new List<Model>();
 
