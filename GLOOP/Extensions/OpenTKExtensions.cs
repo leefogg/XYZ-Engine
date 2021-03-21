@@ -10,23 +10,21 @@ namespace GLOOP.Extensions
     {
         public static int GetSizeInBytes(this PixelInternalFormat format)
         {
-            var floatSize = sizeof(float);
-            var intSize = sizeof(int);
             return format switch
             {
-                PixelInternalFormat.R8 => floatSize * 1,
-                PixelInternalFormat.Rg8 => floatSize * 2,
-                PixelInternalFormat.Rgb => floatSize * 3,
-                PixelInternalFormat.Rgb8 => floatSize * 3,
-                PixelInternalFormat.Srgb8 => floatSize * 3,
-                PixelInternalFormat.Rgb16 => floatSize * 2 * 3,
-                PixelInternalFormat.Rgb16f => floatSize * 2 * 3,
-                PixelInternalFormat.Rgba => floatSize * 4,
-                PixelInternalFormat.Rgba8 => floatSize * 4,
-                PixelInternalFormat.Srgb8Alpha8 => floatSize * 4,
-                PixelInternalFormat.Rgba16 => floatSize * 2 * 4,
-                PixelInternalFormat.Rgba16f => floatSize * 2 * 4,
-                PixelInternalFormat.Rgb32i => intSize * 4,
+                PixelInternalFormat.R8 =>  1,
+                PixelInternalFormat.Rg8 =>  2,
+                PixelInternalFormat.Rgb => 3,
+                PixelInternalFormat.Rgb8 => 3,
+                PixelInternalFormat.Srgb8 => 3,
+                PixelInternalFormat.Rgb16 => 2 * 3,
+                PixelInternalFormat.Rgb16f =>  2 * 3,
+                PixelInternalFormat.Rgba => 4,
+                PixelInternalFormat.Rgba8 => 4,
+                PixelInternalFormat.Srgb8Alpha8 => 4,
+                PixelInternalFormat.Rgba16 => 2 * 4,
+                PixelInternalFormat.Rgba16f => 2 * 4,
+                PixelInternalFormat.Rgb32i => 3 * 4,
                 PixelInternalFormat.CompressedRg => 1,
                 PixelInternalFormat.CompressedRgba => 1,
                 PixelInternalFormat.CompressedRgbaS3tcDxt1Ext => 1, 
@@ -36,7 +34,7 @@ namespace GLOOP.Extensions
                 PixelInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext => 1,
                 PixelInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext => 1,
                 (PixelInternalFormat)OpenTK.Graphics.OpenGL.All.CompressedLuminanceAlphaLatc2Ext => 1,
-                _ => floatSize * 4
+                _ => 4
             };
         }
 
