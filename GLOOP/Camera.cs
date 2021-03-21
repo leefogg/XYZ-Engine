@@ -169,7 +169,12 @@ namespace GLOOP
             var position = boundingBox.Center + modelTransform.Position;
             var size = boundingBox.Size * modelTransform.Scale;
             var radius = Math.Max(Math.Max(size.X, size.Y), size.Z) / 2f;
+            return IsInsideFrustum(ref frustumPlanes, position, radius);
+        }
 
+        [Pure]
+        public static bool IsInsideFrustum(ref Vector4[] frustumPlanes, Vector3 position, float radius)
+        {
             for (int i = 0; i < 6; i++)
             {
                 var planeEquation = frustumPlanes[i];

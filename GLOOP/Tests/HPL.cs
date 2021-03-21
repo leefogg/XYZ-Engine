@@ -64,6 +64,8 @@ namespace GLOOP.Tests
         private Query GeoPassQuery;
 
         private const int maxLights = 500;
+        private List<GLOOP.SpotLight> culledSpotLights = new List<GLOOP.SpotLight>();
+        private List<GLOOP.PointLight> culledPointLights = new List<GLOOP.PointLight>();
         private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
         private Buffer<float> bloomBuffer;
@@ -204,6 +206,7 @@ namespace GLOOP.Tests
             var custom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm";
             var boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
             var terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
+            var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
             var mapToLoad = phi;
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
 
@@ -317,8 +320,6 @@ namespace GLOOP.Tests
             var viewMatrix = Camera.ViewMatrix;
             updateCameraUBO();
 
-            //map.Render(projectionMatrix, viewMatrix);
-
             if (GeoPassQuery != null)
             {
                 var time = GeoPassQuery.GetResult();
@@ -352,7 +353,7 @@ namespace GLOOP.Tests
                 scene.RenderBoundingBoxes(Camera.ProjectionMatrix, Camera.ViewMatrix);
                 GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
             }
-            
+
             SwapBuffers();
             NewFrame();
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
@@ -599,20 +600,31 @@ namespace GLOOP.Tests
 
         private void updatePointLightsUBO()
         {
+            var planes = Camera.GetFrustumPlanes();
+
             var lights = new PointLight[Math.Min(maxLights, scene.PointLights.Count)];
-            for (var i = 0; i < lights.Length; i++)
+            culledPointLights.Clear();
+
+            var numCulledLights = 0;
+            for (var i = 0; i < scene.PointLights.Count && culledPointLights.Count < lights.Length; i++)
             {
-                var pointLight = scene.PointLights[i];
-                pointLight.GetLightingScalars(out float diffuseScalar, out float specularScalar);
-                lights[i] = new PointLight(
-                    pointLight.Position,
-                    pointLight.Color,
-                    pointLight.Brightness,
-                    pointLight.Radius,
-                    pointLight.FalloffPower,
-                    diffuseScalar,
-                    specularScalar
-                );
+                var light = scene.PointLights[i];
+
+                if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
+                {
+                    light.GetLightingScalars(out float diffuseScalar, out float specularScalar);
+                    lights[numCulledLights++] = new PointLight(
+                        light.Position,
+                        light.Color,
+                        light.Brightness,
+                        light.Radius,
+                        light.FalloffPower,
+                        diffuseScalar,
+                        specularScalar
+                    );
+
+                    culledPointLights.Add(light);
+                }
             }
 
             pointLightsBuffer.Update(lights);
@@ -620,24 +632,33 @@ namespace GLOOP.Tests
 
         private void updateSpotLightsUBO()
         {
+            var planes = Camera.GetFrustumPlanes();
+            culledSpotLights.Clear();
+
+            var culledNumSpotLights = 0;
             var lights = new SpotLight[Math.Min(maxLights, scene.SpotLights.Count)];
-            for (var i = 0; i < lights.Length; i++)
+            for (var i = 0; i < lights.Length && culledSpotLights.Count < lights.Length; i++)
             {
-                var spotLight = scene.SpotLights[i];
-                spotLight.GetLightingScalars(out float diffuseScalar, out float specularScalar);
-                var dir = spotLight.Rotation * new Vector3(0, 0, 1);
-                lights[i] = new SpotLight(
-                    spotLight.Position,
-                    spotLight.Color,
-                    dir,
-                    spotLight.Brightness,
-                    spotLight.Radius,
-                    spotLight.FalloffPower,
-                    spotLight.AngularFalloffPower,
-                    spotLight.FOV,
-                    diffuseScalar,
-                    specularScalar
-                );
+                var light = scene.SpotLights[i];
+                if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
+                {
+                    light.GetLightingScalars(out float diffuseScalar, out float specularScalar);
+                    var dir = light.Rotation * new Vector3(0, 0, 1);
+                    lights[culledNumSpotLights++] = new SpotLight(
+                        light.Position,
+                        light.Color,
+                        dir,
+                        light.Brightness,
+                        light.Radius,
+                        light.FalloffPower,
+                        light.AngularFalloffPower,
+                        light.FOV,
+                        diffuseScalar,
+                        specularScalar
+                    );
+
+                    culledSpotLights.Add(light);
+                }
             }
 
             spotLightsBuffer.Update(lights);
@@ -822,6 +843,7 @@ namespace GLOOP.Tests
             if (scene.PointLights.Any())
             {
                 pointLightsBuffer.BindRange(0, 1);
+
                 var shader = PointLightShader;
                 shader.Use();
                 Texture.Use(new[] {
@@ -837,16 +859,14 @@ namespace GLOOP.Tests
                 shader.Set("camPos", Camera.Position);
                 //TODO: Could render a 2D circle in screenspace instead of a sphere
 
-                var numPointLights = Math.Min(maxLights, scene.PointLights.Count);
-
-                Primitives.Sphere.Draw(numInstances: numPointLights);
+                //Console.WriteLine(((float)culledPointLights.Count / (float)scene.PointLights.Count) * 100 + "% of point lights");
+                Primitives.Sphere.Draw(numInstances: culledPointLights.Count);
 
                 // Debug light spheres
                 if (DebugLights)
                 {
-                    for (var i = 0; i < scene.PointLights.Count; i++)
+                    foreach (var light in culledPointLights)
                     {
-                        var light = scene.PointLights[i];
                         var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, new OpenTK.Mathematics.Quaternion(), new Vector3(light.Radius * 2));
                         singleColorMaterial.ProjectionMatrix = projectionMatrix;
                         singleColorMaterial.ViewMatrix = viewMatrix;
@@ -860,7 +880,6 @@ namespace GLOOP.Tests
             if (scene.SpotLights.Any())
             {
                 spotLightsBuffer.BindRange(0, 1);
-                var numSpotLights = Math.Min(maxLights, scene.SpotLights.Count);
 
                 Shader shader = SpotLightShader;
                 shader.Use();
@@ -876,13 +895,13 @@ namespace GLOOP.Tests
                 shader.Set("specularTex", TextureUnit.Texture3);
                 shader.Set("camPos", Camera.Position);
 
-                Primitives.Sphere.Draw(numInstances: numSpotLights);
+                //Console.WriteLine(((float)culledSpotLights.Count / (float)scene.SpotLights.Count) * 100 + "% of spot lights");
+                Primitives.Sphere.Draw(numInstances: culledSpotLights.Count);
 
                 if (DebugLights)
                 {
-                    for (var i = 0; i < numSpotLights; i++)
+                    foreach (var light in culledSpotLights)
                     {
-                        var light = scene.SpotLights[i];
                         var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, new OpenTK.Mathematics.Quaternion(), new Vector3(light.Radius * 2));
                         singleColorMaterial.ModelMatrix = modelMatrix;
                         singleColorMaterial.ProjectionMatrix = projectionMatrix;
@@ -924,7 +943,7 @@ namespace GLOOP.Tests
             if (IsFocused) {
                 var input = KeyboardState;
 
-                if (KeyboardState.IsKeyPressed(Keys.L))
+                if (input.IsKeyPressed(Keys.L))
                     DebugLights = !DebugLights;
 
                 if (input.IsKeyDown(Keys.X))
