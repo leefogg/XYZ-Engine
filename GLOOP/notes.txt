@@ -62,3 +62,4 @@ TODO:
 	Box lights
 	Fog boxes
 	Decals
+	Sky
