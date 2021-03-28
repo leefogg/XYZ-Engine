@@ -32,14 +32,14 @@ namespace GLOOP.Rendering
             VAO = vao;
         }
 
-        public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix, PrimitiveType renderMode = PrimitiveType.Triangles)
         {
             //if (!ModelMatrix.HasValue)
                 ModelMatrix = Transform.Matrix;
             Material.SetCameraUniforms(projectionMatrix, viewMatrix, ModelMatrix.Value);
             Material.Commit();
            
-            VAO.Draw();
+            VAO.Draw(renderMode);
         }
 
         public void RenderBoundingBox(Matrix4 projectionMatrix, Matrix4 viewMatrix)
