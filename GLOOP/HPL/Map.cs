@@ -44,8 +44,8 @@ namespace GLOOP.HPL
             if (!terrainInfo.Active || string.IsNullOrEmpty(terrainInfo.BaseMaterialFile))
                 return;
 
-            var baseMaterial = Deserialize<Material>(@"C:\mat\" + Path.GetFileName(terrainInfo.BaseMaterialFile));
-            var baseTexture = TextureCache.Get(@"C:\dds\" + Path.GetFileName(baseMaterial.Textures.Diffuse.Path));
+            var baseMaterial = Deserialize<Material>(Constants.MaterialsFolder + Path.GetFileName(terrainInfo.BaseMaterialFile));
+            var baseTexture = TextureCache.Get(Constants.TexturesDDSFolder + Path.GetFileName(baseMaterial.Textures.Diffuse.Path));
 
             var splatTexture = new Texture2D(baseFilePath + "_Terrain_blendlayer_0.dds");
 
@@ -58,9 +58,9 @@ namespace GLOOP.HPL
                 } 
                 else
                 {
-                    var materialPath = @"C:\mat\" + Path.GetFileName(terrainInfo.BlendLayers.Materials[i].File);
+                    var materialPath = Constants.MaterialsFolder + Path.GetFileName(terrainInfo.BlendLayers.Materials[i].File);
                     var material = Deserialize<Material>(materialPath);
-                    var texturePath = @"C:\dds\" + Path.GetFileName(material.Textures.Diffuse.Path);
+                    var texturePath = Constants.TexturesDDSFolder + Path.GetFileName(material.Textures.Diffuse.Path);
                     textures[i] = TextureCache.Get(texturePath);
                 }
             }

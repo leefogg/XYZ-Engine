@@ -73,7 +73,7 @@ namespace GLOOP.HPL
             try
             {
                 var extension = "dds";
-                var texturesFolder = @"C:\" + extension;
+                var texturesFolder = Constants.RootFolder + extension;
                 Texture2D findTex(string[] names, PixelInternalFormat format)
                 {
                     Texture2D tex = null;
@@ -94,7 +94,7 @@ namespace GLOOP.HPL
                 if (Path.GetExtension(diffusePath) == ".mat")
                 {
                     var materialName = Path.GetFileName(diffusePath);
-                    var materialPath = Path.Combine(@"c:\mat", materialName);
+                    var materialPath = Path.Combine(Constants.MaterialsFolder, materialName);
                     var material = Deserialize<Material>(materialPath);
 
                     diffusePath = material.Textures.Diffuse?.Path ?? diffusePath;
