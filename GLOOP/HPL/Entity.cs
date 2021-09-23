@@ -58,7 +58,7 @@ namespace GLOOP.HPL
                         var mesh = Model.Mesh.SubMeshes[i];
                         var renderable = model.Models[0];
                         renderable.Transform.Position += mesh.Position.ParseVector3();
-                        renderable.Transform.Rotation += new Quaternion(mesh.Rotation.ParseVector3().Negated());
+                        renderable.Transform.Rotation += Quaternion.FromEulerAngles(-mesh.Rotation.ParseVector3());
                         renderable.Transform.Scale *= mesh.Scale.ParseVector3();
                     }
                 }
