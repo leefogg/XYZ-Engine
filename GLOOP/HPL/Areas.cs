@@ -72,6 +72,13 @@ namespace GLOOP.HPL
                     DoorwayTrigger,
                     PathNode,
                     Soundscape,
+                    Sit,
+                    Zoom,
+                    Crawl,
+                    Climb,
+                    AgentRepel,
+                    Sticky,
+                    EyeTrackingZoom
                 }
             }
         }
