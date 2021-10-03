@@ -78,7 +78,9 @@ namespace GLOOP.HPL
                     Climb,
                     AgentRepel,
                     Sticky,
-                    EyeTrackingZoom
+                    EyeTrackingZoom,
+                    Distortion,
+                    Hide
                 }
             }
         }
