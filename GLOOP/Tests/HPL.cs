@@ -20,6 +20,7 @@ using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using TextureWrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode;
 using GLOOP.Rendering.Materials;
+using GLOOP.Tests.Assets.Shaders;
 
 namespace GLOOP.Tests
 {
@@ -44,6 +45,7 @@ namespace GLOOP.Tests
         private Shader FXAAShader;
         private Shader SSAOShader;
         private Shader ColorCorrectionShader;
+        private FrustumMaterial frustumMaterial;
         private QueryPool queryPool;
         private bool DebugLights;
 
@@ -63,7 +65,7 @@ namespace GLOOP.Tests
 
         private Query GeoPassQuery;
 
-        private const int maxLights = 500;
+        private const int maxLights = 200;
         private List<GLOOP.SpotLight> culledSpotLights = new List<GLOOP.SpotLight>();
         private List<GLOOP.PointLight> culledPointLights = new List<GLOOP.PointLight>();
         private int bloomDataStride = 1000;
@@ -75,7 +77,8 @@ namespace GLOOP.Tests
 
         private readonly Vector3
             CustomMapCameraPosition = new Vector3(6.3353596f, 1.6000088f, 8.1601305f),
-            PhiMapCameraPosition = new Vector3(-17.039896f, 14.750014f, 64.48185f);
+            PhiMapCameraPosition = new Vector3(-17.039896f, 14.750014f, 64.48185f),
+            LightsMapCameraPosition = new Vector3(-0.5143715f, 4.3500123f, 11.639848f);
 
         public HPL(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings) {
             Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90);
@@ -194,6 +197,7 @@ namespace GLOOP.Tests
                 "assets/shaders/ColorCorrection/fragment.frag",
                 name: "Color Correction"
             );
+            frustumMaterial = new FrustumMaterial(new FrustumShader());
             queryPool = new QueryPool(5);
 
             var lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
@@ -624,7 +628,7 @@ namespace GLOOP.Tests
                         light.Position,
                         light.Color,
                         light.Brightness,
-                        light.Radius,
+                        light.Radius * 2, // TODO: Should not be doubled, need to fix brightness
                         light.FalloffPower,
                         diffuseScalar,
                         specularScalar
@@ -650,11 +654,16 @@ namespace GLOOP.Tests
                 if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
                 {
                     light.GetLightingScalars(out float diffuseScalar, out float specularScalar);
-                    var dir = light.Rotation * new Vector3(0, 0, 1);
+                    var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
+                    var dir = Matrix4.CreateFromQuaternion(light.Rotation) * new Vector4(0, 0, 1, 1);
+                    GetLightVars(light, out var aspect, out var scale);
                     lights[culledNumSpotLights++] = new SpotLight(
+                        modelMatrix,
                         light.Position,
                         light.Color,
-                        dir,
+                        dir.Xyz,
+                        scale * 2,
+                        aspect,
                         light.Brightness,
                         light.Radius,
                         light.FalloffPower,
@@ -669,6 +678,18 @@ namespace GLOOP.Tests
             }
 
             spotLightsBuffer.Update(lights);
+        }
+
+        private void GetLightVars(GLOOP.SpotLight light, out float ar, out Vector3 scale)
+        {
+            ar = light.AspectRatio;
+            var deg2Rad = 0.0174533f;
+            var halfHeight = (float)Math.Tan(deg2Rad * (light.FOV / 2f));
+            var halfWidth = halfHeight * ar;
+            var far = light.Radius;
+            var xf = halfWidth * far;
+            var yf = halfHeight * far;
+            scale = new Vector3(xf, yf, -far);
         }
 
         private void FinishDeferredRendering(Matrix4 projectionMatrix, Matrix4 viewMatrix)
@@ -903,18 +924,22 @@ namespace GLOOP.Tests
                 shader.Set("camPos", Camera.Position);
 
                 //Console.WriteLine(((float)culledSpotLights.Count / (float)scene.SpotLights.Count) * 100 + "% of spot lights");
-                Primitives.Sphere.Draw(numInstances: culledSpotLights.Count);
+                Primitives.Frustum.Draw(numInstances: culledSpotLights.Count);
 
                 if (DebugLights)
                 {
+                    var material = frustumMaterial;
                     foreach (var light in culledSpotLights)
                     {
-                        var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, new OpenTK.Mathematics.Quaternion(), new Vector3(light.Radius * 2));
-                        singleColorMaterial.ModelMatrix = modelMatrix;
-                        singleColorMaterial.ProjectionMatrix = projectionMatrix;
-                        singleColorMaterial.ViewMatrix = viewMatrix;
-                        singleColorMaterial.Commit();
-                        Primitives.Sphere.Draw(OpenTK.Graphics.OpenGL4.PrimitiveType.Lines);
+                        var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
+                        GetLightVars(light, out var aspect, out var scale);
+                        material.AspectRatio = aspect;
+                        material.Scale = scale;
+                        material.ModelMatrix = modelMatrix;
+                        material.ProjectionMatrix = projectionMatrix;
+                        material.ViewMatrix = viewMatrix;
+                        material.Commit();
+                        Primitives.Frustum.Draw(OpenTK.Graphics.OpenGL4.PrimitiveType.Lines);
                     }
                 }
             }
@@ -1026,24 +1051,30 @@ namespace GLOOP.Tests
             }
         };
 
-        [StructLayout(LayoutKind.Explicit, Size = 80)]
+        [StructLayout(LayoutKind.Explicit, Size = 160)]
         private struct SpotLight
         {
-            [FieldOffset(0)] Vector3 position;
-            [FieldOffset(16)] Vector3 color;
-            [FieldOffset(32)] Vector3 direction;
-            [FieldOffset(48)] float brightness;
-            [FieldOffset(52)] float radius;
-            [FieldOffset(56)] float falloffPow;
-            [FieldOffset(60)] float angularFalloffPow;
-            [FieldOffset(64)] float FOV;
-            [FieldOffset(68)] float diffuseScalar;
-            [FieldOffset(72)] float specularScalar;
+            [FieldOffset(0)] Matrix4 modelMatrix;
+            [FieldOffset(64)] Vector3 position;
+            [FieldOffset(80)] Vector3 color;
+            [FieldOffset(96)] Vector3 direction;
+            [FieldOffset(112)] Vector3 scale;
+            [FieldOffset(124)] float aspectRatio;
+            [FieldOffset(128)] float brightness;
+            [FieldOffset(132)] float radius;
+            [FieldOffset(136)] float falloffPow;
+            [FieldOffset(140)] float angularFalloffPow;
+            [FieldOffset(144)] float FOV;
+            [FieldOffset(148)] float diffuseScalar;
+            [FieldOffset(152)] float specularScalar;
 
             public SpotLight(
+                Matrix4 modelMatrix,
                 Vector3 position,
                 Vector3 color,
                 Vector3 direction,
+                Vector3 scale,
+                float ar,
                 float brightness,
                 float radius,
                 float falloffPow,
@@ -1053,9 +1084,12 @@ namespace GLOOP.Tests
                 float specularScalar
             )
             {
+                this.modelMatrix = modelMatrix;
                 this.position = position;
                 this.color = color;
                 this.direction = direction;
+                this.scale = scale;
+                this.aspectRatio = ar;
                 this.brightness = brightness;
                 this.radius = radius;
                 this.falloffPow = falloffPow;

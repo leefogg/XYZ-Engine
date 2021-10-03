@@ -17,7 +17,7 @@ namespace GLOOP
         public static VAO Quad => _quad ??= CreateQuad();
 
         private static VAO _sphere;
-        public static VAO Sphere => _sphere ??= loadSimpleModel("assets/models/sphere.obj", "Internal_Sphere");
+        public static VAO Sphere => _sphere ??= loadSimpleModel("assets/models/icosphere.obj", "Internal_Sphere");
 
         private static VAO _cube;
         public static VAO Cube => _cube ??= loadSimpleModel("assets/models/cube.obj", "Internal_Cube");
@@ -42,6 +42,39 @@ namespace GLOOP
                 }
 
                 return _wireframeCube;
+            }
+        }
+
+        private static VAO _frustum;
+        public static VAO Frustum
+        {
+            get
+            {
+                if (_frustum == null)
+                {
+                    _frustum = new Geometry()
+                    {
+                        Positions = new List<Vector3>()
+                        {
+                            new Vector3( 0,  0, 0),
+                            new Vector3( 1,  1, 1), // Top Right    // 1
+                            new Vector3( 1, -1, 1), // Bottom right // 2
+                            new Vector3(-1, -1, 1), // Bottom left  // 3
+                            new Vector3(-1,  1, 1), // Top Left     // 4
+                        },
+                        Indicies = new List<uint>()
+                        {
+                            0,1,4, // Top
+                            0,2,1, // Right
+                            0,3,2, // Bottom
+                            0,4,3, // Left
+                            2,4,1, // Front 1
+                            2,3,4, // Front 2
+                        }
+                    }.ToVAO("_internal_frustum");
+                }
+
+                return _frustum;
             }
         }
 

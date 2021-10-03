@@ -7,7 +7,7 @@ px_fTranslucenyMul = ?
 vec3 vPos = vertexPosition;
 vec3 vLightDir = px_vLightPosScale.xyz - vPos;
 float fDistance = sqrt(dot(vLightDir, vLightDir));
-float fAttenuatuion =  pow(1.0 - min(fDistance * px_vLightPosScale.w, 1.0), px_fFalloff);	
+float fAttenuation =  pow(1.0 - min(fDistance * px_vLightPosScale.w, 1.0), px_fFalloff);	
 vLightDir = normalize(vLightDir);
 
 float fLDotN = dot(vLightDir, faceNormal);
@@ -21,7 +21,7 @@ float fLightScatter = (min(2.0, fLightTransport * 16.0) + fLightScatterAmount) *
 
 vec3 vDiffuse = pixelColor * (light.color * light.brightness) * (fLightAmount + fLightScatter * px_fTranslucenyMul);
 vDiffuse += vSpecular;
-vDiffuse *= fAttenuatuion;
+vDiffuse *= fAttenuation;
 
 
 Optimizations:

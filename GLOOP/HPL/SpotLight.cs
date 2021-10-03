@@ -21,11 +21,14 @@ namespace GLOOP.HPL
         [XmlAttribute("NearClipPlane")]
         public float ZNear { get; set; }
 
+        [XmlAttribute("Aspect")]
+        public float AspectRatio { get; set; }
+
         public GLOOP.SpotLight ToCommon()
         {
             return new GLOOP.SpotLight(
                         Position.ParseVector3(),
-                        new Quaternion(Rotation.ParseVector3()),
+                        Quaternion.FromEulerAngles(-Rotation.ParseVector3()),
                         DiffuseColor.ParseVector3(),
                         Brightness,
                         FalloffPower,
@@ -33,7 +36,8 @@ namespace GLOOP.HPL
                         AngularFalloffPower,
                         Radius,
                         MathHelper.RadiansToDegrees(FOV),
-                        ZNear
+                        ZNear,
+                        AspectRatio
                     );
         }
     }

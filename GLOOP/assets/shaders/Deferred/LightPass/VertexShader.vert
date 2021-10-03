@@ -16,8 +16,8 @@ layout (std140, binding = 0) uniform CameraMatricies {
 
 #if (LIGHTTYPE == POINT)
 	struct PointLight {
-		vec4 position;
-		vec4 color;
+		vec3 position;
+		vec3 color;
 		float brightness;
 		float radius;
 		float falloffPow;
@@ -25,13 +25,17 @@ layout (std140, binding = 0) uniform CameraMatricies {
 		float specularScalar;
 	};
 	layout (std140, binding = 1) uniform pointlights {
-		PointLight[500] pointLights;
+		PointLight[200] pointLights;
 	};
+	out PointLight light;
 #else
 	struct SpotLight {
-		vec4 position;
-		vec4 color;
-		vec4 direction;
+		mat4 modelMatrix;
+		vec3 position;
+		vec3 color;
+		vec3 direction;
+		vec3 scale;
+		float ar;
 		float brightness;
 		float radius;
 		float falloffPow;
@@ -41,22 +45,33 @@ layout (std140, binding = 0) uniform CameraMatricies {
 		float specularScalar;
 	};
 	layout (std140, binding = 1) uniform spotlights {
-		SpotLight[500] spotLights;
+		SpotLight[200] spotLights;
 	};
+	out SpotLight light;
 #endif
 
 void main(void) {
 #if (LIGHTTYPE == POINT)
-	PointLight light = pointLights[gl_InstanceID];
-#else
-	SpotLight light = spotLights[gl_InstanceID];
-#endif
+	light = pointLights[gl_InstanceID];
+	vec3 v = Position;
 
 	mat4 modelMatrix = mat4(1);
-	modelMatrix[3].xyz = light.position.xyz;
-	modelMatrix[0][0] = modelMatrix[1][1] =modelMatrix[2][2] = light.radius * 2;
-	modelMatrix[3][3] = 1;
-	vec4 worldspacePos = modelMatrix * vec4(Position, 1.0);
+	modelMatrix[3].xyz = light.position;
+	modelMatrix[0][0] = modelMatrix[1][1] = modelMatrix[2][2] = light.radius;
+	//modelMatrix[3][3] = 1;
+#else
+	light = spotLights[gl_InstanceID];
+
+	vec3 v = Position;
+	if (gl_VertexID > 0) {
+		v = normalize(v * light.scale * vec3(1, 1, light.ar));
+        v *= light.scale.z;
+        v.z = -v.z;
+	}
+	mat4 modelMatrix = light.modelMatrix;
+#endif
+
+    vec4 worldspacePos = modelMatrix * vec4(v, 1.0);
 	clipSpace = ViewProjectionMatrix * worldspacePos;
 	gl_Position = clipSpace;
 

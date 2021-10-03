@@ -19,9 +19,15 @@ namespace GLOOP
         public static Matrix4 CreateProjectionMatrix(int width, int height, float fov, float znear, float zfar)
         {
             var output = new Matrix4();
-            ToIdentity(ref output);
 
             var aspectRatio = (float)width / (float)height;
+            return CreateProjectionMatrix(aspectRatio, fov, znear, zfar, ref output);
+        }
+
+        public static Matrix4 CreateProjectionMatrix(float aspectRatio, float fov, float znear, float zfar, ref Matrix4 output)
+        {
+            ToIdentity(ref output);
+
             var yscale = (float)(1f / Math.Tan(MathHelper.DegreesToRadians(fov / 2f)) * aspectRatio);
             var xscale = yscale / aspectRatio;
             var frustumlength = zfar - znear;

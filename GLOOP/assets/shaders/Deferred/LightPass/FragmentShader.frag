@@ -11,22 +11,23 @@ out vec3 fragColor;
 
 #if (LIGHTTYPE == POINT)
 	struct PointLight {
-		vec4 position;
-		vec4 color;
+		vec3 position;
+		vec3 color;
 		float brightness;
 		float radius;
 		float falloffPow;
 		float diffuseScalar;
 		float specularScalar;
 	};
-	layout (std140, binding = 1) uniform pointlights {
-		PointLight[500] pointLights;
-	};
+	in PointLight light;
 #else
 	struct SpotLight {
-		vec4 position;
-		vec4 color;
-		vec4 direction;
+		mat4 modelMatrix;
+		vec3 position;
+		vec3 color;
+		vec3 direction;
+		vec3 scale;
+		float ar;
 		float brightness;
 		float radius;
 		float falloffPow;
@@ -35,9 +36,7 @@ out vec3 fragColor;
 		float diffuseScalar;
 		float specularScalar;
 	};
-	layout (std140, binding = 1) uniform spotlights {
-		SpotLight[500] spotLights;
-	};
+	in SpotLight light;
 #endif
 
 uniform sampler2D diffuseTex;
@@ -57,12 +56,6 @@ vec3 power(vec3 source, float power){
 
 void main()
 {
-#if (LIGHTTYPE == POINT)
-	PointLight light = pointLights[instance];
-#else
-	SpotLight light = spotLights[instance];
-#endif
-
 	vec2 ndc = (clipSpace.xy / clipSpace.w) / 2.0 + 0.5;
 
 	vec3 fragPos = texture(positionTex, ndc).rgb;
@@ -72,23 +65,25 @@ void main()
 	vec3 vPos = fragPos - camPos;
 	vec3 vEye = -normalize(vPos);
 
+	
 	// Diffuse
 	vec3 vLightDir = light.position.xyz - fragPos;
 	float fDistance = length(vLightDir);
 	float localDist =  1.0 - min(fDistance * (1.0 / light.radius), 1.0); // Converts to [1,0] inside sphere
-	float fAttenuatuion = localDist;
-	fAttenuatuion = pow(fAttenuatuion, light.falloffPow);
+	vLightDir = normalize(vLightDir);
 
+	float fAttenuation = pow(localDist, light.falloffPow);
+	
 	#if (LIGHTTYPE == SPOT)
 		vec3 toLight = normalize(light.position.xyz - fragPos);
-		float theta = max(0.0, dot(toLight, light.direction.xyz));
-		//theta = pow(theta, 16.0 * light.angularFalloffPow);
+		float theta = max(0.0, dot(toLight, light.direction));
+		theta = pow(theta, light.angularFalloffPow);
 		float falloff = max(0.0, theta - (light.FOV / 180));
-		falloff = pow(falloff, 2.0 * light.angularFalloffPow);
-		fAttenuatuion *= falloff;
+		falloff = pow(falloff, 4.0 * light.angularFalloffPow);
+		fAttenuation *= falloff;
 	#endif
 		
-	vec3 color = light.color.rgb * light.brightness;
+	vec3 color = light.color * light.brightness;
 	
 	///////////
 	// A cheaper version of Dice Translucency
@@ -112,7 +107,7 @@ void main()
 	float fSpecPower = specular.a;
 		
 	vec3 vHalfVec = normalize(vLightDir + vEye);
-	fSpecPower = exp2(fSpecPower * 10.0) + 1.0; //Range 0 - 1024
+	fSpecPower = exp2(fSpecPower * 16.0) + 1.0; // Range 0 - 1024
 	
 	// Calculate the enegry conservation value, this will make sure that the intergral of the specular is 1.0
 	float fEngeryConservation = (fSpecPower + 8.0) * (1.0 / (8.0 * PI));
@@ -122,7 +117,7 @@ void main()
 	//vSpecular *= light.specularScalar;
 	
 	vec3 lighting = diffuse + vSpecular;
-	lighting *= fAttenuatuion;
+	lighting *= fAttenuation;
 
 	// Multiply with 8.0 to increase precision
 	lighting *= 8.0;
