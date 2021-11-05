@@ -84,10 +84,11 @@ namespace GLOOP.Rendering
             }
         }
 
-        public void Use()
-        {
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, Handle);
-        }
+        public void Use() => Use(Handle);
+
+        internal static void UseDefault() => Use(0);
+
+        private static void Use(int handle) => GL.BindFramebuffer(FramebufferTarget.Framebuffer, handle);
 
         public void BlitTo(FrameBuffer destination, ClearBufferMask mask)
         {
