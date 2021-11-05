@@ -55,7 +55,6 @@ namespace GLOOP.HPL
         private bool useSSAO = false;
         private bool showBoundingBoxes = false;
 
-        private Buffer<Matrix4> cameraBuffer;
         private Buffer<SpotLight> spotLightsBuffer;
         private Buffer<PointLight> pointLightsBuffer;
         private Buffer<DeferredGeoMaterial> materialBuffer;
@@ -345,15 +344,15 @@ namespace GLOOP.HPL
                 MultiDrawIndirect();
 
                 foreach (var terrainPatch in scene.Terrain)
-                    terrainPatch.Render(projectionMatrix, viewMatrix);
+                    terrainPatch.Render();
             }
 
-            ResolveGBuffer(projectionMatrix, viewMatrix);
+            ResolveGBuffer();
 
             if (showBoundingBoxes)
             {
                 GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-                scene.RenderBoundingBoxes(Camera.ProjectionMatrix, Camera.ViewMatrix);
+                scene.RenderBoundingBoxes();
                 GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
             }
         }
@@ -443,7 +442,6 @@ namespace GLOOP.HPL
 
         private void setupBuffers()
         {
-            setupCameraUniformBuffer();
             setupLightingUBO();
             updatePointLightsUBO();
             updateSpotLightsUBO();
@@ -518,12 +516,6 @@ namespace GLOOP.HPL
             materialBuffer.BindRange(0, 2);
         }
 
-        private void setupCameraUniformBuffer()
-        {
-            cameraBuffer = new Buffer<Matrix4>(3, BufferTarget.UniformBuffer, BufferUsageHint.StreamRead, "CameraData");
-            cameraBuffer.BindRange(0, 0);
-        }
-
         private void setupLightingUBO()
         {
             pointLightsBuffer = new Buffer<PointLight>(Math.Min(maxLights, scene.PointLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "PointLights");
@@ -591,16 +583,7 @@ namespace GLOOP.HPL
 
         private void updateCameraUBO()
         {
-            var projectionMatrix = Camera.ProjectionMatrix;
-            var viewMatrix = Camera.ViewMatrix;
-            var projectionView = new Matrix4();
-            MatrixExtensions.Multiply(projectionMatrix, viewMatrix, ref projectionView);
-            var data = new[]
-            {
-                projectionMatrix, viewMatrix, projectionView
-            };
-
-            cameraBuffer.Update(data);
+            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
         }
 
         private void updatePointLightsUBO()
@@ -686,7 +669,7 @@ namespace GLOOP.HPL
             scale = new Vector3(xf, yf, -far);
         }
 
-        private void ResolveGBuffer(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        private void ResolveGBuffer()
         {
             GL.Disable(EnableCap.DepthTest);
             //GL.DepthMask(false);
@@ -697,7 +680,7 @@ namespace GLOOP.HPL
             }
             else
             {
-                DoLightPass(projectionMatrix, viewMatrix, new Vector3(0.00f));
+                DoLightPass(new Vector3(0.00f));
 
                 if (debugLightBuffer) {
                     GL.Enable(EnableCap.FramebufferSrgb);
@@ -832,7 +815,7 @@ namespace GLOOP.HPL
             Primitives.Quad.Draw();
         }
 
-        public void DoLightPass(Matrix4 projectionMatrix, Matrix4 viewMatrix, Vector3 ambientColor)
+        public void DoLightPass(Vector3 ambientColor)
         {
             LightingBuffer.Use();
             GL.ClearColor(ambientColor.X, ambientColor.Y, ambientColor.Z, 0);
@@ -841,7 +824,7 @@ namespace GLOOP.HPL
             GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
             GL.CullFace(CullFaceMode.Front);
 
-            RenderLights(projectionMatrix, viewMatrix);
+            RenderLights();
 
             GL.CullFace(CullFaceMode.Back);
             GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
@@ -854,7 +837,7 @@ namespace GLOOP.HPL
             GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
         }
 
-        private void RenderLights(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        private void RenderLights()
         {
             if (scene.PointLights.Any())
             {
@@ -882,8 +865,6 @@ namespace GLOOP.HPL
                     foreach (var light in culledPointLights)
                     {
                         var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, new OpenTK.Mathematics.Quaternion(), new Vector3(light.Radius * 2));
-                        singleColorMaterial.ProjectionMatrix = projectionMatrix;
-                        singleColorMaterial.ViewMatrix = viewMatrix;
                         singleColorMaterial.ModelMatrix = modelMatrix;
                         singleColorMaterial.Commit();
                         Primitives.Sphere.Draw(OpenTK.Graphics.OpenGL4.PrimitiveType.Lines);
@@ -920,8 +901,6 @@ namespace GLOOP.HPL
                         material.AspectRatio = aspect;
                         material.Scale = scale;
                         material.ModelMatrix = modelMatrix;
-                        material.ProjectionMatrix = projectionMatrix;
-                        material.ViewMatrix = viewMatrix;
                         material.Commit();
                         Primitives.Frustum.Draw(OpenTK.Graphics.OpenGL4.PrimitiveType.Lines);
                     }

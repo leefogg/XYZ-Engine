@@ -85,12 +85,11 @@ namespace GLOOP.Tests
 
         public override void Render()
         {
-            // Have to do this here until I do a Material class
-            var projectionMatrix = Camera.ProjectionMatrix;
-            var viewMatrix = Camera.ViewMatrix;
-            Plane1.Render(projectionMatrix, viewMatrix);
-            Plane2.Render(projectionMatrix, viewMatrix);
-            Plane3.Render(projectionMatrix, viewMatrix);
+            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+
+            Plane1.Render();
+            Plane2.Render();
+            Plane3.Render();
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)

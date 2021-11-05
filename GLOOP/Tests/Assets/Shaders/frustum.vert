@@ -2,7 +2,12 @@
 
 layout (location = 0) in vec3 Position;
 
-uniform mat4 ProjectionMatrix, ViewMatrix, ModelMatrix;
+uniform mat4 ModelMatrix;
+layout (std140, binding = 0) uniform CameraMatricies {
+	mat4 ProjectionMatrix;
+	mat4 ViewMatrix;
+	mat4 ViewProjectionMatrix;
+};
 uniform vec3 scale;
 uniform float ar;
   
@@ -21,5 +26,5 @@ void main()
 
     vec4 worldspacePos = ModelMatrix * vec4(ff, 1.0);
 
-	gl_Position = ProjectionMatrix * ViewMatrix * worldspacePos;
+	gl_Position = ViewProjectionMatrix * worldspacePos;
 }  

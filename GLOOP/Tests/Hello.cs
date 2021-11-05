@@ -32,10 +32,9 @@ namespace GLOOP.Tests
 
         public override void Render()
         {
-            // Have to do this here until I do a Material class
-            var projectionMatrix = Camera.ProjectionMatrix;
-            var viewMatrix = Camera.ViewMatrix;
-            duck.Render(projectionMatrix, viewMatrix);
+            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+
+            duck.Render();
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)

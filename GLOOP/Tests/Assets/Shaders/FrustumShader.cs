@@ -9,18 +9,10 @@ namespace GLOOP.Tests.Assets.Shaders
 {
     public class FrustumShader : StaticPixelShader
     {
-        public readonly Uniform16f projectionMatrix, viewMatrix, modelMatrix;
+        public readonly Uniform16f modelMatrix;
         private Uniform3f scale;
         private Uniform1f aspectRatio;
 
-        public Matrix4 ProjectionMatrix
-        {
-            set => projectionMatrix.Set(value);
-        }
-        public Matrix4 ViewMatrix
-        {
-            set => viewMatrix.Set(value);
-        }
         public Matrix4 ModelMatrix
         {
             set => modelMatrix.Set(value);
@@ -38,8 +30,6 @@ namespace GLOOP.Tests.Assets.Shaders
            : base("tests/assets/shaders/frustum.vert",
                   "tests/assets/shaders/frustum.frag", defines, name)
         {
-            projectionMatrix = new Uniform16f(this, "ProjectionMatrix");
-            viewMatrix = new Uniform16f(this, "ViewMatrix");
             modelMatrix = new Uniform16f(this, "ModelMatrix");
 
             scale = new Uniform3f(this, "scale");

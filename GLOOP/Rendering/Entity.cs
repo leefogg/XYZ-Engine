@@ -167,10 +167,10 @@ namespace GLOOP.Rendering
                 illumTex = Texture.Black;
         }
 
-        public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        public void Render()
         {
             foreach (var renderable in Models)
-                renderable.Render(projectionMatrix, viewMatrix);
+                renderable.Render();
         }
 
         public Entity Clone() => new Entity(Models, Transform, OriginalBoundingBox);

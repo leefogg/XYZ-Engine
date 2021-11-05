@@ -9,7 +9,6 @@ namespace GLOOP.Tests.Assets.Shaders
 {
     public class FrustumMaterial : Material
     {
-        public Matrix4 ProjectionMatrix, ViewMatrix;
         public Vector3 Scale;
         public float AspectRatio;
         private FrustumShader shader;
@@ -33,19 +32,9 @@ namespace GLOOP.Tests.Assets.Shaders
         public override void Commit()
         {
             shader.Use();
-
-            shader.ProjectionMatrix = ProjectionMatrix;
-            shader.ViewMatrix = ViewMatrix;
             shader.ModelMatrix = ModelMatrix;
             shader.Scale = Scale;
             shader.AspectRatio = AspectRatio;
-        }
-
-        public override void SetCameraUniforms(Matrix4 projectionMatrix, Matrix4 viewMatrix, Matrix4 modelMatrix)
-        {
-            ProjectionMatrix = projectionMatrix;
-            ViewMatrix = viewMatrix;
-            ModelMatrix = modelMatrix;
         }
     }
 }

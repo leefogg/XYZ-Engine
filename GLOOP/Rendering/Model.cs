@@ -32,19 +32,19 @@ namespace GLOOP.Rendering
             VAO = vao;
         }
 
-        public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix, PrimitiveType renderMode = PrimitiveType.Triangles)
+        public void Render(PrimitiveType renderMode = PrimitiveType.Triangles)
         {
             //if (!ModelMatrix.HasValue)
                 ModelMatrix = Transform.Matrix;
-            Material.SetCameraUniforms(projectionMatrix, viewMatrix, ModelMatrix.Value);
+            Material.SetModelMatrix(ModelMatrix.Value);
             Material.Commit();
            
             VAO.Draw(renderMode);
         }
 
-        public void RenderBoundingBox(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        public void RenderBoundingBox()
         {
-            Debugging.Draw.BoundingBox(projectionMatrix, viewMatrix, BoundingBoxMatrix, Vector4.One);
+            Debugging.Draw.BoundingBox(BoundingBoxMatrix, Vector4.One);
         }
 
         public Model Clone() => new Model(VAO, Material.Clone(), Transform);

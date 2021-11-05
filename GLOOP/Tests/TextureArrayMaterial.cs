@@ -9,7 +9,6 @@ namespace GLOOP.Tests
 {
     public class TextureArrayMaterial : Material
     {
-        public Matrix4 ProjectionMatrix, ViewMatrix;
         public Rendering.TextureArray TextureArray;
         public uint Slice;
         private TextureArrayShader shader;
@@ -21,13 +20,6 @@ namespace GLOOP.Tests
             this.shader = shader;
         }
 
-        public override void SetCameraUniforms(Matrix4 projectionMatrix, Matrix4 viewMatrix, Matrix4 modelMatrix)
-        {
-            ProjectionMatrix = projectionMatrix;
-            ViewMatrix = viewMatrix;
-            ModelMatrix = modelMatrix;
-        }
-
         public override void Commit()
         {
             var shader = (TextureArrayShader)this.Shader;
@@ -35,9 +27,6 @@ namespace GLOOP.Tests
             TextureArray.Use(TextureUnit.Texture0);
             shader.Texture = TextureUnit.Texture0;
             shader.TextureSlice = Slice;
-
-            shader.ProjectionMatrix = ProjectionMatrix;
-            shader.ViewMatrix = ViewMatrix;
             shader.ModelMatrix = ModelMatrix;
         }
 

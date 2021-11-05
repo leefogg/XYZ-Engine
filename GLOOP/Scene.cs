@@ -18,30 +18,30 @@ namespace GLOOP
         public List<VisibilityArea> VisibilityAreas = new List<VisibilityArea>();
         public List<RenderBatch> Batches;
 
-        public void Render(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        public void Render()
         {
             foreach (var batch in Batches)
                 foreach (var model in batch.Models)
-                    model.Render(projectionMatrix, viewMatrix);
+                    model.Render();
         }
 
-        public void RenderBoundingBoxes(Matrix4 projectionMatrix, Matrix4 viewMatrix)
+        public void RenderBoundingBoxes()
         {
             foreach (var batch in Batches)
                 foreach (var model in batch.Models)
-                    model.RenderBoundingBox(projectionMatrix, viewMatrix);
+                    model.RenderBoundingBox();
 
             var portalColor = new Vector4(1, 0, 0, 0.25f);
             var areaColor = new Vector4(0, 1, 0, 1);
             foreach (var area in VisibilityPortals)
             {
                 var modelMatrix = Matrix4.CreateScale(area.BoundingBox.Size) * Matrix4.CreateTranslation(area.BoundingBox.Center);
-                Draw.Box(projectionMatrix, viewMatrix, modelMatrix, portalColor);
+                Draw.Box( modelMatrix, portalColor);
             }
             foreach (var area in VisibilityAreas)
             {
                 var modelMatrix = Matrix4.CreateScale(area.BoundingBox.Size) * Matrix4.CreateTranslation(area.BoundingBox.Center);
-                Draw.BoundingBox(projectionMatrix, viewMatrix, modelMatrix, areaColor);
+                Draw.BoundingBox(modelMatrix, areaColor);
             }
         }
     }

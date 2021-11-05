@@ -17,8 +17,12 @@ namespace GLOOP.HPL
             var nativeWindowSettings = new NativeWindowSettings {
                 API = ContextAPI.OpenGL,
                 APIVersion = new Version(4, 3),
-                Profile = ContextProfile.Compatability,
+                Profile = ContextProfile.Core,
+#if Debug
                 Flags = ContextFlags.Debug,
+#else
+                Flags = ContextFlags.Default,
+#endif
                 Size = new Vector2i(1920, 1080),
                 IsEventDriven = false,
                 Title = "prototype engine"

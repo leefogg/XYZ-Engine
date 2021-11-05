@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using GLOOP.Rendering;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
@@ -27,6 +28,8 @@ namespace GLOOP
         public static int Height { get; private set; }
 
         public static event EventHandler<Vector2i> OnResized;
+
+        private Buffer<Matrix4> cameraBuffer;
 
         protected Window(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings)
         {
@@ -59,6 +62,8 @@ namespace GLOOP
             GL.Enable(EnableCap.DebugOutputSynchronous);
 #endif
 
+            setupCameraUniformBuffer();
+
             lastSecond = DateTime.Now;
 
             base.OnLoad();
@@ -83,6 +88,19 @@ namespace GLOOP
 
             if (type == DebugType.DebugTypeError)
                 throw new Exception(messageString);
+        }
+
+        private void setupCameraUniformBuffer()
+        {
+            cameraBuffer = new Buffer<Matrix4>(3, BufferTarget.UniformBuffer, BufferUsageHint.StreamRead, "CameraData");
+            cameraBuffer.BindRange(0, 0);
+        }
+
+        protected void updateCameraUBO(in Matrix4 projectionMatrix, in Matrix4 viewMatrix)
+        {
+            var projectionView = new Matrix4();
+            MatrixExtensions.Multiply(projectionMatrix, viewMatrix, ref projectionView);
+            cameraBuffer.Update(new[] { projectionMatrix, viewMatrix, projectionView });
         }
 
         protected override void OnRenderFrame(FrameEventArgs args)

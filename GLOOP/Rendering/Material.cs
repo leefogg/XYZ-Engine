@@ -16,7 +16,7 @@ namespace GLOOP.Rendering
 
         }
 
-        public virtual void SetCameraUniforms(Matrix4 projectionMatrix, Matrix4 viewMatrix, Matrix4 modelMatrix) {
+        public void SetModelMatrix(Matrix4 modelMatrix) {
             ModelMatrix = modelMatrix;
         }
 

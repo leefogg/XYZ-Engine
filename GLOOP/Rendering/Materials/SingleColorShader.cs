@@ -8,17 +8,9 @@ namespace GLOOP.Rendering.Materials
 {
     public class SingleColorShader : StaticPixelShader
     {
-        public readonly Uniform16f projectionMatrix, viewMatrix, modelMatrix;
+        public readonly Uniform16f modelMatrix;
         private Uniform4f color;
 
-        public Matrix4 ProjectionMatrix
-        {
-            set => projectionMatrix.Set(value);
-        }
-        public Matrix4 ViewMatrix
-        {
-            set => viewMatrix.Set(value);
-        }
         public Matrix4 ModelMatrix
         {
             set => modelMatrix.Set(value);
@@ -32,8 +24,6 @@ namespace GLOOP.Rendering.Materials
             : base("assets/shaders/SingleColor/basic.vert",
                    "assets/shaders/SingleColor/basic.frag", defines, name)
         {
-            projectionMatrix = new Uniform16f(this, "ProjectionMatrix");
-            viewMatrix = new Uniform16f(this, "ViewMatrix");
             modelMatrix = new Uniform16f(this, "ModelMatrix");
 
             color = new Uniform4f(this, "color");
