@@ -1,6 +1,6 @@
 #version 420
 
-uniform sampler2D diffuseMap;
+uniform sampler2D texture0;
 
 in vec2 texCoord;
 
@@ -20,7 +20,7 @@ void main()
 	vec2 vOffsetMul = Direction;
 
 	float fWeight = data[0].weight * 0.5;
-	vec3 vAmount = texture(diffuseMap, texCoord + data[0].offset * vOffsetMul).rgb * data[0].weight;
+	vec3 vAmount = texture(texture0, texCoord + data[0].offset * vOffsetMul).rgb * data[0].weight;
 	
 	for(int i=1; i<24; i+=1)
 	{	
@@ -28,8 +28,8 @@ void main()
 
 		//////////
 		// sample in both positive and negative direction at the same time
-		vec3 vColor = texture(diffuseMap, texCoord + vOffset).rgb + 
-					  texture(diffuseMap, texCoord - vOffset).rgb;
+		vec3 vColor = texture(texture0, texCoord + vOffset).rgb + 
+					  texture(texture0, texCoord - vOffset).rgb;
 
 		float fMul = data[i].weight;
 		vAmount += vColor * fMul;

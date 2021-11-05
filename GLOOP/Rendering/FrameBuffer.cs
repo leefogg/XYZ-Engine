@@ -86,7 +86,7 @@ namespace GLOOP.Rendering
 
         public void Use() => Use(Handle);
 
-        internal static void UseDefault() => Use(0);
+        public static void UseDefault() => Use(0);
 
         private static void Use(int handle) => GL.BindFramebuffer(FramebufferTarget.Framebuffer, handle);
 

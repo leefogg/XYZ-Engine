@@ -157,7 +157,7 @@ namespace GLOOP.Rendering
 
             return new VAO(this, vboName, vaoName);
         }
-        internal VirtualVAO ToVirtualVAO(string vaoName)
+        public VirtualVAO ToVirtualVAO(string vaoName)
         {
             var vboName = vaoName + "VBO";
             if (vboName.Length > Globals.MaxLabelLength)

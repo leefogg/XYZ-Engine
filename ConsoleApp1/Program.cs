@@ -9,12 +9,13 @@ using System.Text;
 
 namespace GLOOP
 {
-    public class Start
+    class Program
     {
         public static void Main(string[] args)
         {
             var gameWindowSettings = new GameWindowSettings();
-            var nativeWindowSettings = new NativeWindowSettings {
+            var nativeWindowSettings = new NativeWindowSettings
+            {
                 API = ContextAPI.OpenGL,
                 APIVersion = new Version(4, 3),
                 Profile = ContextProfile.Compatability,

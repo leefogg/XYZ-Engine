@@ -517,17 +517,6 @@ namespace GLOOP.Tests
             materialBuffer.BindRange(0, 2);
         }
 
-        [StructLayout(LayoutKind.Explicit, Size = 64)]
-        struct DeferredGeoMaterial
-        {
-            [FieldOffset(00)] public Vector3 IlluminationColor;
-            [FieldOffset(16)] public Vector3 AlbedoColourTint;
-            [FieldOffset(32)] public Vector2 TextureRepeat;
-            [FieldOffset(40)] public Vector2 TextureOffset;
-            [FieldOffset(48)] public float NormalStrength;
-            [FieldOffset(52)] public bool IsWorldSpaceUVs;
-        }
-
         private void setupCameraUniformBuffer()
         {
             cameraBuffer = new Buffer<Matrix4>(3, BufferTarget.UniformBuffer, BufferUsageHint.StreamRead, "CameraData");
@@ -715,11 +704,7 @@ namespace GLOOP.Tests
                     GL.ClearColor(0, 0, 0, 1);
                     GL.Clear(ClearBufferMask.ColorBufferBit);
 
-                    var shader = FullBrightShader;
-                    shader.Use();
-                    LightingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
-                    shader.Set("texture0", TextureUnit.Texture0);
-                    Primitives.Quad.Draw();
+                    DoPostEffect(FullBrightShader, LightingBuffer.ColorBuffers[0]);
 
                     GL.Disable(EnableCap.FramebufferSrgb);
                 } else {
@@ -740,20 +725,12 @@ namespace GLOOP.Tests
 
                     var newBuffer = PostMan.NextFramebuffer;
                     newBuffer.Use();
-                    shader = ColorCorrectionShader;
-                    shader.Use();
-                    currentBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
-                    shader.Set("texture0", TextureUnit.Texture0);
-                    Primitives.Quad.Draw();
+                    DoPostEffect(ColorCorrectionShader, currentBuffer.ColorBuffers[0]);
 
                     if (useFXAA)
                     {
-                        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0);
-                        shader = FXAAShader;
-                        shader.Use();
-                        newBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
-                        shader.Set("texture0", TextureUnit.Texture0);
-                        Primitives.Quad.Draw();
+                        FrameBuffer.UseDefault();
+                        DoPostEffect(FXAAShader, newBuffer.ColorBuffers[0]);
                     } 
                     else
                     {
@@ -804,10 +781,7 @@ namespace GLOOP.Tests
 
                     bloomBuffer.BindRange(bloomDataStride * i, 3);
 
-                    previousTexture.Use(TextureUnit.Texture0);
-                    shader.Set("diffuseMap", TextureUnit.Texture0);
-
-                    Primitives.Quad.Draw();
+                    DoPostEffect(shader, previousTexture);
 
                     previousTexture = BloomBuffers[i].ColorBuffers[0];
                     i++;
@@ -839,18 +813,22 @@ namespace GLOOP.Tests
 
         private void DisplayGBuffer(int buffer)
         {
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+            FrameBuffer.UseDefault();
             GL.ClearColor(0, 0, 0, 1);
             GL.Clear(ClearBufferMask.ColorBufferBit);
             GL.Enable(EnableCap.FramebufferSrgb);
 
-            var shader = FullBrightShader;
-            shader.Use();
-            GBuffers.ColorBuffers[buffer].Use(TextureUnit.Texture0);
-            shader.Set("texture0", 0);
-            Primitives.Quad.Draw();
+            DoPostEffect(FullBrightShader, GBuffers.ColorBuffers[buffer]);
 
             GL.Disable(EnableCap.FramebufferSrgb);
+        }
+
+        private void DoPostEffect(Shader shader, Texture input)
+        {
+            shader.Use();
+            input.Use();
+            shader.Set("texture0", 0);
+            Primitives.Quad.Draw();
         }
 
         public void DoLightPass(Matrix4 projectionMatrix, Matrix4 viewMatrix, Vector3 ambientColor)
@@ -1115,6 +1093,17 @@ namespace GLOOP.Tests
         {
             public Query Query;
             public StaticPixelShader shader;
+        }
+
+        [StructLayout(LayoutKind.Explicit, Size = 64)]
+        struct DeferredGeoMaterial
+        {
+            [FieldOffset(00)] public Vector3 IlluminationColor;
+            [FieldOffset(16)] public Vector3 AlbedoColourTint;
+            [FieldOffset(32)] public Vector2 TextureRepeat;
+            [FieldOffset(40)] public Vector2 TextureOffset;
+            [FieldOffset(48)] public float NormalStrength;
+            [FieldOffset(52)] public bool IsWorldSpaceUVs;
         }
     }
 }
