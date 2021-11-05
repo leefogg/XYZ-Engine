@@ -103,6 +103,8 @@ namespace GLOOP.Rendering
         {
             if (uniformLocations.TryGetValue(name, out var location))
                 GL.Uniform1(location, unit - TextureUnit.Texture0);
+            else
+                Console.Error.WriteLine($"Cannot find uniform {name}");
         }
         public void Set(string name, int data)
         {

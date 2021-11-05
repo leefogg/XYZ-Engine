@@ -3,7 +3,7 @@
 in vec4 outColor;
 in vec2 texCoord;
 
-uniform sampler2D finalMap;
+uniform sampler2D texture0;
 
 uniform float afKey = 0.5;
 uniform float afExposure = 1.0;
@@ -14,7 +14,7 @@ out vec4 FragColor;
 
 void main()
 {
-	vec4 vSourceColor = texture(finalMap, texCoord);
+	vec4 vSourceColor = texture(texture0, texCoord);
 
 	////////////
 	// Apply the exposure and key and store the white cut in alpha

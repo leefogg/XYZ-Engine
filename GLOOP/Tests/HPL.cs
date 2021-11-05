@@ -743,7 +743,7 @@ namespace GLOOP.Tests
                     shader = ColorCorrectionShader;
                     shader.Use();
                     currentBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
-                    shader.Set("Texture", TextureUnit.Texture0);
+                    shader.Set("texture0", TextureUnit.Texture0);
                     Primitives.Quad.Draw();
 
                     if (useFXAA)
@@ -752,9 +752,8 @@ namespace GLOOP.Tests
                         shader = FXAAShader;
                         shader.Use();
                         newBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
-                        shader.Set("Texture", TextureUnit.Texture0);
+                        shader.Set("texture0", TextureUnit.Texture0);
                         Primitives.Quad.Draw();
-
                     } 
                     else
                     {
@@ -885,15 +884,13 @@ namespace GLOOP.Tests
                 var shader = PointLightShader;
                 shader.Use();
                 Texture.Use(new[] {
-                    GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Position],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Specular],
                 }, TextureUnit.Texture0);
-                shader.Set("diffuseTex", TextureUnit.Texture0);
-                shader.Set("positionTex", TextureUnit.Texture1);
-                shader.Set("normalTex", TextureUnit.Texture2);
-                shader.Set("specularTex", TextureUnit.Texture3);
+                shader.Set("positionTex", TextureUnit.Texture0);
+                shader.Set("normalTex", TextureUnit.Texture1);
+                shader.Set("specularTex", TextureUnit.Texture2);
                 shader.Set("camPos", Camera.Position);
                 //TODO: Could render a 2D circle in screenspace instead of a sphere
 
@@ -922,15 +919,13 @@ namespace GLOOP.Tests
                 Shader shader = SpotLightShader;
                 shader.Use();
                 Texture.Use(new[] {
-                    GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Position],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Specular],
                 }, TextureUnit.Texture0);
-                shader.Set("diffuseTex", TextureUnit.Texture0);
-                shader.Set("positionTex", TextureUnit.Texture1);
-                shader.Set("normalTex", TextureUnit.Texture2);
-                shader.Set("specularTex", TextureUnit.Texture3);
+                shader.Set("positionTex", TextureUnit.Texture0);
+                shader.Set("normalTex", TextureUnit.Texture1);
+                shader.Set("specularTex", TextureUnit.Texture2);
                 shader.Set("camPos", Camera.Position);
 
                 //Console.WriteLine(((float)culledSpotLights.Count / (float)scene.SpotLights.Count) * 100 + "% of spot lights");

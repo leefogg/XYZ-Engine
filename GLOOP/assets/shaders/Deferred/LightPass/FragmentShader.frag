@@ -39,7 +39,6 @@ out vec3 fragColor;
 	in SpotLight light;
 #endif
 
-uniform sampler2D diffuseTex;
 uniform sampler2D positionTex;
 uniform sampler2D normalTex;
 uniform sampler2D specularTex;
