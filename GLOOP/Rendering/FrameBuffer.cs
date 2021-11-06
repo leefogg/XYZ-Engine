@@ -92,7 +92,7 @@ namespace GLOOP.Rendering
 
         public void BlitTo(FrameBuffer destination, ClearBufferMask mask)
         {
-            BlitTo(destination.Height, destination.Width, destination.Height, mask);
+            BlitTo(destination.Handle, destination.Width, destination.Height, mask);
         }
         public void BlitTo(int handle, int width, int height, ClearBufferMask mask)
         {
