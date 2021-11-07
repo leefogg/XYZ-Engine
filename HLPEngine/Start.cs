@@ -1,4 +1,5 @@
 ﻿using GLOOP.Tests;
+using HLPEngine;
 using OpenTK;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -13,6 +14,13 @@ namespace GLOOP.HPL
     {
         public static void Main(string[] _)
         {
+            uint width = 1920;
+            uint height = 1080;
+#if VR
+            VRSystem.SetUpOpenVR();
+            VRSystem.GetFramebufferSize(out width, out height);
+#endif
+
             var gameWindowSettings = new GameWindowSettings();
             var nativeWindowSettings = new NativeWindowSettings {
                 API = ContextAPI.OpenGL,
@@ -23,7 +31,7 @@ namespace GLOOP.HPL
 #else
                 Flags = ContextFlags.Default,
 #endif
-                Size = new Vector2i(1920, 1080),
+                Size = new Vector2i((int)width, (int)height),
                 IsEventDriven = false,
                 Title = "prototype engine"
             };
@@ -32,7 +40,12 @@ namespace GLOOP.HPL
                 2160 / 2 - nativeWindowSettings.Size.Y / 2
             );
             using var window = new Game(gameWindowSettings, nativeWindowSettings);
-            window.VSync = VSyncMode.On;
+            window.VSync =
+#if VR
+            VSyncMode.Off;
+#else
+            VSyncMode.On;
+#endif
             window.Run();
         }
     }

@@ -5,9 +5,14 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <ApplicationIcon />
     <StartupObject />
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
 

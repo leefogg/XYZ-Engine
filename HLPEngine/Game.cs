@@ -22,6 +22,8 @@ using TextureWrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode;
 using GLOOP.Rendering.Materials;
 using GLOOP.Tests.Assets.Shaders;
 using GLOOP.HPL.Loading;
+using HLPEngine;
+using Valve.VR;
 
 namespace GLOOP.HPL
 {
@@ -32,6 +34,12 @@ namespace GLOOP.HPL
         private FrameBuffer GBuffers;
         private FrameBuffer LightingBuffer;
         private FrameBuffer[] BloomBuffers;
+#if VR
+        private FrameBuffer LeftEyeBuffer;
+        private FrameBuffer RightEyeBuffer;
+#else
+        private FrameBuffer FinalBuffer;
+#endif
         private Shader PointLightShader;
         private Shader SpotLightShader;
         private Texture2D NoiseMap;
@@ -47,13 +55,16 @@ namespace GLOOP.HPL
         private Shader ColorCorrectionShader;
         private FrustumMaterial frustumMaterial;
         private QueryPool queryPool;
-        private bool DebugLights;
 
+        private bool debugLights;
         private int debugGBufferTexture = -1;
         private bool debugLightBuffer;
         private bool useFXAA = false;
         private bool useSSAO = false;
+        private bool enableBloom = false;
         private bool showBoundingBoxes = false;
+
+        private ulong frameNumber;
 
         private Buffer<SpotLight> spotLightsBuffer;
         private Buffer<PointLight> pointLightsBuffer;
@@ -77,12 +88,17 @@ namespace GLOOP.HPL
         private readonly Vector3
             CustomMapCameraPosition = new Vector3(6.3353596f, 1.6000088f, 8.1601305f),
             PhiMapCameraPosition = new Vector3(-17.039896f, 14.750014f, 64.48185f),
+            deltaMapCameraPosition = new Vector3(0, 145, -10),
+            thetaTunnelsMapCameraPosition = new Vector3(4, 9, -61),
             LightsMapCameraPosition = new Vector3(-0.5143715f, 4.3500123f, 11.639848f);
 
-        public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90);
-            Camera.Width = Width;
-            Camera.Height = Height;
+        public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
+            : base(gameWindowSettings, nativeWindowSettings) {
+            Camera = new DebugCamera(LightsMapCameraPosition, new Vector3(), 90)
+            {
+                Width = Width,
+                Height = Height
+            };
         }
 
         protected override void OnLoad() {
@@ -111,6 +127,12 @@ namespace GLOOP.HPL
                 new FrameBuffer(Width / 8, Height / 8, false, PixelInternalFormat.Rgb, name: "Vertical blur pass @ (1/8)"),
                 new FrameBuffer(Width / 8, Height / 8, false, PixelInternalFormat.Rgb, name: "Horizonal blur pass @ (1/8)"),
             };
+#if VR
+            LeftEyeBuffer = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgba, 1, "LeftEyeBuffer");
+            RightEyeBuffer = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgba, 1, "RightEyeBuffer");
+#else
+            FinalBuffer = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgb, 1, "FinalBuffer");
+#endif
             PostMan.Init(Width, Height, PixelInternalFormat.Rgb16f);
 
             var deferredMaterial = new DeferredRenderingGeoMaterial();
@@ -196,13 +218,15 @@ namespace GLOOP.HPL
             var theta_outside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_04_theta_outside\02_04_theta_outside.hpm";
             var upsilon = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_02_upsilon_inside\01_02_upsilon_inside.hpm";
             var theta_inside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_05_theta_inside\02_05_theta_inside.hpm";
+            var theta_tunnels = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_06_theta_tunnels\02_06_theta_tunnels.hpm";
             var tau = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm";
+            var delta = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_03_delta\02_03_delta.hpm";
             var phi = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm";
             var custom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm";
             var boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
             var terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
-            var mapToLoad = phi;
+            var mapToLoad = lights;
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
 
             /*
@@ -318,27 +342,50 @@ namespace GLOOP.HPL
 
         protected override void OnRenderFrame(FrameEventArgs args)
         {
-            UpdatePerFrameBuffers();
-
             ReadbackQueries();
 
-            GBufferPass();
+#if VR
+            if (frameNumber == 1)
+                VRSystem.SetOriginHeadTransform();
+
+            VRSystem.UpdateEyeOffsets();
+            VRSystem.UpdatePoses();
+
+            updateCameraUBO(
+                VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Left), 
+                Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Left)
+            );
+            GBufferPass(LeftEyeBuffer);
+            VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
+
+            updateCameraUBO(
+                VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Right),
+                Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Right)
+            );
+            GBufferPass(RightEyeBuffer);
+            VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
+
+            LeftEyeBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+#else
+            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+            GBufferPass(FinalBuffer);
+            FinalBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+#endif
 
             SwapBuffers();
             NewFrame();
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
             Title = FPS.ToString() + "FPS";
+            frameNumber++;
         }
 
-        private void GBufferPass()
+        private void GBufferPass(FrameBuffer finalBuffer)
         {
             GBuffers.Use();
-            var clearColor = DebugLights ? 0.2f : 0;
+            var clearColor = debugLights ? 0.2f : 0;
             GL.ClearColor(clearColor, clearColor, clearColor, 1);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-            var projectionMatrix = Camera.ProjectionMatrix;
-            var viewMatrix = Camera.ViewMatrix;
             using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
                 MultiDrawIndirect();
@@ -347,7 +394,7 @@ namespace GLOOP.HPL
                     terrainPatch.Render();
             }
 
-            ResolveGBuffer();
+            ResolveGBuffer(finalBuffer);
 
             if (showBoundingBoxes)
             {
@@ -375,11 +422,6 @@ namespace GLOOP.HPL
                 totalNumTextureSamples += fragments * avgTexReads * texWrites;
             }
             //Console.WriteLine(totalNumTextureSamples + " Texture samples");
-        }
-
-        private void UpdatePerFrameBuffers()
-        {
-            updateCameraUBO();
         }
 
         private void MultiDrawIndirect()
@@ -581,11 +623,6 @@ namespace GLOOP.HPL
             NoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
         }
 
-        private void updateCameraUBO()
-        {
-            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
-        }
-
         private void updatePointLightsUBO()
         {
             var planes = Camera.GetFrustumPlanes();
@@ -669,14 +706,14 @@ namespace GLOOP.HPL
             scale = new Vector3(xf, yf, -far);
         }
 
-        private void ResolveGBuffer()
+        private void ResolveGBuffer(FrameBuffer finalBuffer)
         {
             GL.Disable(EnableCap.DepthTest);
             //GL.DepthMask(false);
 
             if (debugGBufferTexture > -1)
             {
-                DisplayGBuffer(debugGBufferTexture);
+                DisplayGBuffer(finalBuffer, debugGBufferTexture);
             }
             else
             {
@@ -684,9 +721,7 @@ namespace GLOOP.HPL
 
                 if (debugLightBuffer) {
                     GL.Enable(EnableCap.FramebufferSrgb);
-                    FrameBuffer.UseDefault();
-                    GL.ClearColor(0, 0, 0, 1);
-                    GL.Clear(ClearBufferMask.ColorBufferBit);
+                    finalBuffer.Use();
 
                     DoPostEffect(FullBrightShader, LightingBuffer.ColorBuffers[0]);
 
@@ -694,8 +729,6 @@ namespace GLOOP.HPL
                 } else {
                     var currentBuffer = PostMan.NextFramebuffer;
                     currentBuffer.Use();
-                    GL.ClearColor(0, 0, 0, 1);
-                    GL.Clear(ClearBufferMask.ColorBufferBit);
 
                     var shader = FinalCombineShader;
                     shader.Use();
@@ -705,7 +738,8 @@ namespace GLOOP.HPL
                     shader.Set("texture1", TextureUnit.Texture1);
                     Primitives.Quad.Draw();
 
-                    currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
+                    if (enableBloom)
+                        currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
 
                     var newBuffer = PostMan.NextFramebuffer;
                     newBuffer.Use();
@@ -713,19 +747,19 @@ namespace GLOOP.HPL
 
                     if (useFXAA)
                     {
-                        FrameBuffer.UseDefault();
+                        finalBuffer.Use();
                         DoPostEffect(FXAAShader, newBuffer.ColorBuffers[0]);
                     } 
                     else
                     {
                         // Blit to default frame buffer
-                        newBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
+                        newBuffer.BlitTo(finalBuffer, ClearBufferMask.ColorBufferBit);
                     }
                 }
             }
 
             // Blit to default frame buffer
-            GBuffers.BlitTo(0, Width, Height, ClearBufferMask.DepthBufferBit);
+            GBuffers.BlitTo(finalBuffer, ClearBufferMask.DepthBufferBit);
 
             //GL.DepthMask(true);
             GL.Enable(EnableCap.DepthTest);
@@ -795,11 +829,9 @@ namespace GLOOP.HPL
             return currentFB;
         }
 
-        private void DisplayGBuffer(int buffer)
+        private void DisplayGBuffer(FrameBuffer finalBuffer, int buffer)
         {
-            FrameBuffer.UseDefault();
-            GL.ClearColor(0, 0, 0, 1);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
+            finalBuffer.Use();
             GL.Enable(EnableCap.FramebufferSrgb);
 
             DoPostEffect(FullBrightShader, GBuffers.ColorBuffers[buffer]);
@@ -831,7 +863,7 @@ namespace GLOOP.HPL
             GL.BlendEquation(BlendEquationMode.FuncReverseSubtract);
 
             if (useSSAO)
-                SSAOPostEffect();
+                SSAOPostEffect(); // TODO: Fix
 
             GL.BlendEquation(BlendEquationMode.FuncAdd);
             GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
@@ -860,7 +892,7 @@ namespace GLOOP.HPL
                 Primitives.Sphere.Draw(numInstances: culledPointLights.Count);
 
                 // Debug light spheres
-                if (DebugLights)
+                if (debugLights)
                 {
                     foreach (var light in culledPointLights)
                     {
@@ -891,7 +923,7 @@ namespace GLOOP.HPL
                 //Console.WriteLine(((float)culledSpotLights.Count / (float)scene.SpotLights.Count) * 100 + "% of spot lights");
                 Primitives.Frustum.Draw(numInstances: culledSpotLights.Count);
 
-                if (DebugLights)
+                if (debugLights)
                 {
                     var material = frustumMaterial;
                     foreach (var light in culledSpotLights)
@@ -939,7 +971,7 @@ namespace GLOOP.HPL
                 var input = KeyboardState;
 
                 if (input.IsKeyPressed(Keys.L))
-                    DebugLights = !DebugLights;
+                    debugLights = !debugLights;
 
                 if (input.IsKeyDown(Keys.X))
                     HPLEntity.Offset.X += 0.01f;
