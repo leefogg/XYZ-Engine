@@ -24,6 +24,7 @@ using GLOOP.Tests.Assets.Shaders;
 using GLOOP.HPL.Loading;
 using HLPEngine;
 using Valve.VR;
+using System.Diagnostics;
 
 namespace GLOOP.HPL
 {
@@ -94,7 +95,7 @@ namespace GLOOP.HPL
 
         public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(LightsMapCameraPosition, new Vector3(), 90)
+            Camera = new DebugCamera(CustomMapCameraPosition, new Vector3(), 90)
             {
                 Width = Width,
                 Height = Height
@@ -226,7 +227,7 @@ namespace GLOOP.HPL
             var boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
             var terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
-            var mapToLoad = lights;
+            var mapToLoad = custom;
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
 
             /*
@@ -348,13 +349,15 @@ namespace GLOOP.HPL
             if (frameNumber == 1)
                 VRSystem.SetOriginHeadTransform();
 
-            VRSystem.UpdateEyeOffsets();
+            VRSystem.UpdateEyes();
             VRSystem.UpdatePoses();
 
             updateCameraUBO(
                 VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Left), 
                 Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Left)
             );
+            ResetGBuffer();
+            VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Left, FullBrightShader);
             GBufferPass(LeftEyeBuffer);
             VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
 
@@ -362,12 +365,15 @@ namespace GLOOP.HPL
                 VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Right),
                 Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Right)
             );
+            ResetGBuffer();
+            VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Right, FullBrightShader);
             GBufferPass(RightEyeBuffer);
             VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
 
             LeftEyeBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 #else
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+            ResetGBuffer();
             GBufferPass(FinalBuffer);
             FinalBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 #endif
@@ -381,11 +387,7 @@ namespace GLOOP.HPL
 
         private void GBufferPass(FrameBuffer finalBuffer)
         {
-            GBuffers.Use();
-            var clearColor = debugLights ? 0.2f : 0;
-            GL.ClearColor(clearColor, clearColor, clearColor, 1);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
+            Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
             using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
                 MultiDrawIndirect();
@@ -402,6 +404,14 @@ namespace GLOOP.HPL
                 scene.RenderBoundingBoxes();
                 GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
             }
+        }
+
+        private void ResetGBuffer()
+        {
+            GBuffers.Use();
+            var clearColor = debugLights ? 0.2f : 0;
+            GL.ClearColor(clearColor, clearColor, clearColor, 1);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
         }
 
         private void ReadbackQueries()

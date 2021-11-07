@@ -7,11 +7,11 @@ namespace GLOOP.Rendering
 {
     public class FrameBuffer : IDisposable
     {
-        private readonly int Handle;
+        public readonly int Handle;
         private readonly int RBOHandle;
         public readonly Texture2D[] ColorBuffers;
         public readonly int Width, Height;
-
+        public static int Current { get; private set; }
 
         public FrameBuffer(int width, int height, bool withDepth, PixelInternalFormat format = PixelInternalFormat.Rgba16f, int count = 1, string name = null)
             : this(width, height, Enumerable.Repeat(format, count).ToArray(), withDepth, name)
@@ -88,7 +88,10 @@ namespace GLOOP.Rendering
 
         public static void UseDefault() => Use(0);
 
-        private static void Use(int handle) => GL.BindFramebuffer(FramebufferTarget.Framebuffer, handle);
+        private static void Use(int handle) { 
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, handle);
+            Current = handle;
+        }
 
         public void BlitTo(FrameBuffer destination, ClearBufferMask mask)
         {
