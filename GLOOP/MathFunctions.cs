@@ -24,11 +24,11 @@ namespace GLOOP
             return CreateProjectionMatrix(aspectRatio, fov, znear, zfar, ref output);
         }
 
-        public static Matrix4 CreateProjectionMatrix(float aspectRatio, float fov, float znear, float zfar, ref Matrix4 output)
+        public static Matrix4 CreateProjectionMatrix(float aspectRatio, float fovDegrees, float znear, float zfar, ref Matrix4 output)
         {
             ToIdentity(ref output);
 
-            var yscale = (float)(1f / Math.Tan(MathHelper.DegreesToRadians(fov / 2f)) * aspectRatio);
+            var yscale = (float)(1f / Math.Tan(MathHelper.DegreesToRadians(fovDegrees / 2f)) * aspectRatio);
             var xscale = yscale / aspectRatio;
             var frustumlength = zfar - znear;
 
@@ -42,13 +42,13 @@ namespace GLOOP
             return output;
         }
 
-        public static Matrix4 CreateViewMatrix(Vector3 position, Vector3 rotation)
+        public static Matrix4 CreateViewMatrix(Vector3 position, Vector3 rotationDegrees)
         {
             var output = new Matrix4();
             ToIdentity(ref output);
-            Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotation.X), RIGHT);
-            Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotation.Y), UP);
-            Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotation.Z), IN);
+            Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotationDegrees.X), RIGHT);
+            Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotationDegrees.Y), UP);
+            Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotationDegrees.Z), IN);
             Negate(ref position);
             Translate(output, ref output, position);
             Negate(ref position);
