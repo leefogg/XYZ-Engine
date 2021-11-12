@@ -92,7 +92,7 @@ namespace GLOOP
 
         private void setupCameraUniformBuffer()
         {
-            cameraBuffer = new Buffer<Matrix4>(3, BufferTarget.UniformBuffer, BufferUsageHint.StreamRead, "CameraData");
+            cameraBuffer = new Buffer<Matrix4>(5, BufferTarget.UniformBuffer, BufferUsageHint.StreamRead, "CameraData");
             cameraBuffer.BindRange(0, 0);
         }
 
@@ -100,7 +100,15 @@ namespace GLOOP
         {
             var projectionView = new Matrix4();
             MatrixExtensions.Multiply(projectionMatrix, viewMatrix, ref projectionView);
-            cameraBuffer.Update(new[] { projectionMatrix, viewMatrix, projectionView });
+            var inverseView = viewMatrix.Inverted();
+            var inverseProjection = projectionView.Inverted();
+            cameraBuffer.Update(new[] { 
+                projectionMatrix, 
+                viewMatrix, 
+                projectionView,
+                inverseView,
+                inverseProjection
+            });
         }
 
         protected override void OnRenderFrame(FrameEventArgs args)

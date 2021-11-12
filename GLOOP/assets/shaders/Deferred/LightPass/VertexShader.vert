@@ -12,6 +12,8 @@ layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 ProjectionMatrix;
 	mat4 ViewMatrix;
 	mat4 ViewProjectionMatrix;
+	mat4 InverseView;
+	mat4 InverseProjection;
 };
 
 #if (LIGHTTYPE == POINT)
@@ -43,6 +45,7 @@ layout (std140, binding = 0) uniform CameraMatricies {
 		float FOV;
 		float diffuseScalar;
 		float specularScalar;
+		mat4 viewProjection;
 	};
 	layout (std140, binding = 1) uniform spotlights {
 		SpotLight[200] spotLights;

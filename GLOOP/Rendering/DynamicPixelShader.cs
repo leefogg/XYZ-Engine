@@ -22,12 +22,14 @@ namespace GLOOP.Rendering
             this.fragPath = fragPath;
             this.defines = defines;
 
-            watcher = new FileSystemWatcher(Path.GetDirectoryName(vertPath))
+            var fullPath = Path.Combine(Environment.CurrentDirectory, vertPath);
+            var dir = Path.GetDirectoryName(fullPath);
+            watcher = new FileSystemWatcher(dir)
             {
                 NotifyFilter = NotifyFilters.LastAccess
-                                 | NotifyFilters.LastWrite
-                                 | NotifyFilters.FileName
-                                 | NotifyFilters.DirectoryName
+                             | NotifyFilters.LastWrite
+                             | NotifyFilters.FileName
+                             | NotifyFilters.DirectoryName
             };
 
             watcher.Changed += recompile;

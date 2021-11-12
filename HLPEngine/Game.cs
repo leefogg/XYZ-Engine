@@ -65,8 +65,6 @@ namespace GLOOP.HPL
         private bool enableBloom = false;
         private bool showBoundingBoxes = false;
 
-        private ulong frameNumber;
-
         private Buffer<SpotLight> spotLightsBuffer;
         private Buffer<PointLight> pointLightsBuffer;
         private Buffer<DeferredGeoMaterial> materialBuffer;
@@ -346,7 +344,7 @@ namespace GLOOP.HPL
             ReadbackQueries();
 
 #if VR
-            if (frameNumber == 1)
+            if (FrameNumber == 1)
                 VRSystem.SetOriginHeadTransform();
 
             VRSystem.UpdateEyes();
@@ -382,7 +380,6 @@ namespace GLOOP.HPL
             NewFrame();
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
             Title = FPS.ToString() + "FPS";
-            frameNumber++;
         }
 
         private void GBufferPass(FrameBuffer finalBuffer)
@@ -680,7 +677,19 @@ namespace GLOOP.HPL
                     light.GetLightingScalars(out float diffuseScalar, out float specularScalar);
                     var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
                     var dir = Matrix4.CreateFromQuaternion(light.Rotation) * new Vector4(0, 0, 1, 1);
+
                     GetLightVars(light, out var aspect, out var scale);
+
+                    var rot = light.Rotation.ToEulerAngles();
+                    rot.X = MathHelper.RadiansToDegrees(rot.X);
+                    rot.Y = MathHelper.RadiansToDegrees(rot.Y);
+                    rot.Z = MathHelper.RadiansToDegrees(rot.Z);
+                    var viewMatrix = MathFunctions.CreateViewMatrix(light.Position, rot);
+                    var projectionMatrix = new Matrix4();
+                    MathFunctions.CreateProjectionMatrix(aspect, light.FOV, light.ZNear, light.Radius, ref projectionMatrix);
+                    var viewProjection = new Matrix4();
+                    MatrixExtensions.Multiply(projectionMatrix, viewMatrix, ref viewProjection);
+
                     lights[culledNumSpotLights++] = new SpotLight(
                         modelMatrix,
                         light.Position,
@@ -689,12 +698,13 @@ namespace GLOOP.HPL
                         scale * 2,
                         aspect,
                         light.Brightness,
-                        light.Radius,
+                        light.Radius * 2,
                         light.FalloffPower,
                         light.AngularFalloffPower,
                         light.FOV,
                         diffuseScalar,
-                        specularScalar
+                        specularScalar,
+                        viewProjection
                     );
 
                     culledSpotLights.Add(light);
@@ -727,7 +737,7 @@ namespace GLOOP.HPL
             }
             else
             {
-                DoLightPass(new Vector3(0.00f));
+                DoLightPass(new Vector3(0.01f));
 
                 if (debugLightBuffer) {
                     GL.Enable(EnableCap.FramebufferSrgb);
@@ -888,13 +898,15 @@ namespace GLOOP.HPL
                 var shader = PointLightShader;
                 shader.Use();
                 Texture.Use(new[] {
+                    GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Position],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Specular],
                 }, TextureUnit.Texture0);
-                shader.Set("positionTex", TextureUnit.Texture0);
-                shader.Set("normalTex", TextureUnit.Texture1);
-                shader.Set("specularTex", TextureUnit.Texture2);
+                shader.Set("diffuseTex", TextureUnit.Texture0);
+                shader.Set("positionTex", TextureUnit.Texture1);
+                shader.Set("normalTex", TextureUnit.Texture2);
+                shader.Set("specularTex", TextureUnit.Texture3);
                 shader.Set("camPos", Camera.Position);
                 //TODO: Could render a 2D circle in screenspace instead of a sphere
 
@@ -921,13 +933,15 @@ namespace GLOOP.HPL
                 Shader shader = SpotLightShader;
                 shader.Use();
                 Texture.Use(new[] {
+                    GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Position],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
                     GBuffers.ColorBuffers[(int)GBufferTexture.Specular],
                 }, TextureUnit.Texture0);
-                shader.Set("positionTex", TextureUnit.Texture0);
-                shader.Set("normalTex", TextureUnit.Texture1);
-                shader.Set("specularTex", TextureUnit.Texture2);
+                shader.Set("diffuseTex", TextureUnit.Texture0);
+                shader.Set("positionTex", TextureUnit.Texture1);
+                shader.Set("normalTex", TextureUnit.Texture2);
+                shader.Set("specularTex", TextureUnit.Texture3);
                 shader.Set("camPos", Camera.Position);
 
                 //Console.WriteLine(((float)culledSpotLights.Count / (float)scene.SpotLights.Count) * 100 + "% of spot lights");
@@ -1010,6 +1024,9 @@ namespace GLOOP.HPL
                 if (input.IsKeyReleased(Keys.O))
                     useSSAO = !useSSAO;
 
+                if (input.IsKeyReleased(Keys.G))
+                    enableBloom = !enableBloom;
+
                 if (input.IsKeyPressed(Keys.V))
                     VSync = VSync == VSyncMode.Off ? VSyncMode.On : VSyncMode.Off;
 
@@ -1025,16 +1042,16 @@ namespace GLOOP.HPL
         }
 
 
-        [StructLayout(LayoutKind.Explicit, Size = 64)]
+        [StructLayout(LayoutKind.Explicit, Size = 48)]
         private struct PointLight
         {
             [FieldOffset(0)] Vector3 position;
             [FieldOffset(16)] Vector3 color;
-            [FieldOffset(32)] float brightness;
-            [FieldOffset(36)] float radius;
-            [FieldOffset(40)] float falloffPow;
+            [FieldOffset(28)] float brightness;
+            [FieldOffset(32)] float radius;
+            [FieldOffset(36)] float falloffPow;
             [FieldOffset(44)] float diffuseScalar;
-            [FieldOffset(58)] float specularScalar;
+            [FieldOffset(44)] float specularScalar;
 
             public PointLight(
                 Vector3 position,
@@ -1056,7 +1073,7 @@ namespace GLOOP.HPL
             }
         };
 
-        [StructLayout(LayoutKind.Explicit, Size = 160)]
+        [StructLayout(LayoutKind.Explicit, Size = 224)]
         private struct SpotLight
         {
             [FieldOffset(0)] Matrix4 modelMatrix;
@@ -1072,6 +1089,7 @@ namespace GLOOP.HPL
             [FieldOffset(144)] float FOV;
             [FieldOffset(148)] float diffuseScalar;
             [FieldOffset(152)] float specularScalar;
+            [FieldOffset(160)] Matrix4 ViewProjection;
 
             public SpotLight(
                 Matrix4 modelMatrix,
@@ -1086,7 +1104,8 @@ namespace GLOOP.HPL
                 float angularFalloffPow,
                 float fov,
                 float diffuseScalar,
-                float specularScalar
+                float specularScalar,
+                Matrix4 ViewProjection
             )
             {
                 this.modelMatrix = modelMatrix;
@@ -1102,6 +1121,7 @@ namespace GLOOP.HPL
                 this.FOV = fov;
                 this.diffuseScalar = diffuseScalar;
                 this.specularScalar = specularScalar;
+                this.ViewProjection = ViewProjection;
             }
         }
         public enum GBufferTexture

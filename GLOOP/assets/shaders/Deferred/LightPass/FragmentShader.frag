@@ -35,10 +35,12 @@ out vec3 fragColor;
 		float FOV;
 		float diffuseScalar;
 		float specularScalar;
+		mat4 viewProjection;
 	};
 	in SpotLight light;
 #endif
 
+uniform sampler2D diffuseTex;
 uniform sampler2D positionTex;
 uniform sampler2D normalTex;
 uniform sampler2D specularTex;
@@ -56,33 +58,39 @@ vec3 power(vec3 source, float power){
 void main()
 {
 	vec2 ndc = (clipSpace.xy / clipSpace.w) / 2.0 + 0.5;
+	vec4 albedo = texture(diffuseTex, ndc);
 
-	vec3 fragPos = texture(positionTex, ndc).rgb;
-	vec3 normal = texture(normalTex, ndc).rgb * 2 - 1;
-	vec4 specular = texture(specularTex, ndc);
+	if (fragPos == vec3(0.0))
+		discard;
 	
 	vec3 vPos = fragPos - camPos;
 	vec3 vEye = -normalize(vPos);
 
+	vec3 normal = texture(normalTex, ndc).rgb * 2 - 1;
+	vec3 fragPos = texture(positionTex, ndc).rgb;
 	
 	// Diffuse
+	vec3 diffuse = albedo.rgb;
 	vec3 vLightDir = light.position.xyz - fragPos;
 	float fDistance = length(vLightDir);
-	float localDist =  1.0 - min(fDistance * (1.0 / light.radius), 1.0); // Converts to [1,0] inside sphere
+	float localDist =  1.0 - min(fDistance * (1.0 / light.radius * 2.1), 1.0); // Converts to [1,0] inside sphere
 	vLightDir = normalize(vLightDir);
 
-	float fAttenuation = pow(localDist, light.falloffPow);
+	fragPos += normal * (1 - dot(normal, vLightDir)) * 0.1;
+	float fAttenuation = localDist;
 	
 	#if (LIGHTTYPE == SPOT)
-		vec3 toLight = normalize(light.position.xyz - fragPos);
-		float theta = max(0.0, dot(toLight, light.direction));
-		theta = pow(theta, light.angularFalloffPow);
-		float falloff = max(0.0, theta - (light.FOV / 180));
-		falloff = pow(falloff, 4.0 * light.angularFalloffPow);
-		fAttenuation *= falloff;
+		vec4 ProjectedUv = light.viewProjection * vec4(fragPos, 1.0);
+		ProjectedUv = vec4(ProjectedUv.xyz, 1.0) / ProjectedUv.w;
+		fAttenuation *= pow(max(0.0, 1.0 - length(ProjectedUv.xy)), light.angularFalloffPow);
+		// Clamp so there no light directly backwards
+		fAttenuation *= max(0, ProjectedUv.z) * clamp((1.0 - ProjectedUv.z) * 128.0, 0.0, 1.0);
 	#endif
+
+	if (fAttenuation <= 0.0)
+		discard;
 		
-	vec3 color = light.color * light.brightness;
+	vec3 color = light.color * light.brightness * 16.0;
 	
 	///////////
 	// A cheaper version of Dice Translucency
@@ -95,27 +103,25 @@ void main()
 	////////
 	// Apply energy conservation and ambient scattering
 	float fLightScatter = min(2.0, fLightTransport * 16.0) + fLightScatterAmount;
-		
 	float fLightAmount = max(fLDotN, 0.0);
-	vec3 diffuse = color * fLightAmount;
-	diffuse *= fLightScatter;
-	diffuse *= light.diffuseScalar;
 
 	// Specular
+	vec4 specular = texture(specularTex, ndc);
 	vec3 vSpecIntensity = specular.rgb;
 	float fSpecPower = specular.a;
 		
 	vec3 vHalfVec = normalize(vLightDir + vEye);
-	fSpecPower = exp2(fSpecPower * 16.0) + 1.0; // Range 0 - 1024
+	fSpecPower = exp2(fSpecPower * 8.0) + 1.0; // Range 0 - 1024
 	
 	// Calculate the enegry conservation value, this will make sure that the intergral of the specular is 1.0
 	float fEngeryConservation = (fSpecPower + 8.0) * (1.0 / (8.0 * PI));
 	vec3 vSpecular = vSpecIntensity * min(fEngeryConservation * pow(max(dot(vHalfVec, normal), 0.0), fSpecPower), 1.0);
 	vSpecular *= fSpecPower;
-	vSpecular *= color;
-	//vSpecular *= light.specularScalar;
 	
-	vec3 lighting = diffuse + vSpecular;
+	vec3 lighting = diffuse * color;
+	lighting *= light.diffuseScalar;
+	//vSpecular *= light.specularScalar;
+	lighting += vSpecular;
 	lighting *= fAttenuation;
 
 	// Multiply with 8.0 to increase precision
