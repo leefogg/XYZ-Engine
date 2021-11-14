@@ -65,39 +65,29 @@ namespace GLOOP.HPL
         private bool enableBloom = false;
         private bool showBoundingBoxes = false;
 
-        private Buffer<SpotLight> spotLightsBuffer;
-        private Buffer<PointLight> pointLightsBuffer;
-        private Buffer<DeferredGeoMaterial> materialBuffer;
-        private Buffer<Matrix4> matrixBuffer;
-        private Buffer<DrawElementsIndirectData> drawIndirectBuffer;
-        private Matrix4[] ModelMatricies;
-
         private Query GeoPassQuery;
 
-        private const int maxLights = 200;
-        private List<GLOOP.SpotLight> culledSpotLights = new List<GLOOP.SpotLight>();
-        private List<GLOOP.PointLight> culledPointLights = new List<GLOOP.PointLight>();
         private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
         private Buffer<float> bloomBuffer;
         private readonly DateTime startTime = DateTime.Now;
-
-        private List<QueryPair> GeoStageQueries = new List<QueryPair>();
 
         private readonly Vector3
             CustomMapCameraPosition = new Vector3(6.3353596f, 1.6000088f, 8.1601305f),
             PhiMapCameraPosition = new Vector3(-17.039896f, 14.750014f, 64.48185f),
             deltaMapCameraPosition = new Vector3(0, 145, -10),
             thetaTunnelsMapCameraPosition = new Vector3(4, 9, -61),
-            LightsMapCameraPosition = new Vector3(-0.5143715f, 4.3500123f, 11.639848f);
+            LightsMapCameraPosition = new Vector3(-0.5143715f, 4.3500123f, 11.639848f),
+            PortalsMapCameraPosition = new Vector3(-2.1178308f, 1.85f, 9.150704f);
 
         public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(CustomMapCameraPosition, new Vector3(), 90)
+            Camera = new DebugCamera(PortalsMapCameraPosition, new Vector3(), 90)
             {
                 Width = Width,
                 Height = Height
             };
+            Camera.Current = Camera;
         }
 
         protected override void OnLoad() {
@@ -225,7 +215,8 @@ namespace GLOOP.HPL
             var boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
             var terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
-            var mapToLoad = custom;
+            var portals = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm";
+            var mapToLoad = portals;
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
 
             /*
@@ -254,32 +245,9 @@ namespace GLOOP.HPL
             scene = map.ToScene();
             var afterMapLoad = DateTime.Now;
             var beforeMapSort = DateTime.Now;
-            //var visibleObjects = GetVisibleModels(scene.Models);
-            var visibleObjects = scene.Models;
-            var occluders = visibleObjects.Where(o => o.IsOccluder);
-            var notOccluders = visibleObjects.Where(o => !o.IsOccluder);
-            bool SameRenderBatch(Model a, Model b)
-            {
-                var mat1 = (DeferredRenderingGeoMaterial)a.Material;
-                var mat2 = (DeferredRenderingGeoMaterial)b.Material;
-                return a.VAO.container.Handle == b.VAO.container.Handle
-                    && mat1.DiffuseTexture == mat2.DiffuseTexture
-                    && mat1.SpecularTexture == mat2.SpecularTexture
-                    && mat1.NormalTexture == mat2.NormalTexture
-                    && mat1.IlluminationColor == mat2.IlluminationColor;
-            }
-            int averageDistanceToCamera(RenderBatch batch)
-            {
-                return (int)batch.Models.Average(model => (model.Transform.Position - Camera.Position).Length);
-            }
-            var occluderbatches = GroupBy(occluders, SameRenderBatch)
-                .OrderBy(b => b.Models[0].Material.Shader.Handle)
-                .ThenBy(averageDistanceToCamera);
-            var nonOccluderbatches = GroupBy(notOccluders, SameRenderBatch)
-                .OrderBy(b => b.Models[0].Material.Shader.Handle)
-                .ThenBy(averageDistanceToCamera);
-            scene.Batches = occluderbatches.ToList();
-            scene.Batches.AddRange(nonOccluderbatches);
+            scene.Prepare();
+            foreach (var area in scene.VisibilityAreas.Values)
+                area.Prepare();
             var afterMapSort = DateTime.Now;
 
             Console.WriteLine($"Time taken to sort map {(afterMapSort - beforeMapSort).TotalSeconds} seconds");
@@ -293,7 +261,7 @@ namespace GLOOP.HPL
             var numStatic = map.Entities.Where(e => e.IsStatic).Sum(e => e.Models.Count);
             var numStaticOccluders = map.Entities.Where(e => e.IsStatic && e.IsOccluder).Sum(e => e.Models.Count);
             var numDynamic = map.Entities.Where(e => !e.IsStatic).Sum(e => e.Models.Count);
-            var allModels = visibleObjects.Count();
+            var allModels = scene.Models.Count() + scene.VisibilityAreas.Values.SelectMany(area => area.Models).Count();
             Console.WriteLine($"Scene: {numStatic} Static, {numStaticOccluders} of which occlude. {numDynamic} Dynamic. {allModels} Total.");
 
             setupBuffers();
@@ -306,37 +274,6 @@ namespace GLOOP.HPL
             var summaryJson = JsonConvert.SerializeObject(usedTextures);
             File.WriteAllText(metaFilePath, summaryJson);
             */
-        }
-
-        public IEnumerable<Model> GetVisibleModels(IEnumerable<Model> allModels)
-        {
-            var frustumPlanes = Camera.GetFrustumPlanes();
-
-            return allModels.Where(x => Camera.IsInsideFrustum(ref frustumPlanes, x.VAO.BoundingBox, x.Transform));
-        }
-
-        public List<RenderBatch> GroupBy(IEnumerable<Model> models, Func<Model, Model, bool> comparer)
-        {
-            var batches = new List<RenderBatch>();
-
-            foreach (var model in models)
-            {
-                var foundBatch = false;
-                foreach (var batch in batches)
-                {
-                    if (comparer(batch.Models[0], model))
-                    {
-                        foundBatch = true;
-                        batch.Models.Add(model);
-                        break;
-                    }
-                }
-
-                if (!foundBatch)
-                    batches.Add(new RenderBatch(new[] { model }));
-            }
-
-            return batches;
         }
 
         protected override void OnRenderFrame(FrameEventArgs args)
@@ -382,15 +319,22 @@ namespace GLOOP.HPL
             Title = FPS.ToString() + "FPS";
         }
 
+        private void ResetGBuffer()
+        {
+            GBuffers.Use();
+            var clearColor = debugLights ? 0.2f : 0;
+            GL.ClearColor(clearColor, clearColor, clearColor, 1);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        }
+
         private void GBufferPass(FrameBuffer finalBuffer)
         {
             Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
             using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
-                MultiDrawIndirect();
-
-                foreach (var terrainPatch in scene.Terrain)
-                    terrainPatch.Render();
+                foreach (var area in scene.VisibilityAreas.Values)
+                    area.RenderGeometry();
+                scene.RenderGeometry();
             }
 
             ResolveGBuffer(finalBuffer);
@@ -403,14 +347,6 @@ namespace GLOOP.HPL
             }
         }
 
-        private void ResetGBuffer()
-        {
-            GBuffers.Use();
-            var clearColor = debugLights ? 0.2f : 0;
-            GL.ClearColor(clearColor, clearColor, clearColor, 1);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-        }
-
         private void ReadbackQueries()
         {
             if (GeoPassQuery != null)
@@ -419,158 +355,16 @@ namespace GLOOP.HPL
                 //Console.WriteLine(time / 1000000f + "ms");
             }
 
-            // TODO: Move this to end of frame
-            long totalNumTextureSamples = 0;
-            foreach (var pair in GeoStageQueries)
-            {
-                var fragments = pair.Query.GetResult();
-                var avgTexReads = pair.shader.AverageSamplesPerFragment;
-                var texWrites = pair.shader.NumOutputTargets;
-                totalNumTextureSamples += fragments * avgTexReads * texWrites;
-            }
-            //Console.WriteLine(totalNumTextureSamples + " Texture samples");
-        }
-
-        private void MultiDrawIndirect()
-        {
-            var drawCommandPtr = (IntPtr)0;
-            var modelMatrixPtr = 0;
-            var materialPtr = 0;
-            var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
-            var matrixSize = Marshal.SizeOf<Matrix4>();
-            var materialSize = Marshal.SizeOf<DeferredGeoMaterial>();
-
-            GeoStageQueries.Clear();
-            Query runningQuery = null;
-            int i = 0;
-            foreach (var batch in scene.Batches)
-            {
-                var batchSize = batch.Models.Count;
-
-                var oldShader = Shader.Current;
-                batch.BindState();
-                if (Shader.Current != oldShader)
-                {
-                    if (runningQuery != null)
-                        runningQuery.EndScope();
-                    runningQuery = queryPool.BeginScope(QueryTarget.SamplesPassed);
-                    GeoStageQueries.Add(new QueryPair()
-                    {
-                        Query = runningQuery,
-                        shader = (StaticPixelShader)Shader.Current
-                    });
-                }
-
-                matrixBuffer.BindRange(modelMatrixPtr, 1, batchSize * matrixSize);
-                materialBuffer.BindRange(materialPtr, 2, batchSize * materialSize);
-                GL.MultiDrawElementsIndirect(
-                    OpenTK.Graphics.OpenGL4.PrimitiveType.Triangles,
-                    DrawElementsType.UnsignedShort,
-                    drawCommandPtr,
-                    batchSize,
-                    0
-                );
-
-                var batchMatrixSize = batchSize * matrixSize;
-                var offAlignment = batchMatrixSize % Globals.UniformBufferOffsetAlignment;
-                if (offAlignment > 0)
-                {
-                    var bytesToAdd = Globals.UniformBufferOffsetAlignment - offAlignment;
-                    var entriesToAdd = bytesToAdd / matrixSize;
-                    batchSize += entriesToAdd;
-                }
-
-                drawCommandPtr += batchSize * commandSize;
-                modelMatrixPtr += batchSize * matrixSize;
-                materialPtr += batchSize * materialSize;
-                i++;
-            }
-
-            runningQuery.EndScope();
+            scene.BeforeFrame();
+            foreach (var area in scene.VisibilityAreas.Values)
+                area.BeforeFrame();
         }
 
         private void setupBuffers()
         {
-            setupLightingUBO();
-            updatePointLightsUBO();
-            updateSpotLightsUBO();
-
             setupBloomUBO();
 
-            var batches = scene.Batches;
-            loadFrameData(batches);
-
             setupRandomTexture();
-        }
-
-        private void loadFrameData(List<RenderBatch> batches)
-        {
-            var sizeOfMatrix = Marshal.SizeOf<Matrix4>();
-
-            var modelMatricies = new List<Matrix4>();
-            var drawCommands = new List<DrawElementsIndirectData>();
-            var materials = new List<DeferredGeoMaterial>();
-            foreach (var batch in batches)
-            {
-                uint i = 0;
-                foreach (var model in batch.Models)
-                {
-                    modelMatricies.Add(model.Transform.Matrix);
-
-                    var mat = (DeferredRenderingGeoMaterial)model.Material;
-                    materials.Add(new DeferredGeoMaterial()
-                    {
-                        AlbedoColourTint = mat.AlbedoColourTint,
-                        IlluminationColor = mat.IlluminationColor,
-                        IsWorldSpaceUVs = mat.HasWorldpaceUVs,
-                        TextureOffset = mat.TextureOffset,
-                        TextureRepeat = mat.TextureRepeat,
-                        NormalStrength = 1,
-                    });
-
-                    var command = model.VAO.description;
-                    drawCommands.Add(new DrawElementsIndirectData(
-                        command.NumIndexes,
-                        command.FirstIndex / sizeof(ushort),
-                        command.BaseVertex,
-                        command.NumInstances,
-                        i++
-                    ));
-                }
-
-                var batchMatrixSize = i * sizeOfMatrix;
-                var offAlignment = batchMatrixSize % Globals.UniformBufferOffsetAlignment;
-                if (offAlignment > 0)
-                {
-                    var bytesToAdd = Globals.UniformBufferOffsetAlignment - offAlignment;
-                    var entriesToAdd = bytesToAdd / sizeOfMatrix;
-                    for (i = 0; i < entriesToAdd; i++)
-                    {
-                        modelMatricies.Add(new Matrix4());
-                        materials.Add(new DeferredGeoMaterial());
-                        drawCommands.Add(new DrawElementsIndirectData());
-                    }
-                }
-            }
-
-            ModelMatricies = modelMatricies.ToArray();
-            matrixBuffer = new Buffer<Matrix4>(ModelMatricies, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "ModelMatricies");
-            matrixBuffer.BindRange(0, 1);
-
-            var flattenedDrawCommands = drawCommands.ToArray();
-            drawIndirectBuffer = new Buffer<DrawElementsIndirectData>(flattenedDrawCommands, BufferTarget.DrawIndirectBuffer, BufferUsageHint.StaticDraw, "DrawCommands");
-
-            var flattenedMaterials = materials.ToArray();
-            materialBuffer = new Buffer<DeferredGeoMaterial>(flattenedMaterials, BufferTarget.ShaderStorageBuffer, BufferUsageHint.StaticDraw, "MaterialData");
-            materialBuffer.BindRange(0, 2);
-        }
-
-        private void setupLightingUBO()
-        {
-            pointLightsBuffer = new Buffer<PointLight>(Math.Min(maxLights, scene.PointLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "PointLights");
-            pointLightsBuffer.BindRange(0, 3);
-            spotLightsBuffer = new Buffer<SpotLight>(Math.Min(maxLights, scene.SpotLights.Count), BufferTarget.UniformBuffer, BufferUsageHint.StaticDraw, "SpotLights");
-            spotLightsBuffer.BindRange(0, 4);
         }
 
         private void setupBloomUBO()
@@ -628,102 +422,6 @@ namespace GLOOP.HPL
                 Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
             };
             NoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
-        }
-
-        private void updatePointLightsUBO()
-        {
-            var planes = Camera.GetFrustumPlanes();
-
-            var lights = new PointLight[Math.Min(maxLights, scene.PointLights.Count)];
-            culledPointLights.Clear();
-
-            var numCulledLights = 0;
-            for (var i = 0; i < scene.PointLights.Count && culledPointLights.Count < lights.Length; i++)
-            {
-                var light = scene.PointLights[i];
-
-                if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
-                {
-                    light.GetLightingScalars(out float diffuseScalar, out float specularScalar);
-                    lights[numCulledLights++] = new PointLight(
-                        light.Position,
-                        light.Color,
-                        light.Brightness,
-                        light.Radius * 2, // TODO: Should not be doubled, need to fix brightness
-                        light.FalloffPower,
-                        diffuseScalar,
-                        specularScalar
-                    );
-
-                    culledPointLights.Add(light);
-                }
-            }
-
-            pointLightsBuffer.Update(lights);
-        }
-
-        private void updateSpotLightsUBO()
-        {
-            var planes = Camera.GetFrustumPlanes();
-            culledSpotLights.Clear();
-
-            var culledNumSpotLights = 0;
-            var lights = new SpotLight[Math.Min(maxLights, scene.SpotLights.Count)];
-            for (var i = 0; i < lights.Length && culledSpotLights.Count < lights.Length; i++)
-            {
-                var light = scene.SpotLights[i];
-                if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
-                {
-                    light.GetLightingScalars(out float diffuseScalar, out float specularScalar);
-                    var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
-                    var dir = Matrix4.CreateFromQuaternion(light.Rotation) * new Vector4(0, 0, 1, 1);
-
-                    GetLightVars(light, out var aspect, out var scale);
-
-                    var rot = light.Rotation.ToEulerAngles();
-                    rot.X = MathHelper.RadiansToDegrees(rot.X);
-                    rot.Y = MathHelper.RadiansToDegrees(rot.Y);
-                    rot.Z = MathHelper.RadiansToDegrees(rot.Z);
-                    var viewMatrix = MathFunctions.CreateViewMatrix(light.Position, rot);
-                    var projectionMatrix = new Matrix4();
-                    MathFunctions.CreateProjectionMatrix(aspect, light.FOV, light.ZNear, light.Radius, ref projectionMatrix);
-                    var viewProjection = new Matrix4();
-                    MatrixExtensions.Multiply(projectionMatrix, viewMatrix, ref viewProjection);
-
-                    lights[culledNumSpotLights++] = new SpotLight(
-                        modelMatrix,
-                        light.Position,
-                        light.Color,
-                        dir.Xyz,
-                        scale * 2,
-                        aspect,
-                        light.Brightness,
-                        light.Radius * 2,
-                        light.FalloffPower,
-                        light.AngularFalloffPower,
-                        light.FOV,
-                        diffuseScalar,
-                        specularScalar,
-                        viewProjection
-                    );
-
-                    culledSpotLights.Add(light);
-                }
-            }
-
-            spotLightsBuffer.Update(lights);
-        }
-
-        private void GetLightVars(GLOOP.SpotLight light, out float ar, out Vector3 scale)
-        {
-            ar = light.AspectRatio;
-            var deg2Rad = 0.0174533f;
-            var halfHeight = (float)Math.Tan(deg2Rad * (light.FOV / 2f));
-            var halfWidth = halfHeight * ar;
-            var far = light.Radius;
-            var xf = halfWidth * far;
-            var yf = halfHeight * far;
-            scale = new Vector3(xf, yf, -far);
         }
 
         private void ResolveGBuffer(FrameBuffer finalBuffer)
@@ -891,76 +589,30 @@ namespace GLOOP.HPL
 
         private void RenderLights()
         {
-            if (scene.PointLights.Any())
+            var gbuffers = new[] {
+                GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
+                GBuffers.ColorBuffers[(int)GBufferTexture.Position],
+                GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
+                GBuffers.ColorBuffers[(int)GBufferTexture.Specular],
+            };
+            scene.RenderLights(
+                frustumMaterial,
+                SpotLightShader,
+                PointLightShader,
+                singleColorMaterial,
+                gbuffers,
+                debugLights
+            );
+            foreach (var area in scene.VisibilityAreas.Values)
             {
-                pointLightsBuffer.BindRange(0, 1);
-
-                var shader = PointLightShader;
-                shader.Use();
-                Texture.Use(new[] {
-                    GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
-                    GBuffers.ColorBuffers[(int)GBufferTexture.Position],
-                    GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
-                    GBuffers.ColorBuffers[(int)GBufferTexture.Specular],
-                }, TextureUnit.Texture0);
-                shader.Set("diffuseTex", TextureUnit.Texture0);
-                shader.Set("positionTex", TextureUnit.Texture1);
-                shader.Set("normalTex", TextureUnit.Texture2);
-                shader.Set("specularTex", TextureUnit.Texture3);
-                shader.Set("camPos", Camera.Position);
-                //TODO: Could render a 2D circle in screenspace instead of a sphere
-
-                //Console.WriteLine(((float)culledPointLights.Count / (float)scene.PointLights.Count) * 100 + "% of point lights");
-                Primitives.Sphere.Draw(numInstances: culledPointLights.Count);
-
-                // Debug light spheres
-                if (debugLights)
-                {
-                    foreach (var light in culledPointLights)
-                    {
-                        var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, new OpenTK.Mathematics.Quaternion(), new Vector3(light.Radius * 2));
-                        singleColorMaterial.ModelMatrix = modelMatrix;
-                        singleColorMaterial.Commit();
-                        Primitives.Sphere.Draw(OpenTK.Graphics.OpenGL4.PrimitiveType.Lines);
-                    }
-                }
-            }
-
-            if (scene.SpotLights.Any())
-            {
-                spotLightsBuffer.BindRange(0, 1);
-
-                Shader shader = SpotLightShader;
-                shader.Use();
-                Texture.Use(new[] {
-                    GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
-                    GBuffers.ColorBuffers[(int)GBufferTexture.Position],
-                    GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
-                    GBuffers.ColorBuffers[(int)GBufferTexture.Specular],
-                }, TextureUnit.Texture0);
-                shader.Set("diffuseTex", TextureUnit.Texture0);
-                shader.Set("positionTex", TextureUnit.Texture1);
-                shader.Set("normalTex", TextureUnit.Texture2);
-                shader.Set("specularTex", TextureUnit.Texture3);
-                shader.Set("camPos", Camera.Position);
-
-                //Console.WriteLine(((float)culledSpotLights.Count / (float)scene.SpotLights.Count) * 100 + "% of spot lights");
-                Primitives.Frustum.Draw(numInstances: culledSpotLights.Count);
-
-                if (debugLights)
-                {
-                    var material = frustumMaterial;
-                    foreach (var light in culledSpotLights)
-                    {
-                        var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
-                        GetLightVars(light, out var aspect, out var scale);
-                        material.AspectRatio = aspect;
-                        material.Scale = scale;
-                        material.ModelMatrix = modelMatrix;
-                        material.Commit();
-                        Primitives.Frustum.Draw(OpenTK.Graphics.OpenGL4.PrimitiveType.Lines);
-                    }
-                }
+                area.RenderLights(
+                    frustumMaterial,
+                    SpotLightShader,
+                    PointLightShader,
+                    singleColorMaterial,
+                    gbuffers,
+                    debugLights
+                );
             }
         }
 
@@ -1041,111 +693,12 @@ namespace GLOOP.HPL
             base.OnClosing(e);
         }
 
-
-        [StructLayout(LayoutKind.Explicit, Size = 48)]
-        private struct PointLight
-        {
-            [FieldOffset(0)] Vector3 position;
-            [FieldOffset(16)] Vector3 color;
-            [FieldOffset(28)] float brightness;
-            [FieldOffset(32)] float radius;
-            [FieldOffset(36)] float falloffPow;
-            [FieldOffset(44)] float diffuseScalar;
-            [FieldOffset(44)] float specularScalar;
-
-            public PointLight(
-                Vector3 position,
-                Vector3 color,
-                float brightness,
-                float radius,
-                float falloffPow,
-                float diffuseScalar,
-                float specularScalar
-            )
-            {
-                this.position = position;
-                this.color = color;
-                this.brightness = brightness;
-                this.radius = radius;
-                this.falloffPow = falloffPow;
-                this.diffuseScalar = diffuseScalar;
-                this.specularScalar = specularScalar;
-            }
-        };
-
-        [StructLayout(LayoutKind.Explicit, Size = 224)]
-        private struct SpotLight
-        {
-            [FieldOffset(0)] Matrix4 modelMatrix;
-            [FieldOffset(64)] Vector3 position;
-            [FieldOffset(80)] Vector3 color;
-            [FieldOffset(96)] Vector3 direction;
-            [FieldOffset(112)] Vector3 scale;
-            [FieldOffset(124)] float aspectRatio;
-            [FieldOffset(128)] float brightness;
-            [FieldOffset(132)] float radius;
-            [FieldOffset(136)] float falloffPow;
-            [FieldOffset(140)] float angularFalloffPow;
-            [FieldOffset(144)] float FOV;
-            [FieldOffset(148)] float diffuseScalar;
-            [FieldOffset(152)] float specularScalar;
-            [FieldOffset(160)] Matrix4 ViewProjection;
-
-            public SpotLight(
-                Matrix4 modelMatrix,
-                Vector3 position,
-                Vector3 color,
-                Vector3 direction,
-                Vector3 scale,
-                float ar,
-                float brightness,
-                float radius,
-                float falloffPow,
-                float angularFalloffPow,
-                float fov,
-                float diffuseScalar,
-                float specularScalar,
-                Matrix4 ViewProjection
-            )
-            {
-                this.modelMatrix = modelMatrix;
-                this.position = position;
-                this.color = color;
-                this.direction = direction;
-                this.scale = scale;
-                this.aspectRatio = ar;
-                this.brightness = brightness;
-                this.radius = radius;
-                this.falloffPow = falloffPow;
-                this.angularFalloffPow = angularFalloffPow;
-                this.FOV = fov;
-                this.diffuseScalar = diffuseScalar;
-                this.specularScalar = specularScalar;
-                this.ViewProjection = ViewProjection;
-            }
-        }
         public enum GBufferTexture
         {
             Diffuse,
             Position,
             Normal,
             Specular
-        }
-        private struct QueryPair
-        {
-            public Query Query;
-            public StaticPixelShader shader;
-        }
-
-        [StructLayout(LayoutKind.Explicit, Size = 64)]
-        struct DeferredGeoMaterial
-        {
-            [FieldOffset(00)] public Vector3 IlluminationColor;
-            [FieldOffset(16)] public Vector3 AlbedoColourTint;
-            [FieldOffset(32)] public Vector2 TextureRepeat;
-            [FieldOffset(40)] public Vector2 TextureOffset;
-            [FieldOffset(48)] public float NormalStrength;
-            [FieldOffset(52)] public bool IsWorldSpaceUVs;
         }
     }
 }

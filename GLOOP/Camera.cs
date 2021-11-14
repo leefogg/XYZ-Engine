@@ -9,6 +9,8 @@ namespace GLOOP
 {
     public abstract class Camera
     {
+        public static Camera Current;
+
         public Vector3 Position;
         public Vector3 Rotation;
 

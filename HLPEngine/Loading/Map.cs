@@ -16,7 +16,6 @@ namespace GLOOP.HPL.Loading
     public class Map {
         private const string SOMARoot = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
         public List<HPLEntity> Entities = new List<HPLEntity>();
-        public List<Model> Models = new List<Model>();
         public List<Model> Terrain = new List<Model>();
         public List<GLOOP.PointLight> PointLights = new List<GLOOP.PointLight>();
         public List<GLOOP.SpotLight> SpotLights = new List<GLOOP.SpotLight>();
@@ -27,10 +26,10 @@ namespace GLOOP.HPL.Loading
             loadLights(mapPath + "_Light");
 
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
-            //loadEntities(mapPath + "_Entity", assimp, material);
-            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            loadEntities(mapPath + "_Entity", assimp, material);
+            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
-            //loadTerrain(mapPath);
+            loadTerrain(mapPath);
         }
 
         private void loadAreas(string areaFilePath)
@@ -458,13 +457,11 @@ namespace GLOOP.HPL.Loading
         {
             var scene = new Scene()
             {
-                PointLights = PointLights,
-                SpotLights = SpotLights,
                 Terrain = Terrain
             };
 
-            scene.Models.AddRange(Models);
-
+            // Propgate properties 
+            // TODO: Consider using computed properties
             foreach (var ent in Entities)
             {
                 foreach (var model in ent.Models)
@@ -476,16 +473,11 @@ namespace GLOOP.HPL.Loading
                 }
             }
 
+            // Visibility areas + portals
             var allAreas = Areas.sections.SelectMany(s => s.Areas).ToList();
             var rawVisibilityAreas = allAreas.Where(a => a.Type == Areas.Section.Area.AreaType.VisibilityArea).ToList();
-            var visibilityAreas = rawVisibilityAreas.Select(area =>
-            {
-                return new VisibilityArea()
-                {
-                    BoundingBox = area.GetBoundingBox()
-                };
-            }).ToList();
-            var rawVisibilityPortals = allAreas.Where(a => a.Type == Areas.Section.Area.AreaType.VisibilityPortal).ToList();
+            var visibilityAreas = rawVisibilityAreas.Select(area => new VisibilityArea(area.Name, area.GetBoundingBox())).ToList();
+            var rawVisibilityPortals = allAreas.Where(a => a.Type == Areas.Section.Area.AreaType.VisibilityPortal);
             var visibilityPortals = rawVisibilityPortals.Select(area =>
             {
                 var variables = area.GetProperties();
@@ -493,23 +485,41 @@ namespace GLOOP.HPL.Loading
                 variables.TryGetValue("ConnectedAreas2", out var area2Name);
                 variables.TryGetValue("ConnectedAreas3", out var area3Name);
 
-                var areaIndicies = new List<int>() {
-                    rawVisibilityAreas.FindIndex(area => area.Name == area1Name),
-                    rawVisibilityAreas.FindIndex(area => area.Name == area2Name),
-                    rawVisibilityAreas.FindIndex(area => area.Name == area3Name)
-                }.Where(x => x != -1).ToArray();
+                //var areaIndicies = new List<int>() {
+                //    rawVisibilityAreas.FindIndex(area => area.Name == area1Name),
+                //    rawVisibilityAreas.FindIndex(area => area.Name == area2Name),
+                //    rawVisibilityAreas.FindIndex(area => area.Name == area3Name)
+                //}.Where(x => x != -1).ToArray();
 
-                var portal = new VisibilityPortal()
-                {
-                    BoundingBox = area.GetBoundingBox(),
-                    VisibilityAreas = areaIndicies
-                };
+                var portal = new VisibilityPortal(area.Name, area.GetBoundingBox(), area1Name, area2Name, area3Name);
                 return portal;
             }).ToList();
 
-            scene.VisibilityAreas = visibilityAreas;
+            foreach (var area in visibilityAreas)
+                scene.VisibilityAreas[area.Name] = area;
             scene.VisibilityPortals = visibilityPortals;
 
+            // Add things to accociated area
+            foreach (var area in visibilityAreas) 
+            {
+                // TODO: Should be wholely contains within area
+                var entitiesContained = Entities.Where(ent => area.BoundingBox.Contains(ent.BoundingBox)).ToList();
+                area.Models.AddRange(entitiesContained.SelectMany(ent => ent.Models));
+                Entities.RemoveRange(entitiesContained);
+
+                var pointLightsContained = PointLights.Where(light => area.BoundingBox.Contains(light.Position)).ToList();
+                area.PointLights.AddRange(pointLightsContained);
+                PointLights.RemoveRange(pointLightsContained);
+
+                var spotLightsContained = SpotLights.Where(light => area.BoundingBox.Contains(light.Position)).ToList();
+                area.SpotLights.AddRange(spotLightsContained);
+                SpotLights.RemoveRange(spotLightsContained);
+            }
+
+            // Add things that arent in areas globally
+            scene.Models = Entities.SelectMany(ent => ent.Models).Except(visibilityAreas.SelectMany(area => area.Models)).ToList();
+            scene.SpotLights = SpotLights.Except(visibilityAreas.SelectMany(area => area.SpotLights)).ToList();
+            scene.PointLights = PointLights.Except(visibilityAreas.SelectMany(area => area.PointLights)).ToList();
             return scene;
         }
     }

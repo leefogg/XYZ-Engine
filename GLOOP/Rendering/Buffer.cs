@@ -78,6 +78,7 @@ namespace GLOOP.Rendering
 
         public void BindRange(int start, int slot)
         {
+            System.Diagnostics.Debug.Assert(Enum.GetName(typeof(BufferRangeTarget), Type) != null, $"Cannot bind range for type {Type}");
             GL.BindBufferRange((BufferRangeTarget)Type, slot, Handle, (IntPtr)start, Length);
         }
 

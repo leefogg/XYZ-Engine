@@ -7,7 +7,15 @@ namespace GLOOP.Rendering
 {
     public class VisibilityPortal
     {
-        public Box3 BoundingBox;
-        public int[] VisibilityAreas;
+        public readonly string Name;
+        public readonly Box3 BoundingBox;
+        public readonly string[] VisibilityAreas;
+
+        public VisibilityPortal(string name, Box3 boundingBox, params string[] visibilityAreas)
+        {
+            Name = name;
+            BoundingBox = boundingBox;
+            VisibilityAreas = visibilityAreas;
+        }
     }
 }

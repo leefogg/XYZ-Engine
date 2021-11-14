@@ -28,5 +28,11 @@ namespace GLOOP.Extensions
             }
         }
         public static int SizeInBytes<T>(this T[] self) => Marshal.SizeOf<T>() * self.Length;
+
+        public static void RemoveRange<T>(this IList<T> self, IEnumerable<T> items)
+        {
+            foreach (var item in items)
+                self.Remove(item);
+        }
     }
 }
