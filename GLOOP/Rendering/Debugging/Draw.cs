@@ -9,7 +9,7 @@ namespace GLOOP.Rendering.Debugging
 {
     public class Draw
     {
-        private static readonly SingleColorMaterial boundingBoxMaterial = new SingleColorMaterial(Shader.SingleColorShader) { Color = new Vector4(1) };
+        private static readonly SingleColorMaterial boundingBoxMaterial = new SingleColorMaterial(Shader.SingleColorShader);
 
         public static void BoundingBox(Matrix4 modelMatrix, Vector4 color)
         {
@@ -19,7 +19,7 @@ namespace GLOOP.Rendering.Debugging
             Primitives.WireframeCube.Draw(PrimitiveType.Lines);
         }
 
-        public static void Box( Matrix4 modelMatrix, Vector4 color)
+        public static void Box(Matrix4 modelMatrix, Vector4 color)
         {
             boundingBoxMaterial.SetModelMatrix(modelMatrix);
             boundingBoxMaterial.Color = color;

@@ -11,8 +11,6 @@ namespace GLOOP.Rendering
 {
     public class Entity
     {
-        private static readonly SingleColorMaterial boundingBoxMaterial = new SingleColorMaterial(Shader.SingleColorShader) { Color = new Vector4(1) };
-
         public Transform Transform = Transform.Default;
         public bool IsStatic = false;
         public bool IsOccluder = false;
@@ -26,7 +24,8 @@ namespace GLOOP.Rendering
                 //    .Scaled(Scale, Vector3.Zero)
                 //    .Rotated(Rot.Inverted());
                 var modelMatrix = MathFunctions.CreateModelMatrix(Vector3.Zero, Transform.Rotation, Transform.Scale);
-                return OriginalBoundingBox.Transform(modelMatrix);
+                var result = OriginalBoundingBox.Transform(Transform.Matrix);
+                return result;
             }
         }
         public Vector3 WorldScale => new Vector3(

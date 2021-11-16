@@ -27,9 +27,9 @@ namespace GLOOP.HPL.Loading
 
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
             loadEntities(mapPath + "_Entity", assimp, material);
-            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
-            loadTerrain(mapPath);
+            //loadTerrain(mapPath);
         }
 
         private void loadAreas(string areaFilePath)
@@ -475,8 +475,7 @@ namespace GLOOP.HPL.Loading
 
             // Visibility areas + portals
             var allAreas = Areas.sections.SelectMany(s => s.Areas).ToList();
-            var rawVisibilityAreas = allAreas.Where(a => a.Type == Areas.Section.Area.AreaType.VisibilityArea).ToList();
-            var visibilityAreas = rawVisibilityAreas.Select(area => new VisibilityArea(area.Name, area.GetBoundingBox())).ToList();
+            
             var rawVisibilityPortals = allAreas.Where(a => a.Type == Areas.Section.Area.AreaType.VisibilityPortal);
             var visibilityPortals = rawVisibilityPortals.Select(area =>
             {
@@ -495,17 +494,37 @@ namespace GLOOP.HPL.Loading
                 return portal;
             }).ToList();
 
+            var rawVisibilityAreas = allAreas.Where(a => a.Type == Areas.Section.Area.AreaType.VisibilityArea).ToList();
+            var visibilityAreas = rawVisibilityAreas.Select(area => new VisibilityArea(
+                area.Name,
+                area.GetBoundingBox(),
+                visibilityPortals.Where(portal => portal.VisibilityAreas.Contains(area.Name))
+            )).ToList();
             foreach (var area in visibilityAreas)
                 scene.VisibilityAreas[area.Name] = area;
             scene.VisibilityPortals = visibilityPortals;
 
             // Add things to accociated area
+            var models = Entities.SelectMany(ent => ent.Models).ToList();
             foreach (var area in visibilityAreas) 
             {
-                // TODO: Should be wholely contains within area
-                var entitiesContained = Entities.Where(ent => area.BoundingBox.Contains(ent.BoundingBox)).ToList();
-                area.Models.AddRange(entitiesContained.SelectMany(ent => ent.Models));
-                Entities.RemoveRange(entitiesContained);
+                Box3 toAABB(Matrix4 boundingBoxMatrix)
+                {
+                    return new Box3()
+                    {
+                        Center = boundingBoxMatrix.ExtractTranslation(),
+                        Size = boundingBoxMatrix.ExtractTranslation().Abs()
+                    };
+                }
+
+                // TODO: Should wholely contain in area
+                var modelsContained = models.Where(model => area.BoundingBox.Contains(model.Transform.Position)).ToList();
+                area.Models.AddRange(modelsContained);
+                models.RemoveRange(modelsContained);
+
+                // var entitiesContained = Entities.Where(ent => area.BoundingBox.CompletelyContains(ent.BoundingBox)).ToList();
+                // area.Models.AddRange(entitiesContained.SelectMany(ent => ent.Models));
+                // Entities.RemoveRange(entitiesContained);
 
                 var pointLightsContained = PointLights.Where(light => area.BoundingBox.Contains(light.Position)).ToList();
                 area.PointLights.AddRange(pointLightsContained);
@@ -517,9 +536,10 @@ namespace GLOOP.HPL.Loading
             }
 
             // Add things that arent in areas globally
-            scene.Models = Entities.SelectMany(ent => ent.Models).Except(visibilityAreas.SelectMany(area => area.Models)).ToList();
-            scene.SpotLights = SpotLights.Except(visibilityAreas.SelectMany(area => area.SpotLights)).ToList();
-            scene.PointLights = PointLights.Except(visibilityAreas.SelectMany(area => area.PointLights)).ToList();
+            scene.Models = models;
+            scene.SpotLights = SpotLights;
+            scene.PointLights = PointLights;
+
             return scene;
         }
     }

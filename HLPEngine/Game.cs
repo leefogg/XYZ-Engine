@@ -25,6 +25,7 @@ using GLOOP.HPL.Loading;
 using HLPEngine;
 using Valve.VR;
 using System.Diagnostics;
+using GLOOP.Rendering.Debugging;
 
 namespace GLOOP.HPL
 {
@@ -56,6 +57,7 @@ namespace GLOOP.HPL
         private Shader ColorCorrectionShader;
         private FrustumMaterial frustumMaterial;
         private QueryPool queryPool;
+        private Dictionary<VisibilityPortal, Query> PortalQueries = new Dictionary<VisibilityPortal, Query>();
 
         private bool debugLights;
         private int debugGBufferTexture = -1;
@@ -66,10 +68,11 @@ namespace GLOOP.HPL
         private bool showBoundingBoxes = false;
 
         private Query GeoPassQuery;
+        private Buffer<float> bloomBuffer;
+        private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
 
         private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
-        private Buffer<float> bloomBuffer;
         private readonly DateTime startTime = DateTime.Now;
 
         private readonly Vector3
@@ -78,7 +81,7 @@ namespace GLOOP.HPL
             deltaMapCameraPosition = new Vector3(0, 145, -10),
             thetaTunnelsMapCameraPosition = new Vector3(4, 9, -61),
             LightsMapCameraPosition = new Vector3(-0.5143715f, 4.3500123f, 11.639848f),
-            PortalsMapCameraPosition = new Vector3(-2.1178308f, 1.85f, 9.150704f);
+            PortalsMapCameraPosition = new Vector3(4.5954947f, 1.85f, 16.95526f);
 
         public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
@@ -88,6 +91,9 @@ namespace GLOOP.HPL
                 Height = Height
             };
             Camera.Current = Camera;
+#if VR
+            DebugCamera.MAX_LOOK_UP = DebugCamera.MAX_LOOK_DOWN = 0;
+#endif
         }
 
         protected override void OnLoad() {
@@ -200,7 +206,7 @@ namespace GLOOP.HPL
                 name: "Color Correction"
             );
             frustumMaterial = new FrustumMaterial(new FrustumShader());
-            queryPool = new QueryPool(5);
+            queryPool = new QueryPool(15);
 
             var lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
             var bedroom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm";
@@ -216,6 +222,7 @@ namespace GLOOP.HPL
             var terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
             var portals = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm";
+            var Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
             var mapToLoad = portals;
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
 
@@ -305,18 +312,71 @@ namespace GLOOP.HPL
             GBufferPass(RightEyeBuffer);
             VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
 
-            LeftEyeBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            LeftEyeBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
 #else
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
             ResetGBuffer();
             GBufferPass(FinalBuffer);
-            FinalBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            FinalBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
 #endif
 
             SwapBuffers();
             NewFrame();
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
             Title = FPS.ToString() + "FPS";
+        }
+
+        private void DetermineVisibleAreas()
+        {
+            VisibleAreas.Clear();
+
+            var remainingQueries = new Dictionary<VisibilityPortal, Query>();
+            foreach (var (portal, query) in PortalQueries)
+            {
+                if (query.IsResultAvailable())
+                {
+                    if (query.GetResult() > 0)
+                    {
+                        VisibleAreas.AddRange(portal.VisibilityAreas.Select(areaName => scene.VisibilityAreas[areaName]));
+                    }
+                } 
+                else
+                {
+                    remainingQueries[portal] = query;
+                }
+            }
+            PortalQueries = remainingQueries;
+
+            // Get touching areas
+            VisibleAreas.AddRange(scene.VisibilityAreas.Values.Where(area => area.BoundingBox.Contains(Camera.Position)));
+
+            GL.ColorMask(false, false, false, false);
+            GL.Disable(EnableCap.CullFace);
+            GL.DepthMask(false);
+            // Dispatch queries for rooms visible from previous queries and current areas
+            foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Distinct())
+            {
+                using (var query = queryPool.BeginScope(QueryTarget.AnySamplesPassed))
+                {
+                    Draw.Box(portal.ModelMatrix, new Vector4(1,0,0,0));
+                    PortalQueries[portal] = query;
+                }
+            }
+            GL.ColorMask(true, true, true, true);
+            GL.DepthMask(true);
+            GL.Enable(EnableCap.CullFace);
+
+            // To avoid seams, always consider all connecting areas of touching portals to be visible
+            var touchingPortals = scene.VisibilityPortals.Where(area => area.BoundingBox.Contains(Camera.Position));
+            foreach (var portal in touchingPortals)
+                foreach (var areaName in portal.VisibilityAreas)
+                    VisibleAreas.Add(scene.VisibilityAreas[areaName]);
+
+            VisibleAreas = VisibleAreas.Distinct().ToList(); // Remove duplicates
+
+            // If we're flying around outside any area, just show them all
+            if (!VisibleAreas.Any())
+                VisibleAreas.AddRange(scene.VisibilityAreas.Values);
         }
 
         private void ResetGBuffer()
@@ -332,10 +392,12 @@ namespace GLOOP.HPL
             Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
             using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
-                foreach (var area in scene.VisibilityAreas.Values)
-                    area.RenderGeometry();
                 scene.RenderGeometry();
+                foreach (var area in VisibleAreas)
+                    area.RenderGeometry();
             }
+
+            DetermineVisibleAreas();
 
             ResolveGBuffer(finalBuffer);
 
@@ -603,7 +665,7 @@ namespace GLOOP.HPL
                 gbuffers,
                 debugLights
             );
-            foreach (var area in scene.VisibilityAreas.Values)
+            foreach (var area in VisibleAreas)
             {
                 area.RenderLights(
                     frustumMaterial,

@@ -1,4 +1,5 @@
 ﻿using GLOOP.Rendering;
+using GLOOP.Rendering.Debugging;
 using GLOOP.Rendering.Materials;
 using GLOOP.Tests.Assets.Shaders;
 using OpenTK.Graphics.OpenGL4;
@@ -386,7 +387,7 @@ namespace GLOOP
                 {
                     foreach (var light in PointLights)
                     {
-                        var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, new OpenTK.Mathematics.Quaternion(), new Vector3(light.Radius * 2));
+                        var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, Quaternion.Identity, new Vector3(light.Radius * 2));
                         singleColorMaterial.ModelMatrix = modelMatrix;
                         singleColorMaterial.Commit();
                         Primitives.Sphere.Draw(PrimitiveType.Lines);
@@ -447,8 +448,7 @@ namespace GLOOP
                 batch.BindState();
                 if (Shader.Current != oldShader)
                 {
-                    if (runningQuery != null)
-                        runningQuery.EndScope();
+                    runningQuery?.EndScope();
                     runningQuery = queryPool.BeginScope(QueryTarget.SamplesPassed);
                     GeoStageQueries.Add(new QueryPair()
                     {
@@ -482,7 +482,7 @@ namespace GLOOP
                 i++;
             }
 
-            runningQuery.EndScope();
+            runningQuery?.EndScope();
         }
 
         public void BeforeFrame()

@@ -31,19 +31,13 @@ namespace GLOOP
         {
             foreach (var model in Models)
                 model.RenderBoundingBox();
-
-            var portalColor = new Vector4(1, 0, 0, 0.25f);
-            var areaColor = new Vector4(0, 1, 0, 1);
-            foreach (var area in VisibilityPortals)
-            {
-                var modelMatrix = Matrix4.CreateScale(area.BoundingBox.Size) * Matrix4.CreateTranslation(area.BoundingBox.Center);
-                Draw.Box( modelMatrix, portalColor);
-            }
             foreach (var area in VisibilityAreas.Values)
-            {
-                var modelMatrix = Matrix4.CreateScale(area.BoundingBox.Size) * Matrix4.CreateTranslation(area.BoundingBox.Center);
-                Draw.BoundingBox(modelMatrix, areaColor);
-            }
+                foreach (var model in area.Models)
+                    model.RenderBoundingBox();
+            foreach (var area in VisibilityPortals)
+                area.RenderBoundingBox();
+            foreach (var area in VisibilityAreas.Values)
+                area.RenderBoundingBox();
         }
     }
 }

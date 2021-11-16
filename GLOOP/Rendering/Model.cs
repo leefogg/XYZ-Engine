@@ -16,7 +16,6 @@ namespace GLOOP.Rendering
         public bool IsStatic = false;
         public bool IsOccluder = false;
 
-
         public Matrix4 BoundingBoxMatrix 
             => Matrix4.CreateScale(VAO.BoundingBox.Size) * Matrix4.CreateTranslation(VAO.BoundingBox.Center) * Transform.Matrix;
 

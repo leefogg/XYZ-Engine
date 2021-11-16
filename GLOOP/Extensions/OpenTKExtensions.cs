@@ -169,5 +169,23 @@ namespace GLOOP.Extensions
                 allCorners[i] = Vector3.TransformPosition(allCorners[i], modelMatrix);
             return allCorners.ToBoundingBox();
         }
+
+        public static bool CompletelyContains(this Box3 self, Box3 other)
+        {
+            return self.Min.X <= other.Min.X
+                && self.Min.Y <= other.Min.Y
+                && self.Min.Z <= other.Min.Z
+                && self.Max.X >= other.Max.X
+                && self.Max.Y >= other.Max.Y
+                && self.Max.Z >= other.Max.Z;
+        }
+
+        public static Vector3 Abs(this Vector3 self)
+        {
+            var x = Math.Abs(self.X);
+            var y = Math.Abs(self.Y);
+            var z = Math.Abs(self.Z);
+            return new Vector3(x, y, z);
+        }
     }
 }

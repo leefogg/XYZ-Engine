@@ -37,9 +37,9 @@ namespace GLOOP.Rendering
             if (!Running)
                 return true;
 
-            GL.GetQueryObject(Handle, GetQueryObjectParam.QueryResultAvailable, out int avialable);
+            GL.GetQueryObject(Handle, GetQueryObjectParam.QueryResultAvailable, out int available);
 
-            Running = avialable == (int)All.False;
+            Running = available == (int)All.False;
 
             return !Running;
         }

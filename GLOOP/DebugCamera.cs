@@ -11,8 +11,8 @@ namespace GLOOP {
     public class DebugCamera : Camera {
         public static float WalkingSpeed = 0.01f;
         public static float MouseSpeed = 0.2f;
-        public const int MAX_LOOK_UP = 85;
-        public const int MAX_LOOK_DOWN = -85;
+        public static int MAX_LOOK_UP = 85;
+        public static int MAX_LOOK_DOWN = -85;
         private Vector3 velocity = new Vector3();
         private bool invertY = true;
 
