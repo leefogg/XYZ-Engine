@@ -26,7 +26,7 @@ namespace GLOOP.HPL.Loading
             loadLights(mapPath + "_Light");
 
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
-            loadEntities(mapPath + "_Entity", assimp, material);
+            //loadEntities(mapPath + "_Entity", assimp, material);
             //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
             //loadTerrain(mapPath);
@@ -477,7 +477,7 @@ namespace GLOOP.HPL.Loading
             var allAreas = Areas.sections.SelectMany(s => s.Areas).ToList();
             
             var rawVisibilityPortals = allAreas.Where(a => a.Type == Areas.Section.Area.AreaType.VisibilityPortal);
-            var visibilityPortals = rawVisibilityPortals.Select(area =>
+            scene.VisibilityPortals = rawVisibilityPortals.Select(area =>
             {
                 var variables = area.GetProperties();
                 variables.TryGetValue("ConnectedAreas1", out var area1Name);
@@ -498,11 +498,34 @@ namespace GLOOP.HPL.Loading
             var visibilityAreas = rawVisibilityAreas.Select(area => new VisibilityArea(
                 area.Name,
                 area.GetBoundingBox(),
-                visibilityPortals.Where(portal => portal.VisibilityAreas.Contains(area.Name))
+                scene.VisibilityPortals.Where(portal => portal.VisibilityAreas.Contains(area.Name))
             )).ToList();
             foreach (var area in visibilityAreas)
                 scene.VisibilityAreas[area.Name] = area;
-            scene.VisibilityPortals = visibilityPortals;
+
+            // Ensure that all mentioned areas in portals exist
+            foreach (var portal in scene.VisibilityPortals)
+            {
+                var areas = portal.VisibilityAreas.ToList();
+                foreach (var areaName in portal.VisibilityAreas)
+                {
+                    if (!scene.VisibilityAreas.ContainsKey(areaName))
+                    {
+                        Console.Error.WriteLine($"Portal '{portal.Name}' refers to area(s) {areaName} that dont exist.");
+                        areas.Remove(areaName);
+                    }
+                }
+                portal.VisibilityAreas = areas.ToArray();
+            }
+
+            // Check if theres any dangling areas
+            {
+                var allReferencedAreas = scene.VisibilityPortals.SelectMany(portal => portal.VisibilityAreas).Distinct();
+                var allAreaNames = scene.VisibilityAreas.Values.Select(area => area.Name);
+                var danglingAreas = allAreaNames.Except(allReferencedAreas).ToList();
+                if (danglingAreas.Any())
+                    Console.Error.WriteLine($"Dangling area '{danglingAreas.ToHumanList()}'");
+            }
 
             // Add things to accociated area
             var models = Entities.SelectMany(ent => ent.Models).ToList();

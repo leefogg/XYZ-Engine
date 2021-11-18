@@ -57,7 +57,7 @@ namespace GLOOP.HPL
         private Shader ColorCorrectionShader;
         private FrustumMaterial frustumMaterial;
         private QueryPool queryPool;
-        private Dictionary<VisibilityPortal, Query> PortalQueries = new Dictionary<VisibilityPortal, Query>();
+        private List<(VisibilityPortal, Query)> PortalQueries = new List<(VisibilityPortal, Query)>();
 
         private bool debugLights;
         private int debugGBufferTexture = -1;
@@ -66,6 +66,7 @@ namespace GLOOP.HPL
         private bool useSSAO = false;
         private bool enableBloom = false;
         private bool showBoundingBoxes = false;
+        private bool enablePortalCulling = true;
 
         private Query GeoPassQuery;
         private Buffer<float> bloomBuffer;
@@ -81,11 +82,13 @@ namespace GLOOP.HPL
             deltaMapCameraPosition = new Vector3(0, 145, -10),
             thetaTunnelsMapCameraPosition = new Vector3(4, 9, -61),
             LightsMapCameraPosition = new Vector3(-0.5143715f, 4.3500123f, 11.639848f),
-            PortalsMapCameraPosition = new Vector3(4.5954947f, 1.85f, 16.95526f);
+            PortalsMapCameraPosition = new Vector3(4.5954947f, 1.85f, 16.95526f),
+            TauMapCameraPosition = new Vector3(26.263678f, 1.7000114f, 36.090767f),
+            ThetaExitCameraPosition = new Vector3(11.340768f, 1.6000444f, 47.520298f);
 
         public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(PortalsMapCameraPosition, new Vector3(), 90)
+            Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90)
             {
                 Width = Width,
                 Height = Height
@@ -217,16 +220,17 @@ namespace GLOOP.HPL
             var tau = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm";
             var delta = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_03_delta\02_03_delta.hpm";
             var phi = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm";
+            var thetaExit = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_07_theta_exit\02_07_theta_exit.hpm";
             var custom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm";
             var boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
             var terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
             var portals = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm";
             var Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
-            var mapToLoad = portals;
-            var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
+            var mapToLoad = phi;
 
             /*
+            var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
             if (File.Exists(metaFilePath))
             {
                 var textures = JsonConvert.DeserializeObject<TextureArrayManager.TextureShapeSummary[]>(File.ReadAllText(metaFilePath));
@@ -328,39 +332,55 @@ namespace GLOOP.HPL
 
         private void DetermineVisibleAreas()
         {
+            if (!enablePortalCulling)
+            {
+                // Must dispose of them properly
+                foreach (var (portal, query) in PortalQueries)
+                    query.IsResultAvailable();
+
+                PortalQueries.Clear();
+                VisibleAreas.AddRange(scene.VisibilityAreas.Values);
+                return;
+            }
+
+            // Dont need to check every frame
+            // Also must only run every odd frame for VR support
+            if ((FrameNumber % 2) != 0)
+                return;
+
             VisibleAreas.Clear();
 
-            var remainingQueries = new Dictionary<VisibilityPortal, Query>();
+            // Get touching areas
+            // This should be first to render closer areas first
+            VisibleAreas.AddRange(scene.VisibilityAreas.Values.Where(area => area.BoundingBox.Contains(Camera.Position)));
+
+            var remainingQueries = new List<(VisibilityPortal, Query)>();
             foreach (var (portal, query) in PortalQueries)
             {
                 if (query.IsResultAvailable())
                 {
-                    if (query.GetResult() > 0)
+                    if (query.GetResult() > 0) // Is visible
                     {
                         VisibleAreas.AddRange(portal.VisibilityAreas.Select(areaName => scene.VisibilityAreas[areaName]));
                     }
                 } 
                 else
                 {
-                    remainingQueries[portal] = query;
+                    remainingQueries.Add((portal, query));
                 }
             }
             PortalQueries = remainingQueries;
 
-            // Get touching areas
-            VisibleAreas.AddRange(scene.VisibilityAreas.Values.Where(area => area.BoundingBox.Contains(Camera.Position)));
-
+            // Render portals
             GL.ColorMask(false, false, false, false);
             GL.Disable(EnableCap.CullFace);
             GL.DepthMask(false);
             // Dispatch queries for rooms visible from previous queries and current areas
             foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Distinct())
             {
-                using (var query = queryPool.BeginScope(QueryTarget.AnySamplesPassed))
-                {
-                    Draw.Box(portal.ModelMatrix, new Vector4(1,0,0,0));
-                    PortalQueries[portal] = query;
-                }
+                using var query = queryPool.BeginScope(QueryTarget.AnySamplesPassed);
+                Draw.Box(portal.ModelMatrix, new Vector4(1, 0, 0, 0));
+                PortalQueries.Add((portal, query));
             }
             GL.ColorMask(true, true, true, true);
             GL.DepthMask(true);

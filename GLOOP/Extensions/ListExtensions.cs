@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Linq;
 
 namespace GLOOP.Extensions
 {
@@ -34,5 +35,7 @@ namespace GLOOP.Extensions
             foreach (var item in items)
                 self.Remove(item);
         }
+
+        public static string ToHumanList<T>(this IEnumerable<T> self) => new StringBuilder().AppendJoin(", ", self).ToString();
     }
 }

@@ -28,5 +28,7 @@ namespace GLOOP.Rendering
         {
             Draw.BoundingBox(ModelMatrix, BoundingBoxColor);
         }
+
+        public override string ToString() => Name;
     }
 }

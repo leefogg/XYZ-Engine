@@ -13,7 +13,7 @@ namespace GLOOP.Rendering
 
         public readonly string Name;
         public readonly Box3 BoundingBox;
-        public readonly string[] VisibilityAreas;
+        public string[] VisibilityAreas;
 
         public Matrix4 ModelMatrix => Matrix4.CreateScale(BoundingBox.Size) * Matrix4.CreateTranslation(BoundingBox.Center);
 
@@ -26,7 +26,9 @@ namespace GLOOP.Rendering
 
         public void RenderBoundingBox()
         {
-            Draw.BoundingBox(ModelMatrix, BoundingBoxColor);
+            Draw.Box(ModelMatrix, BoundingBoxColor);
         }
+
+        public override string ToString() => Name;
     }
 }

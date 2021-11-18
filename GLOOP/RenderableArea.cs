@@ -122,7 +122,7 @@ namespace GLOOP
         public List<PointLight> PointLights = new List<PointLight>();
         public List<SpotLight> SpotLights = new List<SpotLight>();
         public List<RenderBatch> Batches;
-        private QueryPool queryPool = new QueryPool(5);
+        private QueryPool QueryPool = new QueryPool(10);
         private List<QueryPair> GeoStageQueries = new List<QueryPair>();
 
         private Buffer<Matrix4> MatriciesBuffer;
@@ -449,7 +449,7 @@ namespace GLOOP
                 if (Shader.Current != oldShader)
                 {
                     runningQuery?.EndScope();
-                    runningQuery = queryPool.BeginScope(QueryTarget.SamplesPassed);
+                    runningQuery = QueryPool.BeginScope(QueryTarget.SamplesPassed);
                     GeoStageQueries.Add(new QueryPair()
                     {
                         Query = runningQuery,
