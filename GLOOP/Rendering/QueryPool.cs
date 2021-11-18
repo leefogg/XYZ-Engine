@@ -14,9 +14,9 @@ namespace GLOOP.Rendering
             Queries = new Query[initialSize];
         }
 
-        private Query FindNextAvailable(QueryTarget target)
+        private Query FindNextAvailable(QueryTarget target, int startIndex = 0)
         {
-            for (var i = 0; i < Queries.Length; i++)
+            for (var i = startIndex; i < Queries.Length; i++)
             {
                 if (Queries[i] == null)
                 {
@@ -41,8 +41,9 @@ namespace GLOOP.Rendering
             var nextAvailable = FindNextAvailable(target);
             if (nextAvailable == null)
             {
+                var oldsize = Queries.Length;
                 Resize();
-                return FindNextAvailable(target);
+                return FindNextAvailable(target, oldsize);
             }
 
             return nextAvailable;
@@ -50,6 +51,8 @@ namespace GLOOP.Rendering
 
         private void Resize()
         {
+            Console.WriteLine("Out of queries. Must resize..");
+
             var currentQuries = Queries;
             Queries = new Query[Queries.Length * 2];
 
