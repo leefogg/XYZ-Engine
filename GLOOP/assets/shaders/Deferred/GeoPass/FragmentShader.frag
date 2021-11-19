@@ -14,6 +14,18 @@ layout (location = 1) out vec3 position;
 layout (location = 2) out vec3 normal;
 layout (location = 3) out vec4 specular;
 
+layout (std140, binding = 0) uniform CameraMatricies {
+	mat4 ProjectionMatrix;
+	mat4 ViewMatrix;
+	mat4 ViewProjectionMatrix;
+	mat4 InverseView;
+	mat4 InverseProjection;
+};
+
+vec3 getCamPos() {
+	return InverseView[3].xyz;
+}
+
 struct Material {
 	//mat4 ModelMatrix;
 	//uint DiffuseMapSlice;
@@ -78,5 +90,5 @@ void main()
     diffuse += illum;
 #endif
 
-	position = fragPos;
+	position = fragPos - getCamPos();
 }

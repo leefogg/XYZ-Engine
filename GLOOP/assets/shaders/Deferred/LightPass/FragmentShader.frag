@@ -58,8 +58,8 @@ vec3 power(vec3 source, float power){
 void main()
 {
 	vec2 ndc = (clipSpace.xy / clipSpace.w) / 2.0 + 0.5;
-	vec4 albedo = texture(diffuseTex, ndc);
 
+	vec3 fragPos = texture(positionTex, ndc).rgb + camPos;
 	if (fragPos == vec3(0.0))
 		discard;
 	
@@ -67,9 +67,9 @@ void main()
 	vec3 vEye = -normalize(vPos);
 
 	vec3 normal = texture(normalTex, ndc).rgb * 2 - 1;
-	vec3 fragPos = texture(positionTex, ndc).rgb;
 	
 	// Diffuse
+	vec4 albedo = texture(diffuseTex, ndc);
 	vec3 diffuse = albedo.rgb;
 	vec3 vLightDir = light.position.xyz - fragPos;
 	float fDistance = length(vLightDir);

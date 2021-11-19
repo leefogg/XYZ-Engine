@@ -14,6 +14,8 @@ layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 ProjectionMatrix;
 	mat4 ViewMatrix;
 	mat4 ViewProjectionMatrix;
+	mat4 InverseView;
+	mat4 InverseProjection;
 };
 
 layout (shared, binding = 1) uniform ModelMatricies {
