@@ -54,6 +54,8 @@ namespace GLOOP.Rendering
 
         public void Update(T[] data, int start = 0)
         {
+            var endByte = Marshal.SizeOf<T>() * data.Length + start;
+            System.Diagnostics.Debug.Assert(endByte <= Length, $"Wrote {Length - endByte} bytes to unmanaged memory");
             GL.NamedBufferSubData(Handle, (IntPtr)start, Marshal.SizeOf<T>() * data.Length - start, data);
         }
 

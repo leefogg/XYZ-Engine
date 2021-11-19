@@ -51,7 +51,7 @@ namespace GLOOP.Rendering
 
         private void Resize()
         {
-            Console.WriteLine("Out of queries. Must resize..");
+            Console.WriteLine("Out of queries. Must resize");
 
             var currentQuries = Queries;
             Queries = new Query[Queries.Length * 2];

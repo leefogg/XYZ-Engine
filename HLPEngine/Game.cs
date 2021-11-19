@@ -379,7 +379,7 @@ namespace GLOOP.HPL
             foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Distinct())
             {
                 using var query = queryPool.BeginScope(QueryTarget.AnySamplesPassed);
-                Draw.Box(portal.ModelMatrix, new Vector4(1, 0, 0, 0));
+                Draw.Box(portal.ModelMatrix, Vector4.One);
                 PortalQueries.Add((portal, query));
             }
             GL.ColorMask(true, true, true, true);
@@ -412,12 +412,18 @@ namespace GLOOP.HPL
             Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
             using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
-                scene.RenderGeometry();
+                scene.RenderOccluderGeometry();
                 foreach (var area in VisibleAreas)
-                    area.RenderGeometry();
-            }
+                    area.RenderOccluderGeometry();
 
-            DetermineVisibleAreas();
+                DetermineVisibleAreas();
+
+                scene.RenderNonOccluderGeometry();
+                foreach (var area in VisibleAreas)
+                    area.RenderNonOccluderGeometry();
+
+                scene.RenderTerrain();
+            }
 
             ResolveGBuffer(finalBuffer);
 

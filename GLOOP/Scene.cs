@@ -19,10 +19,8 @@ namespace GLOOP
 
         }
 
-        public override void RenderGeometry()
+        public void RenderTerrain()
         {
-            base.RenderGeometry();
-
             foreach (var terrainPatch in Terrain)
                 terrainPatch.Render();
         }
