@@ -88,7 +88,7 @@ namespace GLOOP.HPL
 
         public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(CustomMapCameraPosition, new Vector3(), 90)
+            Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90)
             {
                 Width = Width,
                 Height = Height
@@ -227,7 +227,7 @@ namespace GLOOP.HPL
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
             var portals = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm";
             var Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
-            var mapToLoad = custom;
+            var mapToLoad = phi;
 
             /*
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
@@ -442,7 +442,17 @@ namespace GLOOP.HPL
             {
                 using var bbGroup = new DebugGroup("Bounding Boxes");
                 GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-                scene.RenderBoundingBoxes();
+
+                foreach (var area in scene.VisibilityPortals)
+                    area.RenderBoundingBox();
+                foreach (var area in scene.VisibilityAreas.Values)
+                    area.RenderBoundingBox();
+                foreach (var model in scene.Models)
+                    model.RenderBoundingBox();
+                foreach (var area in VisibleAreas)
+                    foreach (var model in area.Models)
+                        model.RenderBoundingBox();
+
                 GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
             }
 

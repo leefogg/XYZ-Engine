@@ -28,18 +28,5 @@ namespace GLOOP
             foreach (var terrainPatch in Terrain)
                 terrainPatch.Render();
         }
-
-        public void RenderBoundingBoxes()
-        {
-            foreach (var model in Models)
-                model.RenderBoundingBox();
-            foreach (var area in VisibilityAreas.Values)
-                foreach (var model in area.Models)
-                    model.RenderBoundingBox();
-            foreach (var area in VisibilityPortals)
-                area.RenderBoundingBox();
-            foreach (var area in VisibilityAreas.Values)
-                area.RenderBoundingBox();
-        }
     }
 }
