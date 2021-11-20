@@ -598,6 +598,8 @@ namespace GLOOP.HPL
                     GBuffers.ColorBuffers[0].Use(TextureUnit.Texture1);
                     shader.Set("texture0", TextureUnit.Texture0);
                     shader.Set("texture1", TextureUnit.Texture1);
+                    shader.Set("frame", (int)FrameNumber);
+                    shader.Set("resolution", new Vector2(Width, Height));
                     Primitives.Quad.Draw();
                 }
 

@@ -17,16 +17,21 @@ namespace GLOOP
     public abstract class Window : GameWindow
     {
         public static ulong FrameNumber { get; protected set; }
+        public static int FPS;
+
+        public static int Width { get; private set; }
+        public static int Height { get; private set; }
+
+        private static readonly DateTime startTime = DateTime.Now;
+        public static float MillisecondsElapsed => (DateTime.Now - startTime).Milliseconds;
+
         private int framesThisSecond;
         private DateTime lastSecond;
-        public static int FPS;
 
 #if DEBUG
         private DebugProc _debugProcCallback = DebugCallback;
         private GCHandle _debugProcCallbackHandle;
 #endif
-        public static int Width { get; private set; }
-        public static int Height { get; private set; }
 
         public static event EventHandler<Vector2i> OnResized;
 
