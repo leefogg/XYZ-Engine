@@ -21,6 +21,10 @@ namespace GLOOP
 
         public void RenderTerrain()
         {
+            if (Terrain.Count == 0)
+                return;
+
+            using var deugGroup = new DebugGroup("Terrain");
             foreach (var terrainPatch in Terrain)
                 terrainPatch.Render();
         }

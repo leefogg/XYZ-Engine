@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -81,6 +82,14 @@ namespace GLOOP
                 return;
 
             string messageString = Marshal.PtrToStringAnsi(message, messageLength);
+
+            var excludedTypes = new[]
+            {
+                DebugType.DebugTypePushGroup,
+                DebugType.DebugTypePopGroup
+            };
+            if (excludedTypes.Contains(type))
+                return;
 
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine($"{severity} {type} | {messageString}");

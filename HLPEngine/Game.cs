@@ -88,7 +88,7 @@ namespace GLOOP.HPL
 
         public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90)
+            Camera = new DebugCamera(CustomMapCameraPosition, new Vector3(), 90)
             {
                 Width = Width,
                 Height = Height
@@ -227,7 +227,7 @@ namespace GLOOP.HPL
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
             var portals = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm";
             var Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
-            var mapToLoad = phi;
+            var mapToLoad = custom;
 
             /*
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
@@ -304,7 +304,7 @@ namespace GLOOP.HPL
             );
             ResetGBuffer();
             VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Left, FullBrightShader);
-            GBufferPass(LeftEyeBuffer);
+            RenderPass(LeftEyeBuffer);
             VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
 
             updateCameraUBO(
@@ -313,14 +313,14 @@ namespace GLOOP.HPL
             );
             ResetGBuffer();
             VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Right, FullBrightShader);
-            GBufferPass(RightEyeBuffer);
+            RenderPass(RightEyeBuffer);
             VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
 
             LeftEyeBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
 #else
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
             ResetGBuffer();
-            GBufferPass(FinalBuffer);
+            RenderPass(FinalBuffer);
             FinalBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
 #endif
 
@@ -371,20 +371,23 @@ namespace GLOOP.HPL
             }
             PortalQueries = remainingQueries;
 
-            // Render portals
-            GL.ColorMask(false, false, false, false);
-            GL.Disable(EnableCap.CullFace);
-            GL.DepthMask(false);
-            // Dispatch queries for rooms visible from previous queries and current areas
-            foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Distinct())
+            using (new DebugGroup("Portals"))
             {
-                using var query = queryPool.BeginScope(QueryTarget.AnySamplesPassed);
-                Draw.Box(portal.ModelMatrix, Vector4.One);
-                PortalQueries.Add((portal, query));
+                // Render portals
+                GL.ColorMask(false, false, false, false);
+                GL.Disable(EnableCap.CullFace);
+                GL.DepthMask(false);
+                // Dispatch queries for rooms visible from previous queries and current areas
+                foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Distinct())
+                {
+                    using var query = queryPool.BeginScope(QueryTarget.AnySamplesPassed);
+                    Draw.Box(portal.ModelMatrix, Vector4.One);
+                    PortalQueries.Add((portal, query));
+                }
+                GL.ColorMask(true, true, true, true);
+                GL.DepthMask(true);
+                GL.Enable(EnableCap.CullFace);
             }
-            GL.ColorMask(true, true, true, true);
-            GL.DepthMask(true);
-            GL.Enable(EnableCap.CullFace);
 
             // To avoid seams, always consider all connecting areas of touching portals to be visible
             var touchingPortals = scene.VisibilityPortals.Where(area => area.BoundingBox.Contains(Camera.Position));
@@ -407,36 +410,83 @@ namespace GLOOP.HPL
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
         }
 
+        private void RenderPass(FrameBuffer finalBuffer)
+        {
+            var currentBuffer = PostMan.NextFramebuffer;
+
+            GBufferPass(currentBuffer);
+
+            if (enableBloom)
+                currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
+
+            var newBuffer = PostMan.NextFramebuffer;
+            using (new DebugGroup("Color Correction"))
+            {
+                newBuffer.Use();
+                DoPostEffect(ColorCorrectionShader, currentBuffer.ColorBuffers[0]);
+                currentBuffer = newBuffer;
+            }
+
+            if (useFXAA)
+            {
+                using (new DebugGroup("FXAA"))
+                {
+                    newBuffer = PostMan.NextFramebuffer;
+                    newBuffer.Use();
+                    DoPostEffect(FXAAShader, currentBuffer.ColorBuffers[0]);
+                    currentBuffer = newBuffer;
+                }
+            }
+
+            if (showBoundingBoxes)
+            {
+                using var bbGroup = new DebugGroup("Bounding Boxes");
+                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+                scene.RenderBoundingBoxes();
+                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+            }
+
+            currentBuffer.BlitTo(finalBuffer, ClearBufferMask.ColorBufferBit);
+        }
+
         private void GBufferPass(FrameBuffer finalBuffer)
         {
+            using var debugGroup = new DebugGroup(nameof(GBufferPass));
             Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
             using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
-                scene.RenderOccluderGeometry();
-                foreach (var area in VisibleAreas)
-                    area.RenderOccluderGeometry();
+                using (new DebugGroup("Occluders"))
+                {
+                    foreach (var area in VisibleAreas)
+                        area.RenderOccluderGeometry();
+                    scene.RenderOccluderGeometry();
+                }
 
                 DetermineVisibleAreas();
 
-                scene.RenderNonOccluderGeometry();
-                foreach (var area in VisibleAreas)
-                    area.RenderNonOccluderGeometry();
+                using (new DebugGroup("Non Occluders"))
+                {
+                    foreach (var area in VisibleAreas)
+                        area.RenderNonOccluderGeometry();
+                    scene.RenderNonOccluderGeometry();
+                }
 
                 scene.RenderTerrain();
             }
 
-            ResolveGBuffer(finalBuffer);
-
-            if (showBoundingBoxes)
+            if (debugGBufferTexture > -1)
             {
-                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-                scene.RenderBoundingBoxes();
-                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                DisplayGBuffer(finalBuffer, debugGBufferTexture);
+            }
+            else
+            {
+                ResolveGBuffer(finalBuffer);
             }
         }
 
         private void ReadbackQueries()
         {
+            using var debugGroup = new DebugGroup("Readback queries");
             if (GeoPassQuery != null)
             {
                 var time = GeoPassQuery.GetResult();
@@ -512,30 +562,26 @@ namespace GLOOP.HPL
             NoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
         }
 
-        private void ResolveGBuffer(FrameBuffer finalBuffer)
+        private void ResolveGBuffer(FrameBuffer outputBuffer)
         {
             GL.Disable(EnableCap.DepthTest);
             //GL.DepthMask(false);
 
-            if (debugGBufferTexture > -1)
-            {
-                DisplayGBuffer(finalBuffer, debugGBufferTexture);
-            }
-            else
-            {
-                DoLightPass(new Vector3(0.01f));
+            DoLightPass(new Vector3(0.01f));
 
-                if (debugLightBuffer) {
-                    GL.Enable(EnableCap.FramebufferSrgb);
-                    finalBuffer.Use();
+            if (debugLightBuffer) {
+                GL.Enable(EnableCap.FramebufferSrgb);
+                outputBuffer.Use();
 
-                    DoPostEffect(FullBrightShader, LightingBuffer.ColorBuffers[0]);
+                DoPostEffect(FullBrightShader, LightingBuffer.ColorBuffers[0]);
 
-                    GL.Disable(EnableCap.FramebufferSrgb);
-                } else {
-                    var currentBuffer = PostMan.NextFramebuffer;
-                    currentBuffer.Use();
+                GL.Disable(EnableCap.FramebufferSrgb);
+            } else {
+                var currentBuffer = PostMan.NextFramebuffer;
+                currentBuffer.Use();
 
+                using (new DebugGroup("Light Resolve"))
+                {
                     var shader = FinalCombineShader;
                     shader.Use();
                     LightingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
@@ -543,29 +589,14 @@ namespace GLOOP.HPL
                     shader.Set("texture0", TextureUnit.Texture0);
                     shader.Set("texture1", TextureUnit.Texture1);
                     Primitives.Quad.Draw();
-
-                    if (enableBloom)
-                        currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
-
-                    var newBuffer = PostMan.NextFramebuffer;
-                    newBuffer.Use();
-                    DoPostEffect(ColorCorrectionShader, currentBuffer.ColorBuffers[0]);
-
-                    if (useFXAA)
-                    {
-                        finalBuffer.Use();
-                        DoPostEffect(FXAAShader, newBuffer.ColorBuffers[0]);
-                    } 
-                    else
-                    {
-                        // Blit to default frame buffer
-                        newBuffer.BlitTo(finalBuffer, ClearBufferMask.ColorBufferBit);
-                    }
                 }
+
+                // Blit to output frame buffer
+                currentBuffer.BlitTo(outputBuffer, ClearBufferMask.ColorBufferBit);
             }
 
-            // Blit to default frame buffer
-            GBuffers.BlitTo(finalBuffer, ClearBufferMask.DepthBufferBit);
+            // Blit depth to output frame buffer
+            GBuffers.BlitTo(outputBuffer, ClearBufferMask.DepthBufferBit);
 
             //GL.DepthMask(true);
             GL.Enable(EnableCap.DepthTest);
@@ -573,66 +604,69 @@ namespace GLOOP.HPL
 
         private FrameBuffer DoBloomPass(Texture diffuse)
         {
-            // Extract bright parts
-            var currentFB = PostMan.NextFramebuffer;
-            currentFB.Use();
-            ExtractBright.Use();
-            diffuse.Use(TextureUnit.Texture0);
-            ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
-            ExtractBright.Set("avInvScreenSize", new Vector2(1f / Width, 1f / Height));
-            ExtractBright.Set("afBrightPass", 15f);
-            Primitives.Quad.Draw();
-
-            // Take bright parts and blur
-            bloomBuffer.Bind();
-
-            int width = Width,
-                height = Height;
-            var previousTexture = currentFB.ColorBuffers[0];
-            Shader shader;
-            for (var i = 0; i < BloomBuffers.Length;)
+            using (new DebugGroup("Bloom"))
             {
-                width /= 2;
-                height /= 2;
-                GL.Viewport(0, 0, width, height);
+                // Extract bright parts
+                var currentFB = PostMan.NextFramebuffer;
+                currentFB.Use();
+                ExtractBright.Use();
+                diffuse.Use(TextureUnit.Texture0);
+                ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
+                ExtractBright.Set("avInvScreenSize", new Vector2(1f / Width, 1f / Height));
+                ExtractBright.Set("afBrightPass", 15f);
+                Primitives.Quad.Draw();
 
-                var shaderSteps = new[] { VerticalBlurShader, HorizontalBlurShader };
-                foreach (var step in shaderSteps)
+                // Take bright parts and blur
+                bloomBuffer.Bind();
+
+                int width = Width,
+                    height = Height;
+                var previousTexture = currentFB.ColorBuffers[0];
+                Shader shader;
+                for (var i = 0; i < BloomBuffers.Length;)
                 {
-                    shader = step;
-                    shader.Use();
-                    BloomBuffers[i].Use();
+                    width /= 2;
+                    height /= 2;
+                    GL.Viewport(0, 0, width, height);
 
-                    bloomBuffer.BindRange(bloomDataStride * i, 3);
+                    var shaderSteps = new[] { VerticalBlurShader, HorizontalBlurShader };
+                    foreach (var step in shaderSteps)
+                    {
+                        shader = step;
+                        shader.Use();
+                        BloomBuffers[i].Use();
 
-                    DoPostEffect(shader, previousTexture);
+                        bloomBuffer.BindRange(bloomDataStride * i, 3);
 
-                    previousTexture = BloomBuffers[i].ColorBuffers[0];
-                    i++;
+                        DoPostEffect(shader, previousTexture);
+
+                        previousTexture = BloomBuffers[i].ColorBuffers[0];
+                        i++;
+                    }
                 }
+
+                // Add all to finished frame
+                GL.Viewport(0, 0, Width, Height);
+                currentFB = PostMan.NextFramebuffer;
+                currentFB.Use();
+                GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+
+                shader = BloomCombineShader;
+                shader.Use();
+                Texture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], NoiseMap }, TextureUnit.Texture0);
+                shader.Set("blurMap0", TextureUnit.Texture0);
+                shader.Set("blurMap1", TextureUnit.Texture1);
+                shader.Set("blurMap2", TextureUnit.Texture2);
+                shader.Set("noiseMap", TextureUnit.Texture3);
+                shader.Set("avInvScreenSize", new Vector2(1f / Width, 1f / Height));
+                shader.Set("timeMilliseconds", elapsedMilliseconds);
+                Primitives.Quad.Draw();
+
+                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                GL.Disable(EnableCap.FramebufferSrgb);
+
+                return currentFB;
             }
-
-            // Add all to finished frame
-            GL.Viewport(0, 0, Width, Height);
-            currentFB = PostMan.NextFramebuffer;
-            currentFB.Use();
-            GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
-
-            shader = BloomCombineShader;
-            shader.Use();
-            Texture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], NoiseMap }, TextureUnit.Texture0);
-            shader.Set("blurMap0", TextureUnit.Texture0);
-            shader.Set("blurMap1", TextureUnit.Texture1);
-            shader.Set("blurMap2", TextureUnit.Texture2);
-            shader.Set("noiseMap", TextureUnit.Texture3);
-            shader.Set("avInvScreenSize", new Vector2(1f / Width, 1f / Height));
-            shader.Set("timeMilliseconds", elapsedMilliseconds);
-            Primitives.Quad.Draw();
-
-            GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
-            GL.Disable(EnableCap.FramebufferSrgb);
-
-            return currentFB;
         }
 
         private void DisplayGBuffer(FrameBuffer finalBuffer, int buffer)
@@ -655,24 +689,27 @@ namespace GLOOP.HPL
 
         public void DoLightPass(Vector3 ambientColor)
         {
-            LightingBuffer.Use();
-            GL.ClearColor(ambientColor.X, ambientColor.Y, ambientColor.Z, 0);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            using (new DebugGroup("Lighting"))
+            {
+                LightingBuffer.Use();
+                GL.ClearColor(ambientColor.X, ambientColor.Y, ambientColor.Z, 0);
+                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-            GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
-            GL.CullFace(CullFaceMode.Front);
+                GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+                GL.CullFace(CullFaceMode.Front);
 
-            RenderLights();
+                RenderLights();
 
-            GL.CullFace(CullFaceMode.Back);
-            GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
-            GL.BlendEquation(BlendEquationMode.FuncReverseSubtract);
+                GL.CullFace(CullFaceMode.Back);
+                GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+                GL.BlendEquation(BlendEquationMode.FuncReverseSubtract);
 
-            if (useSSAO)
-                SSAOPostEffect(); // TODO: Fix
+                if (useSSAO)
+                    SSAOPostEffect(); // TODO: Fix
 
-            GL.BlendEquation(BlendEquationMode.FuncAdd);
-            GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                GL.BlendEquation(BlendEquationMode.FuncAdd);
+                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+            }
         }
 
         private void RenderLights()
@@ -706,6 +743,7 @@ namespace GLOOP.HPL
 
         private void SSAOPostEffect()
         {
+            using var debugGroup = new DebugGroup("SSAO");
             var shader = SSAOShader;
             shader.Use();
             GBuffers.ColorBuffers[(int)GBufferTexture.Position].Use(TextureUnit.Texture0);

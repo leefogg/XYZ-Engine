@@ -379,6 +379,7 @@ namespace GLOOP
             if (!Models.Any())
                 return;
 
+            using var debugGroup = new DebugGroup(Name);
             OccluderDrawIndirectBuffer.Bind();
             OccluderMatriciesBuffer.BindRange(0, 1);
             OccluderMaterialsBuffer.BindRange(0, 2);
@@ -391,6 +392,7 @@ namespace GLOOP
             if (!Models.Any())
                 return;
 
+            using var debugGroup = new DebugGroup(Name);
             NonOccluderDrawIndirectBuffer.Bind();
             NonOccluderMatriciesBuffer.BindRange(0, 1);
             NonOccluderMaterialsBuffer.BindRange(0, 2);
@@ -406,8 +408,11 @@ namespace GLOOP
             Texture2D[] gbuffer,
             bool debugLights)
         {
+            using var debugGroup = new DebugGroup(Name);
+
             if (PointLights.Any())
             {
+                using var lightsDebugGroup = new DebugGroup("Point Lights");
                 PointLightsBuffer.BindRange(0, 1);
 
                 var shader = PointLightShader;
@@ -438,6 +443,7 @@ namespace GLOOP
 
             if (SpotLights.Any())
             {
+                using var lightsDebugGroup = new DebugGroup("Spot Lights");
                 SpotLightsBuffer.BindRange(0, 1);
 
                 Shader shader = SpotLightShader;
