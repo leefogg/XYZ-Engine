@@ -66,7 +66,7 @@ namespace GLOOP.HPL
         private bool useSSAO = false;
         private bool enableBloom = false;
         private bool showBoundingBoxes = false;
-        private bool enablePortalCulling = true;
+        private const bool enablePortalCulling = true;
 
         private Query GeoPassQuery;
         private Buffer<float> bloomBuffer;
@@ -275,6 +275,11 @@ namespace GLOOP.HPL
             var allModels = scene.Models.Count() + scene.VisibilityAreas.Values.SelectMany(area => area.Models).Count();
             Console.WriteLine($"Scene: {numStatic} Static, {numStaticOccluders} of which occlude. {numDynamic} Dynamic. {allModels} Total.");
 
+            if (!enablePortalCulling)
+            {
+                VisibleAreas.AddRange(scene.VisibilityAreas.Values);
+            }
+
             setupBuffers();
 
             /*
@@ -305,7 +310,6 @@ namespace GLOOP.HPL
             ResetGBuffer();
             VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Left, FullBrightShader);
             RenderPass(LeftEyeBuffer);
-            VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
 
             updateCameraUBO(
                 VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Right),
@@ -314,6 +318,8 @@ namespace GLOOP.HPL
             ResetGBuffer();
             VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Right, FullBrightShader);
             RenderPass(RightEyeBuffer);
+
+            VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
             VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
 
             LeftEyeBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
@@ -333,15 +339,7 @@ namespace GLOOP.HPL
         private void DetermineVisibleAreas()
         {
             if (!enablePortalCulling)
-            {
-                // Must dispose of them properly
-                foreach (var (portal, query) in PortalQueries)
-                    query.IsResultAvailable();
-
-                PortalQueries.Clear();
-                VisibleAreas.AddRange(scene.VisibilityAreas.Values);
                 return;
-            }
 
             // Dont need to check every frame
             // Also must only run every odd frame for VR support
