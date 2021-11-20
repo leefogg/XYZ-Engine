@@ -77,12 +77,19 @@ void main()
 	vec3 norm = vec3(0, 0, 1.0);
 #endif
 	normal = normalize(TBNMatrix * norm);
+
+	vec3 vNormalWsDdx = dFdx( normal );
+	vec3 vNormalWsDdy = dFdy( normal );
+	float flGeometricRoughnessFactor = pow(clamp(max(dot(vNormalWsDdx.xyz, vNormalWsDdx.xyz), dot(vNormalWsDdy.xyz, vNormalWsDdy.xyz)), 0.0, 1.0), 0.05);
+
 	normal = (normal + 1) / 2;
 	
 #if (USE_SPECULAR_MAP == 1)
 	specular = texture(specularTex, textureCoord);
+	specular.a *= flGeometricRoughnessFactor;
 #else
 	specular = vec4(0.0);
+	specular.a = flGeometricRoughnessFactor;
 #endif
 
 #if (USE_ILLUM_MAP == 1)
