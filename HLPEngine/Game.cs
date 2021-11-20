@@ -75,6 +75,8 @@ namespace GLOOP.HPL
         private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
         private readonly DateTime startTime = DateTime.Now;
+        private readonly FrameBuffer backBuffer;
+        private int frameBufferWidth, frameBufferHeight;
 
         private readonly Vector3
             CustomMapCameraPosition = new Vector3(6.3353596f, 1.6000088f, 8.1601305f),
@@ -86,14 +88,18 @@ namespace GLOOP.HPL
             TauMapCameraPosition = new Vector3(26.263678f, 1.7000114f, 36.090767f),
             ThetaExitCameraPosition = new Vector3(11.340768f, 1.6000444f, 47.520298f);
 
-        public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
+        public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
             Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90)
             {
-                Width = Width,
-                Height = Height
+                Width = width,
+                Height = height
             };
             Camera.Current = Camera;
+
+            backBuffer = new FrameBuffer(0, Size.X, Size.Y);
+            frameBufferWidth = width;
+            frameBufferHeight = height;
 #if VR
             DebugCamera.MAX_LOOK_UP = DebugCamera.MAX_LOOK_DOWN = 0;
 #endif
@@ -104,8 +110,11 @@ namespace GLOOP.HPL
 
             GL.Enable(EnableCap.Blend);
 
+            var width = frameBufferWidth;
+            var height = frameBufferHeight;
+
             GBuffers = new FrameBuffer(
-                Width, Height,
+                width, height,
                 new[] { 
                     PixelInternalFormat.Srgb8Alpha8,// Diffuse
                     PixelInternalFormat.Rgb16f,     // Position
@@ -115,23 +124,23 @@ namespace GLOOP.HPL
                 true,
                 "GBuffers"
             );
-            LightingBuffer = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgb16f, 1, "Lighting");
+            LightingBuffer = new FrameBuffer(width, height, false, PixelInternalFormat.Rgb16f, 1, "Lighting");
             BloomBuffers = new FrameBuffer[]
             {
-                new FrameBuffer(Width / 2, Height / 2, false, PixelInternalFormat.Rgb, name: "Vertical blur pass @ (1/2)"),
-                new FrameBuffer(Width / 2, Height / 2, false, PixelInternalFormat.Rgb, name: "Horizonal blur pass @ (1/2)"),
-                new FrameBuffer(Width / 4, Height / 4, false, PixelInternalFormat.Rgb, name: "Vertical blur pass @ (1/4)"),
-                new FrameBuffer(Width / 4, Height / 4, false, PixelInternalFormat.Rgb, name: "Horizonal blur pass @ (1/4)"),
-                new FrameBuffer(Width / 8, Height / 8, false, PixelInternalFormat.Rgb, name: "Vertical blur pass @ (1/8)"),
-                new FrameBuffer(Width / 8, Height / 8, false, PixelInternalFormat.Rgb, name: "Horizonal blur pass @ (1/8)"),
+                new FrameBuffer(width / 2, height / 2, false, PixelInternalFormat.Rgb, name: "Vertical blur pass @ (1/2)"),
+                new FrameBuffer(width / 2, height / 2, false, PixelInternalFormat.Rgb, name: "Horizonal blur pass @ (1/2)"),
+                new FrameBuffer(width / 4, height / 4, false, PixelInternalFormat.Rgb, name: "Vertical blur pass @ (1/4)"),
+                new FrameBuffer(width / 4, height / 4, false, PixelInternalFormat.Rgb, name: "Horizonal blur pass @ (1/4)"),
+                new FrameBuffer(width / 8, height / 8, false, PixelInternalFormat.Rgb, name: "Vertical blur pass @ (1/8)"),
+                new FrameBuffer(width / 8, height / 8, false, PixelInternalFormat.Rgb, name: "Horizonal blur pass @ (1/8)"),
             };
 #if VR
-            LeftEyeBuffer = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgba, 1, "LeftEyeBuffer");
-            RightEyeBuffer = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgba, 1, "RightEyeBuffer");
+            LeftEyeBuffer = new FrameBuffer(width, height, false, PixelInternalFormat.Rgba, 1, "LeftEyeBuffer");
+            RightEyeBuffer = new FrameBuffer(width, height, false, PixelInternalFormat.Rgba, 1, "RightEyeBuffer");
 #else
-            FinalBuffer = new FrameBuffer(Width, Height, false, PixelInternalFormat.Rgb, 1, "FinalBuffer");
+            FinalBuffer = new FrameBuffer(width, height, false, PixelInternalFormat.Rgb, 1, "FinalBuffer");
 #endif
-            PostMan.Init(Width, Height, PixelInternalFormat.Rgb16f);
+            PostMan.Init(width, height, PixelInternalFormat.Rgb16f);
 
             var deferredMaterial = new DeferredRenderingGeoMaterial();
             PointLightShader = new DynamicPixelShader(
@@ -322,12 +331,12 @@ namespace GLOOP.HPL
             VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
             VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
 
-            LeftEyeBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
+            LeftEyeBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
 #else
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
             ResetGBuffer();
             RenderPass(FinalBuffer);
-            FinalBuffer.BlitTo(0, Width, Height, ClearBufferMask.ColorBufferBit);
+            FinalBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
 #endif
 
             SwapBuffers();
@@ -412,6 +421,7 @@ namespace GLOOP.HPL
         {
             var currentBuffer = PostMan.NextFramebuffer;
 
+            GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
             GBufferPass(currentBuffer);
 
             if (enableBloom)
@@ -597,7 +607,7 @@ namespace GLOOP.HPL
                     shader.Set("texture0", TextureUnit.Texture0);
                     shader.Set("texture1", TextureUnit.Texture1);
                     shader.Set("frame", (int)FrameNumber);
-                    shader.Set("resolution", new Vector2(Width, Height));
+                    shader.Set("resolution", new Vector2(frameBufferWidth, frameBufferHeight));
                     Primitives.Quad.Draw();
                 }
 
@@ -622,15 +632,15 @@ namespace GLOOP.HPL
                 ExtractBright.Use();
                 diffuse.Use(TextureUnit.Texture0);
                 ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
-                ExtractBright.Set("avInvScreenSize", new Vector2(1f / Width, 1f / Height));
+                ExtractBright.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
                 ExtractBright.Set("afBrightPass", 15f);
                 Primitives.Quad.Draw();
 
                 // Take bright parts and blur
                 bloomBuffer.Bind();
 
-                int width = Width,
-                    height = Height;
+                int width = frameBufferWidth,
+                    height = frameBufferHeight;
                 var previousTexture = currentFB.ColorBuffers[0];
                 Shader shader;
                 for (var i = 0; i < BloomBuffers.Length;)
@@ -656,7 +666,7 @@ namespace GLOOP.HPL
                 }
 
                 // Add all to finished frame
-                GL.Viewport(0, 0, Width, Height);
+                GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
                 currentFB = PostMan.NextFramebuffer;
                 currentFB.Use();
                 GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
@@ -668,7 +678,7 @@ namespace GLOOP.HPL
                 shader.Set("blurMap1", TextureUnit.Texture1);
                 shader.Set("blurMap2", TextureUnit.Texture2);
                 shader.Set("noiseMap", TextureUnit.Texture3);
-                shader.Set("avInvScreenSize", new Vector2(1f / Width, 1f / Height));
+                shader.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
                 shader.Set("timeMilliseconds", elapsedMilliseconds);
                 Primitives.Quad.Draw();
 

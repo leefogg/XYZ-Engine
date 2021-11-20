@@ -19,9 +19,6 @@ namespace GLOOP
         public static ulong FrameNumber { get; protected set; }
         public static int FPS;
 
-        public static int Width { get; private set; }
-        public static int Height { get; private set; }
-
         private static readonly DateTime startTime = DateTime.Now;
         public static float MillisecondsElapsed => (DateTime.Now - startTime).Milliseconds;
 
@@ -39,14 +36,10 @@ namespace GLOOP
 
         protected Window(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings)
         {
-            Width = Size.X;
-            Height = Size.Y;
         }
 
         protected override void OnResize(ResizeEventArgs e)
         {
-            Width = Size.X;
-            Height = Size.Y;
 
             OnResized?.Invoke(this, Size);
 

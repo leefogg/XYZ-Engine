@@ -39,7 +39,7 @@ namespace GLOOP.HPL
                 3840 / 2 - nativeWindowSettings.Size.X / 2,
                 2160 / 2 - nativeWindowSettings.Size.Y / 2
             );
-            using var window = new Game(gameWindowSettings, nativeWindowSettings);
+            using var window = new Game((int)width, (int)height, gameWindowSettings, nativeWindowSettings);
             window.VSync =
 #if VR
             VSyncMode.Off;

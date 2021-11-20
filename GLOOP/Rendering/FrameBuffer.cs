@@ -21,11 +21,8 @@ namespace GLOOP.Rendering
         {
         }
         public FrameBuffer(int width, int height, TextureParams[] settings, bool withDepth, string name = null)
+            : this(GL.GenFramebuffer(), width, height)
         {
-            Width = width;
-            Height = height;
-
-            Handle = GL.GenFramebuffer();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, Handle);
 
             if (!string.IsNullOrEmpty(name))
@@ -63,6 +60,12 @@ namespace GLOOP.Rendering
 
             ResourceManager.Add(this);
         }
+        public FrameBuffer(int handle, int width, int height)
+        {
+            Handle = handle;
+            Width = width;
+            Height = height;
+        }
 
         private int AttachDepth(int width, int height)
         {
@@ -95,15 +98,16 @@ namespace GLOOP.Rendering
 
         public void BlitTo(FrameBuffer destination, ClearBufferMask mask)
         {
-            BlitTo(destination.Handle, destination.Width, destination.Height, mask);
+            BlitTo(Handle, destination.Handle, Width, Height, destination.Width, destination.Height, mask);
         }
-        public void BlitTo(int handle, int width, int height, ClearBufferMask mask)
+
+        public static void BlitTo(int srcHandle, int dstHandle, int srcWidth, int srcHeight, int dstWidth, int dstHeight, ClearBufferMask mask)
         {
-            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, Handle);
-            GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, handle);
+            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, srcHandle);
+            GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, dstHandle);
             GL.BlitFramebuffer(
-                0, 0, Width, Height,
-                0, 0, width, height,
+                0, 0, srcWidth, srcHeight,
+                0, 0, dstWidth, dstHeight,
                 mask,
                 BlitFramebufferFilter.Nearest
             );
