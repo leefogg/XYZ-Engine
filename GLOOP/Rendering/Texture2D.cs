@@ -126,6 +126,10 @@ namespace GLOOP.Rendering
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)repeatMode);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)repeatMode);
 
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureLodBias, 0);
+
+            GL.TexParameter(TextureTarget.Texture2D, (TextureParameterName)All.TextureMaxAnisotropy, Globals.MaxTextureAnisotropy);
+
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBorderColor, new[] { 0f, 0f, 0f });
         }
 
