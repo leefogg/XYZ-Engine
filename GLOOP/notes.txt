@@ -1,37 +1,6 @@
-px_vLightPosScale.xyz = ModelMatrix * light.pos = Lights Position in world space
-px_vLightPosScale.w = 1.0 / Radius
-px_fFalloff = Falloff Pow * 2
-px_fTranslucenyMul = ?
-
-
-vec3 vPos = vertexPosition;
-vec3 vLightDir = px_vLightPosScale.xyz - vPos;
-float fDistance = sqrt(dot(vLightDir, vLightDir));
-float fAttenuation =  pow(1.0 - min(fDistance * px_vLightPosScale.w, 1.0), px_fFalloff);	
-vLightDir = normalize(vLightDir);
-
-float fLDotN = dot(vLightDir, faceNormal);
-float fLightAmount = max(fLDotN, 0.0);
-
-
-float fLightScatterAmount = max(-fLDotN, 0.0)
-float fLightTransport = clamp(dot(vEye, vLightDir + FaceNormal * 0.2), -1.0, 0.0);
-fLightTransport = pow(fLightTransport, 16.0);
-float fLightScatter = (min(2.0, fLightTransport * 16.0) + fLightScatterAmount) * pixelColor;
-
-vec3 vDiffuse = pixelColor * (light.color * light.brightness) * (fLightAmount + fLightScatter * px_fTranslucenyMul);
-vDiffuse += vSpecular;
-vDiffuse *= fAttenuation;
-
-
 Optimizations:
-	Min multidrawIndirect batch size
 	Replace Position buffer with depth buffer
-	Shader varients
 	Replace the illum GBuffer with an extracted one from the lighting buffer
-	Texture arrays
-	Bake staticObjects + static entities model matrix into geometry
-	Bake static objects per visibility area into same draw call
 	Render Query + BeginConditionalRender
 	Instancing
 	Lazy model matrix'
@@ -39,6 +8,16 @@ Optimizations:
 	Clean up struct uses
 
 TODO:
+	Portal culling
+	BeginConditionalRender
+	ref/in/out
+	glPushDebugGroup
+	swapchain
+	Rename HLP to HPL
+	Handle VR startup errors in SetUpOpenVR
+	Model scales
+	Remove FinalFrameBuffer
+
 	Color
 		Colour correction / White Point / Exposure
 
@@ -63,3 +42,63 @@ TODO:
 	Fog boxes
 	Decals
 	Sky
+
+Things to experiment with in VR:
+Stereo fusion
+blur
+cromatic abbraration
+portals
+stencil
+
+Proposed ideal render pipeline:
+
+Draw static objects
+foreach (var portal in scene.portals){
+	using Query x {
+		Draw portal
+	}
+	begin conditional render using x {
+		Dispatch intersection shader
+	]
+}
+Dispatch hierarchical z culling compute shader using drawn static objects
+Dispatch buffer copying shader
+Draw dynamic objects
+
+intersection shader {
+	uniform box3 areaBoundingBox;
+	uniform vec3[6] frustumPlanes;
+	uniform ReadBuffer<mat4> boudingBoxModelMatricies; // Bounding box of all models in area
+	uniform WriteBuffer<bool> visibleFlags; // Flags to indicate if model should be drawn
+	uniform ReadBuffer<int> modelIndicies; // visibleFlags is for all objects in scene but we're working with certain objects
+	
+	main {
+		for (int i=0; i<models.count; i++) { // Might want to share this over multiple compute work groups
+			Box3 modelBoundingBox = createAABB(boudingBoxModelMatricies[i]);
+			if (areaBoundingBox.Intersects(modelBoundingBox) {
+				if (indersectsFrustum(modelBoundingBox) {
+					visibleFlags[modelIndicies[i]] = true;
+				}
+			}
+		}
+	}
+}
+
+buffer copying shader {
+	uniform ReadBuffer<bool> visibleFlags; // Flags to indicate if model should be drawn
+	uniform ReadBuffer<MultiDrawIndirectCommand> in_drawIndirect
+	uniform ReadBuffer<Mat4> in_modelMatricies;
+	uniform ReadBuffer<Material> in_modelMaterials;
+	uniform WriteBuffer<MultiDrawIndirectCommand> out_drawIndirect
+	uniform WriteBuffer<Mat4> out_modelMatricies;
+	uniform WriteBuffer<Material> out_modelMaterials;
+	
+	main {
+		for (int i=0; i<numModels; i++) {
+			if (visibleFlags[i]) {
+				out_drawIndirect.append(in_drawIndirect[i]);
+				...
+			]
+		}
+	}
+}
