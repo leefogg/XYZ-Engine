@@ -26,8 +26,8 @@ namespace GLOOP.HPL.Loading
             loadLights(mapPath + "_Light");
 
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
-            //loadEntities(mapPath + "_Entity", assimp, material);
-            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            loadEntities(mapPath + "_Entity", assimp, material);
+            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
             //loadTerrain(mapPath);
         }
@@ -531,23 +531,19 @@ namespace GLOOP.HPL.Loading
             var models = Entities.SelectMany(ent => ent.Models).ToList();
             foreach (var area in visibilityAreas) 
             {
-                Box3 toAABB(Matrix4 boundingBoxMatrix)
+                Box3 matToAABB(Matrix4 boundingBoxMatrix)
                 {
-                    return new Box3()
-                    {
-                        Center = boundingBoxMatrix.ExtractTranslation(),
-                        Size = boundingBoxMatrix.ExtractTranslation().Abs()
-                    };
+                    return new Box3(-0.5f, -0.5f, -0.5f, 0.5f, 0.5f, 0.5f).Transform(boundingBoxMatrix);
+                }
+                Box3 RadToAABB(float radius)
+                {
+                    return new Box3(-radius, -radius, -radius, radius, radius, radius);
                 }
 
                 // TODO: Should wholely contain in area
-                var modelsContained = models.Where(model => area.BoundingBox.Contains(model.Transform.Position)).ToList();
+                var modelsContained = models.Where(model => area.BoundingBox.CompletelyContains(matToAABB(model.BoundingBoxMatrix))).ToList();
                 area.Models.AddRange(modelsContained);
-                models.RemoveRange(modelsContained);
-
-                // var entitiesContained = Entities.Where(ent => area.BoundingBox.CompletelyContains(ent.BoundingBox)).ToList();
-                // area.Models.AddRange(entitiesContained.SelectMany(ent => ent.Models));
-                // Entities.RemoveRange(entitiesContained);
+                //models.RemoveRange(modelsContained);
 
                 var pointLightsContained = PointLights.Where(light => area.BoundingBox.Contains(light.Position)).ToList();
                 area.PointLights.AddRange(pointLightsContained);
@@ -559,9 +555,9 @@ namespace GLOOP.HPL.Loading
             }
 
             // Add things that arent in areas globally
-            scene.Models = models;
-            scene.SpotLights = SpotLights;
-            scene.PointLights = PointLights;
+            scene.Models = models.Except(visibilityAreas.SelectMany(area => area.Models)).ToList();
+            scene.SpotLights = SpotLights.Except(visibilityAreas.SelectMany(area => area.SpotLights)).ToList();
+            scene.PointLights = PointLights.Except(visibilityAreas.SelectMany(area => area.PointLights)).ToList();
 
             return scene;
         }

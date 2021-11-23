@@ -2,6 +2,7 @@
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace GLOOP.Extensions
@@ -136,10 +137,10 @@ namespace GLOOP.Extensions
             yield return new Vector3(max.X, max.Y, max.Z); // Top far right
         }
 
-        public static Box3 ToBoundingBox(this IEnumerable<Vector3> self)
+        public static Box3 ToBoundingBox(this IList<Vector3> self)
         {
-            var boundingBox = new Box3();
-            foreach (var pos in self)
+            var boundingBox = new Box3(self[0], self[0]);
+            foreach (var pos in self.Skip(1))
                 boundingBox.Inflate(pos);
 
             return boundingBox;

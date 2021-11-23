@@ -86,7 +86,9 @@ namespace GLOOP.HPL
             LightsMapCameraPosition = new Vector3(-0.5143715f, 4.3500123f, 11.639848f),
             PortalsMapCameraPosition = new Vector3(4.5954947f, 1.85f, 16.95526f),
             TauMapCameraPosition = new Vector3(26.263678f, 1.7000114f, 36.090767f),
-            ThetaExitCameraPosition = new Vector3(11.340768f, 1.6000444f, 47.520298f);
+            ThetaExitCameraPosition = new Vector3(11.340768f, 1.6000444f, 47.520298f),
+            WauMapCameraPosition = new Vector3(-26.12f, 93.691f, 167.313f),
+            AwakeMapCameraPosition = new Vector3(9.325157f, -0.44998702f, 50.61429f);
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
@@ -100,6 +102,7 @@ namespace GLOOP.HPL
             backBuffer = new FrameBuffer(0, Size.X, Size.Y);
             frameBufferWidth = width;
             frameBufferHeight = height;
+
 #if VR
             DebugCamera.MAX_LOOK_UP = DebugCamera.MAX_LOOK_DOWN = 0;
 #endif
@@ -222,11 +225,13 @@ namespace GLOOP.HPL
 
             var lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
             var bedroom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm";
+            var awake = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_01_upsilon_awake\01_01_upsilon_awake.hpm";
             var theta_outside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_04_theta_outside\02_04_theta_outside.hpm";
             var upsilon = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_02_upsilon_inside\01_02_upsilon_inside.hpm";
             var theta_inside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_05_theta_inside\02_05_theta_inside.hpm";
             var theta_tunnels = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_06_theta_tunnels\02_06_theta_tunnels.hpm";
             var tau = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm";
+            var wau = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_03_tau_escape\04_03_tau_escape.hpm";
             var delta = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_03_delta\02_03_delta.hpm";
             var phi = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm";
             var thetaExit = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_07_theta_exit\02_07_theta_exit.hpm";
@@ -285,9 +290,7 @@ namespace GLOOP.HPL
             Console.WriteLine($"Scene: {numStatic} Static, {numStaticOccluders} of which occlude. {numDynamic} Dynamic. {allModels} Total.");
 
             if (!enablePortalCulling)
-            {
                 VisibleAreas.AddRange(scene.VisibilityAreas.Values);
-            }
 
             setupBuffers();
 
@@ -352,7 +355,7 @@ namespace GLOOP.HPL
 
             // Dont need to check every frame
             // Also must only run every odd frame for VR support
-            if ((FrameNumber % 2) != 0)
+            if ((FrameNumber & 1) != 0)
                 return;
 
             VisibleAreas.Clear();
@@ -360,23 +363,13 @@ namespace GLOOP.HPL
             // Get touching areas
             // This should be first to render closer areas first
             VisibleAreas.AddRange(scene.VisibilityAreas.Values.Where(area => area.BoundingBox.Contains(Camera.Position)));
-
-            var remainingQueries = new List<(VisibilityPortal, Query)>();
+            
+            if (PortalQueries.Any(pair => !pair.Item2.IsResultAvailable()))
+                return;
             foreach (var (portal, query) in PortalQueries)
-            {
-                if (query.IsResultAvailable())
-                {
-                    if (query.GetResult() > 0) // Is visible
-                    {
-                        VisibleAreas.AddRange(portal.VisibilityAreas.Select(areaName => scene.VisibilityAreas[areaName]));
-                    }
-                } 
-                else
-                {
-                    remainingQueries.Add((portal, query));
-                }
-            }
-            PortalQueries = remainingQueries;
+                if (query.GetResult() > 0) // Is visible
+                    VisibleAreas.AddRange(portal.VisibilityAreas.Select(areaName => scene.VisibilityAreas[areaName]));
+            PortalQueries.Clear();
 
             using (new DebugGroup("Portals"))
             {
@@ -385,23 +378,17 @@ namespace GLOOP.HPL
                 GL.Disable(EnableCap.CullFace);
                 GL.DepthMask(false);
                 // Dispatch queries for rooms visible from previous queries and current areas
-                foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Distinct())
+                foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Except(PortalQueries.Select(x => x.Item1)).Distinct())
                 {
                     using var query = queryPool.BeginScope(QueryTarget.AnySamplesPassed);
-                    Draw.Box(portal.ModelMatrix, Vector4.One);
+                    Draw.Box(portal.ModelMatrix, new Vector4(1,1,0,0));
                     PortalQueries.Add((portal, query));
                 }
                 GL.ColorMask(true, true, true, true);
                 GL.DepthMask(true);
                 GL.Enable(EnableCap.CullFace);
             }
-
-            // To avoid seams, always consider all connecting areas of touching portals to be visible
-            var touchingPortals = scene.VisibilityPortals.Where(area => area.BoundingBox.Contains(Camera.Position));
-            foreach (var portal in touchingPortals)
-                foreach (var areaName in portal.VisibilityAreas)
-                    VisibleAreas.Add(scene.VisibilityAreas[areaName]);
-
+            
             VisibleAreas = VisibleAreas.Distinct().ToList(); // Remove duplicates
 
             // If we're flying around outside any area, just show them all
@@ -480,14 +467,14 @@ namespace GLOOP.HPL
                     scene.RenderOccluderGeometry();
                 }
 
-                DetermineVisibleAreas();
-
                 using (new DebugGroup("Non Occluders"))
                 {
                     foreach (var area in VisibleAreas)
                         area.RenderNonOccluderGeometry();
                     scene.RenderNonOccluderGeometry();
                 }
+
+                DetermineVisibleAreas();
 
                 scene.RenderTerrain();
             }
