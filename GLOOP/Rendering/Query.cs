@@ -7,7 +7,7 @@ namespace GLOOP.Rendering
 {
     public class Query : IDisposable
     {
-        private readonly int Handle = GL.GenQuery();
+        public readonly int Handle = GL.GenQuery();
         public readonly QueryTarget Type;
         public bool Running { get; private set; }
 
