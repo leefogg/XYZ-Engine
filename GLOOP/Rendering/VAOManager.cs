@@ -81,6 +81,8 @@ namespace GLOOP.Rendering
             IEnumerable<Vector3> vertexNormals,
             IEnumerable<Vector3> vertexTangents)
         {
+            var numIndicies = vertexIndicies.Count();
+            System.Diagnostics.Debug.Assert(numIndicies < ushort.MaxValue, "Model with more than ui16 indicies");
             var estimatedNumIndicies = vertexIndicies.Count() * sizeof(ushort);
             var estimatedNumVertcies = shape.NumElements * sizeof(float) * vertexPositions.Count();
             var alloc = GetOrCreateAllocation(
