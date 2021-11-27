@@ -35,6 +35,8 @@ namespace GLOOP.HPL.Loading
                 [XmlType("SubMesh")]
                 public class SubMeshInfo
                 {
+                    [XmlAttribute("Name")]
+                    public string Name { get; set; }
                     [XmlAttribute("Scale")]
                     public string Scale { get; set; }
                     [XmlAttribute("WorldPos")]
@@ -48,18 +50,19 @@ namespace GLOOP.HPL.Loading
         public HPLEntity Load(AssimpContext context, DeferredRenderingGeoMaterial shader) {
             var SOMAHome = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
             var fullPath = Path.Combine(SOMAHome, Model.Mesh.FileName);
-            var model = new HPLEntity(fullPath, context, shader);
+            var entity = new HPLEntity(fullPath, context, shader);
             if (Model.Mesh.SubMeshes != null)
             {
-                if (Model.Mesh.SubMeshes.Length == model.Models.Count)
+                if (Model.Mesh.SubMeshes.Length == entity.Models.Count)
                 {
-                    for (int i = 0; i < Model.Mesh.SubMeshes.Length; i++)
+                    foreach (var submesh in Model.Mesh.SubMeshes)
                     {
-                        var mesh = Model.Mesh.SubMeshes[i];
-                        var renderable = model.Models[0];
-                        renderable.Transform.Position += mesh.Position.ParseVector3();
-                        renderable.Transform.Rotation += Quaternion.FromEulerAngles(-mesh.Rotation.ParseVector3());
-                        renderable.Transform.Scale *= mesh.Scale.ParseVector3();
+                        foreach (var model in entity.Models)
+                        {
+                            //model.Transform.Position = submesh.Position.ParseVector3();
+                            //model.Transform.Rotation = Quaternion.FromEulerAngles(-submesh.Rotation.ParseVector3());
+                            //model.Transform.Scale = submesh.Scale.ParseVector3();
+                        }
                     }
                 }
                 else
@@ -69,7 +72,7 @@ namespace GLOOP.HPL.Loading
             }
             //TODO: Implement UserDefinedVariables posOffset, rotOffset, scaleOffset
 
-            return model;
+            return entity;
         }
     }
 }

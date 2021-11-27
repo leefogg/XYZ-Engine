@@ -1,5 +1,4 @@
-﻿using Assimp;
-using GLOOP.Extensions;
+﻿using GLOOP.Extensions;
 using GLOOP.Rendering;
 using GLOOP.Rendering.Materials;
 using OpenTK;
@@ -21,14 +20,14 @@ namespace GLOOP.HPL.Loading
         public List<GLOOP.SpotLight> SpotLights = new List<GLOOP.SpotLight>();
         public Areas Areas;
 
-        public Map(string mapPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
+        public Map(string mapPath, Assimp.AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             loadAreas(mapPath + "_Area");
             loadLights(mapPath + "_Light");
 
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
             loadEntities(mapPath + "_Entity", assimp, material);
-            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
-            //loadPrimitives(mapPath + "_Primitive", material);
+            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            loadPrimitives(mapPath + "_Primitive", material);
             //loadTerrain(mapPath);
         }
 
@@ -169,7 +168,7 @@ namespace GLOOP.HPL.Loading
             SpotLights.AddRange(spotLights.Select(l => l.ToCommon()));
         }
 
-        public void loadEntities(string entitiesFilePath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
+        public void loadEntities(string entitiesFilePath, Assimp.AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             var entityDict = Deserialize<Entities>(entitiesFilePath);
 
             int attempted = 0, success = 0;
@@ -260,7 +259,7 @@ namespace GLOOP.HPL.Loading
             Entities.AddRange(instances);
         }
 
-        public void loadStaticObjects(string staticObjectsPath, AssimpContext assimp, DeferredRenderingGeoMaterial material) {
+        public void loadStaticObjects(string staticObjectsPath, Assimp.AssimpContext assimp, DeferredRenderingGeoMaterial material) {
             var staticObjects = Deserialize<StaticObjects>(staticObjectsPath);
 
             int attempted = 0, success = 0;
@@ -399,7 +398,7 @@ namespace GLOOP.HPL.Loading
             Console.WriteLine($"Loaded {success} out of attempted {attempted}.");
         }
 
-        public void loadDetailMeshes(string detailMeshesPath, AssimpContext assimp, DeferredRenderingGeoMaterial material)
+        public void loadDetailMeshes(string detailMeshesPath, Assimp.AssimpContext assimp, DeferredRenderingGeoMaterial material)
         {
             var detailMeshesSerializer = new XmlSerializer(typeof(DetailMeshes));
             var detailMeshes = (DetailMeshes)detailMeshesSerializer.Deserialize(File.OpenRead(detailMeshesPath));
@@ -466,7 +465,16 @@ namespace GLOOP.HPL.Loading
             {
                 foreach (var model in ent.Models)
                 {
-                    model.Transform = ent.Transform;
+                    //model.Transform = ent.Transform;
+                    model.Transform.Position += ent.Transform.Position;
+                    model.Transform.Rotation = ent.Transform.Rotation;
+                    model.Transform.Scale *= ent.Transform.Scale;
+                    //var multipliedTransform = Matrix4.CreateFromQuaternion(ent.Transform.Rotation) * Matrix4.CreateScale(ent.Transform.Scale) * Matrix4.CreateTranslation(ent.Transform.Position);
+                    //model.Transform.Position = multipliedTransform.ExtractTranslation();
+                    //model.Transform.Rotation = multipliedTransform.ExtractRotation();
+                    //model.Transform.Scale = multipliedTransform.ExtractScale();
+
+
                     model.IsOccluder = ent.IsOccluder;
                     model.IsStatic = ent.IsStatic;
                     scene.Models.Add(model);

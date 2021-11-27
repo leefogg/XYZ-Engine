@@ -60,19 +60,29 @@ namespace GLOOP.Rendering
             if (!scene.HasMeshes)
                 return;
 
+            /*
             var root = scene.RootNode;
             root.Transform.Decompose(out var scale, out var rotation, out var position);
             Transform.Position += new Vector3(position.X, position.Y, position.Z);
             Transform.Scale *= new Vector3(scale.X, scale.Y, scale.Z);
             Transform.Rotation *= new Quaternion(rotation.X, rotation.Y, rotation.Z, rotation.W);
             Transform.Rotation.Invert();
-
+            */
+            /*
             if (Path.GetExtension(path).ToLower() == ".dae")
             {
                 var daeScale = DAE.Model.Load(path)?.Meta?.Units?.Scale;
+                float? daeScale = daeScaleName?.ToLower() switch
+                {
+                    "meter" => 1f,
+                    "centimeter" => 0.1f,
+                    "millimeter" => 0.01f,
+                    _ => null
+                };
                 Transform.Scale *= daeScale ?? 1.0f;
             }
-            
+            */
+
             var currentFolder = Path.GetDirectoryName(path);
 
             for (var i = 0; i < scene.Meshes.Count; i++)
@@ -110,7 +120,7 @@ namespace GLOOP.Rendering
                         geo.Tangents = mesh.Tangents.Select(n => new Vector3(n.X, n.Y, n.Z)).ToList();
                     else
                         geo.CalculateTangents();
-                    geo.Scale(new Vector3(Transform.Scale.X, Transform.Scale.Y, Transform.Scale.Z));
+                    //geo.Scale(new Vector3(Transform.Scale.X, Transform.Scale.Y, Transform.Scale.Z));
 
                     vao = geo.ToVirtualVAO(vaoName);
                     VAOCache.Put(vao, vaoName);
