@@ -1,35 +1,49 @@
-Optimizations:
-	Replace Position buffer with depth buffer
-	Replace the illum GBuffer with an extracted one from the lighting buffer
-	Render Query + BeginConditionalRender
-	Instancing
-	Lazy model matrix'
-	Use OpenTK's Matrix methods
-	Clean up struct uses
 
 TODO:
-	Portal culling
-	BeginConditionalRender
+	Optimizations:
+		Replace Position buffer with depth buffer
+		Replace the illum GBuffer with an extracted one from the lighting buffer
+		Instancing
+		Lazy model matrix'
+		Use OpenTK's Matrix methods
+		Clean up struct uses
+		Frustum Culling
+		Add Tint to objects materials to tint objects that are outside frustum
+	Object combining
+		Measure how small render batches can get if static objects are combined
+	Compine bloom combine, color correction, gamma correction, SSAO and dithering into one shader
+	IndirectList
+		Stores proper list and a list of indicies
+		Indicies mirrored on GPU to flag objects that are visible
+	Combine area's objects back into one buffer set
+		Start with lights - simpler
 	ref/in/out
-	glPushDebugGroup
 	swapchain
+
+	To be inline with HPL:
+		Illum geometry pass
+		Detail textures
+		Box lights
+		Fog boxes
+		Decals
+		Sky
+		Shadows
+		Particles
+		Colour correction / White Point / Exposure
+
+	Portal culling
+		VR
+		Check when render portals are dispatched on SOMA by searching ANY_SAMPLES_PASSED
+
 	Rename HLP to HPL
 	Handle VR startup errors in SetUpOpenVR
 	Model scales
 	Remove FinalFrameBuffer
 
-	Color
-		Colour correction / White Point / Exposure
-
 	Graphics
 		albedo color.w is translucentcy
 
-	Detail textures
-	Terrain
 	Time sections
-	Fix rotation of spotlights
-	Get line cube finished
-	Line pyramid for point lights
 	Refactor location of code into project layers and seperate projects for examples
 	Add auditing
 		Add size to Buffer class
@@ -38,67 +52,62 @@ TODO:
 			All metrics in one new row
 	FPS graph
 	Investigate if materials have a global specular scaler
-	Box lights
-	Fog boxes
-	Decals
-	Sky
 
 Things to experiment with in VR:
-Stereo fusion
-blur
-cromatic abbraration
-portals
-stencil
+	Stereo fusion
+	blur
+	cromatic abbraration
+	portals
+	stencil
 
 Proposed ideal render pipeline:
-
-Draw static objects
-foreach (var portal in scene.portals){
-	using Query x {
-		Draw portal
+	Draw static objects
+	foreach (var portal in scene.portals) {
+		using Query x {
+			Draw portal
+		}
+		begin conditional render using x {
+			Dispatch intersection shader
+		]
 	}
-	begin conditional render using x {
-		Dispatch intersection shader
-	]
-}
-Dispatch hierarchical z culling compute shader using drawn static objects
-Dispatch buffer copying shader
-Draw dynamic objects
+	Dispatch hierarchical z culling compute shader using drawn static objects
+	Dispatch buffer copying shader
+	Draw dynamic objects
 
-intersection shader {
-	uniform box3 areaBoundingBox;
-	uniform vec3[6] frustumPlanes;
-	uniform ReadBuffer<mat4> boudingBoxModelMatricies; // Bounding box of all models in area
-	uniform WriteBuffer<bool> visibleFlags; // Flags to indicate if model should be drawn
-	uniform ReadBuffer<int> modelIndicies; // visibleFlags is for all objects in scene but we're working with certain objects
+	intersection shader {
+		uniform box3 areaBoundingBox;
+		uniform vec3[6] frustumPlanes;
+		uniform ReadBuffer<mat4> boudingBoxModelMatricies; // Bounding box of all models in area
+		uniform WriteBuffer<bool> visibleFlags; // Flags to indicate if model should be drawn
+		uniform ReadBuffer<int> modelIndicies; // visibleFlags is for all objects in scene but we're working with certain objects
 	
-	main {
-		for (int i=0; i<models.count; i++) { // Might want to share this over multiple compute work groups
-			Box3 modelBoundingBox = createAABB(boudingBoxModelMatricies[i]);
-			if (areaBoundingBox.Intersects(modelBoundingBox) {
-				if (indersectsFrustum(modelBoundingBox) {
-					visibleFlags[modelIndicies[i]] = true;
+		main {
+			for (int i=0; i<models.count; i++) { // Might want to share this over multiple compute work groups
+				Box3 modelBoundingBox = createAABB(boudingBoxModelMatricies[i]);
+				if (areaBoundingBox.Intersects(modelBoundingBox) {
+					if (indersectsFrustum(modelBoundingBox) {
+						visibleFlags[modelIndicies[i]] = true;
+					}
 				}
 			}
 		}
 	}
-}
 
-buffer copying shader {
-	uniform ReadBuffer<bool> visibleFlags; // Flags to indicate if model should be drawn
-	uniform ReadBuffer<MultiDrawIndirectCommand> in_drawIndirect
-	uniform ReadBuffer<Mat4> in_modelMatricies;
-	uniform ReadBuffer<Material> in_modelMaterials;
-	uniform WriteBuffer<MultiDrawIndirectCommand> out_drawIndirect
-	uniform WriteBuffer<Mat4> out_modelMatricies;
-	uniform WriteBuffer<Material> out_modelMaterials;
+	buffer copying shader {
+		uniform ReadBuffer<bool> visibleFlags; // Flags to indicate if model should be drawn
+		uniform ReadBuffer<MultiDrawIndirectCommand> in_drawIndirect
+		uniform ReadBuffer<Mat4> in_modelMatricies;
+		uniform ReadBuffer<Material> in_modelMaterials;
+		uniform WriteBuffer<MultiDrawIndirectCommand> out_drawIndirect
+		uniform WriteBuffer<Mat4> out_modelMatricies;
+		uniform WriteBuffer<Material> out_modelMaterials;
 	
-	main {
-		for (int i=0; i<numModels; i++) {
-			if (visibleFlags[i]) {
-				out_drawIndirect.append(in_drawIndirect[i]);
-				...
-			]
+		main {
+			for (int i=0; i<numModels; i++) {
+				if (visibleFlags[i]) {
+					out_drawIndirect.append(in_drawIndirect[i]);
+					...
+				]
+			}
 		}
 	}
-}
