@@ -27,8 +27,8 @@ namespace GLOOP.HPL.Loading
 
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
             loadEntities(mapPath + "_Entity", assimp, material);
-            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
-            loadPrimitives(mapPath + "_Primitive", material);
+            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            //loadPrimitives(mapPath + "_Primitive", material);
             //loadTerrain(mapPath);
         }
 
@@ -502,7 +502,7 @@ namespace GLOOP.HPL.Loading
             )).ToList();
             foreach (var area in visibilityAreas)
                 scene.VisibilityAreas[area.Name] = area;
-
+#if DEBUG
             // Ensure that all mentioned areas in portals exist
             foreach (var portal in scene.VisibilityPortals)
             {
@@ -511,7 +511,7 @@ namespace GLOOP.HPL.Loading
                 {
                     if (!scene.VisibilityAreas.ContainsKey(areaName))
                     {
-                        Console.Error.WriteLine($"Portal '{portal.Name}' refers to area(s) {areaName} that dont exist.");
+                        Console.Error.WriteLine($"Portal '{portal.Name}' refers to area(s) {areaName} that doesn't exist.");
                         areas.Remove(areaName);
                     }
                 }
@@ -527,6 +527,12 @@ namespace GLOOP.HPL.Loading
                     Console.Error.WriteLine($"Dangling area '{danglingAreas.ToHumanList()}'");
             }
 
+            //Check all areas of portal are touching the portal
+            foreach (var portal in scene.VisibilityPortals)
+                foreach (var areaName in portal.VisibilityAreas)
+                    if (!scene.VisibilityAreas[areaName].BoundingBox.Contains(portal.BoundingBox))
+                        Console.Error.WriteLine($"Area '{areaName}' does not touch its portal '{portal.Name}'");
+#endif
             // Add things to accociated area
             var models = Entities.SelectMany(ent => ent.Models).ToList();
             foreach (var area in visibilityAreas) 
@@ -540,7 +546,7 @@ namespace GLOOP.HPL.Loading
                     return new Box3(-radius, -radius, -radius, radius, radius, radius);
                 }
 
-                // TODO: Should wholely contain in area
+                // "An object will be part of all visibility areas that it is fully inside of."
                 var modelsContained = models.Where(model => area.BoundingBox.CompletelyContains(matToAABB(model.BoundingBoxMatrix))).ToList();
                 area.Models.AddRange(modelsContained);
                 //models.RemoveRange(modelsContained);
@@ -555,6 +561,7 @@ namespace GLOOP.HPL.Loading
             }
 
             // Add things that arent in areas globally
+            // "Objects that doesn't fit inside any of the placed areas will get added to a main render container that has an infinite size."
             scene.Models = models.Except(visibilityAreas.SelectMany(area => area.Models)).ToList();
             scene.SpotLights = SpotLights.Except(visibilityAreas.SelectMany(area => area.SpotLights)).ToList();
             scene.PointLights = PointLights.Except(visibilityAreas.SelectMany(area => area.PointLights)).ToList();

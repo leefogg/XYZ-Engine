@@ -362,8 +362,16 @@ namespace GLOOP.HPL
 
             // Get touching areas
             // This should be first to render closer areas first
+            // "A visibility area that is connected to a portal will only be visible if the portal is visible or if the camera is inside it."
             VisibleAreas.AddRange(scene.VisibilityAreas.Values.Where(area => area.BoundingBox.Contains(Camera.Position)));
-            
+
+            // To avoid seams, always consider all connecting areas of touching portals to be visible
+            // "If the camera is inside of a visibility area then all the portals connected to it will be used as a portal to the outside."
+            var touchingPortals = scene.VisibilityPortals.Where(area => area.BoundingBox.Contains(Camera.Position));
+            foreach (var portal in touchingPortals)
+                foreach (var areaName in portal.VisibilityAreas)
+                    VisibleAreas.Add(scene.VisibilityAreas[areaName]);
+
             if (PortalQueries.Any(pair => !pair.Item2.IsResultAvailable()))
                 return;
             foreach (var (portal, query) in PortalQueries)
