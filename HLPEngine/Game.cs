@@ -425,29 +425,36 @@ namespace GLOOP.HPL
             }
             else
             {
-                ResolveGBuffer(currentBuffer = PostMan.NextFramebuffer);
+                Texture albedo;
+                if (!debugLightBuffer && useFXAA)
+                {
+                    using (new DebugGroup("FXAA"))
+                    {
+                        var newBuffer = PostMan.NextFramebuffer;
+                        newBuffer.Use();
+                        DoPostEffect(FXAAShader, GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse]);
+                        currentBuffer = newBuffer;
+                        albedo = currentBuffer.ColorBuffers[0];
+                    }
+                } 
+                else 
+                {
+                    albedo = GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse];
+                }
+
+                currentBuffer = ResolveGBuffer(albedo);
+
                 if (!debugLightBuffer)
                 {
                     if (enableBloom)
                         currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
 
-                    var newBuffer = PostMan.NextFramebuffer;
                     using (new DebugGroup("Color Correction"))
                     {
+                        var newBuffer = PostMan.NextFramebuffer;
                         newBuffer.Use();
                         DoPostEffect(ColorCorrectionShader, currentBuffer.ColorBuffers[0]);
                         currentBuffer = newBuffer;
-                    }
-
-                    if (useFXAA)
-                    {
-                        using (new DebugGroup("FXAA"))
-                        {
-                            newBuffer = PostMan.NextFramebuffer;
-                            newBuffer.Use();
-                            DoPostEffect(FXAAShader, currentBuffer.ColorBuffers[0]);
-                            currentBuffer = newBuffer;
-                        }
                     }
                 }
             }
@@ -579,8 +586,10 @@ namespace GLOOP.HPL
             NoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
         }
 
-        private void ResolveGBuffer(FrameBuffer outputBuffer)
+        private FrameBuffer ResolveGBuffer(Texture albedo)
         {
+            var outputBuffer = PostMan.NextFramebuffer;
+
             GL.Disable(EnableCap.DepthTest);
             //GL.DepthMask(false);
 
@@ -594,31 +603,28 @@ namespace GLOOP.HPL
 
                 GL.Disable(EnableCap.FramebufferSrgb);
             } else {
-                var currentBuffer = PostMan.NextFramebuffer;
-                currentBuffer.Use();
-
+                outputBuffer.Use();
                 using (new DebugGroup("Light Resolve"))
                 {
                     var shader = FinalCombineShader;
                     shader.Use();
                     LightingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
-                    GBuffers.ColorBuffers[0].Use(TextureUnit.Texture1);
+                    albedo.Use(TextureUnit.Texture1);
                     shader.Set("texture0", TextureUnit.Texture0);
                     shader.Set("texture1", TextureUnit.Texture1);
                     shader.Set("frame", (int)FrameNumber);
                     shader.Set("resolution", new Vector2(frameBufferWidth, frameBufferHeight));
                     Primitives.Quad.Draw();
                 }
-
-                // Blit to output frame buffer
-                currentBuffer.BlitTo(outputBuffer, ClearBufferMask.ColorBufferBit);
             }
 
             // Blit depth to output frame buffer
-            GBuffers.BlitTo(outputBuffer, ClearBufferMask.DepthBufferBit);
+            // GBuffers.BlitTo(outputBuffer, ClearBufferMask.DepthBufferBit);
 
             //GL.DepthMask(true);
             GL.Enable(EnableCap.DepthTest);
+
+            return outputBuffer;
         }
 
         private FrameBuffer DoBloomPass(Texture diffuse)

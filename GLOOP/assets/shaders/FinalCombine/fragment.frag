@@ -11,24 +11,6 @@ uniform vec2 resolution;
 
 out vec3 FragColor;
 
-/*
-vec3 ScreenSpaceDither(vec2 vScreenPos)
-{
-	// Iestyn's RGB dither (7 asm instructions) from Portal 2 X360, slightly modified for VR
-	vec3 vDither = vec3(dot(vec2(171.0, 231.0), vScreenPos.xy + timeMs));
-	vDither = fract(vDither / vec3(103.0, 71.0, 97.0)) - 0.5;
-	return (vDither / 255.0) * 0.375;
-}
-
-vec3 ScreenSpaceDither( vec2 vScreenPos )
-{
-	// Iestyn's RGB dither (7 asm instructions) from Portal 2 X360, slightly modified for VR
-	vec3 vDither = vec3(dot( vec2( 171.0, 231.0 ), vScreenPos.xy));
-	vDither = fract( vDither / vec3( 103.0, 71.0, 97.0 ) ) - 0.5;
-	return vDither.rgb ;
-}
-*/
-
 // provides 16 psuedo-random bits
 // conviently packaged in a float
 // in the [0,1] range.
@@ -77,7 +59,7 @@ void main()
     int cnt_pixels = int(resolution.x * resolution.y);
 
 	// 0.01% dither. Measured to take about 0.02ms
-	// BUG: This messes with FXAA and should be done after
+	// This will mess with FXAA so should be done after
     float dither = squares16(uint(id) + uint(frame * cnt_pixels));
 	dither = dither * 0.0005;
     dither -= 0.000025;
