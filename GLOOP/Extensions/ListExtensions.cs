@@ -37,5 +37,21 @@ namespace GLOOP.Extensions
         }
 
         public static string ToHumanList<T>(this IEnumerable<T> self) => new StringBuilder().AppendJoin(", ", self).ToString();
+
+        public static IEnumerable<IEnumerable<T>> Chunk<T>(
+            this IEnumerable<T> source, int batchSize)
+        {
+            using var enumerator = source.GetEnumerator();
+            while (enumerator.MoveNext())
+                yield return YieldBatchElements(enumerator, batchSize - 1);
+        }
+
+        private static IEnumerable<T> YieldBatchElements<T>(
+            IEnumerator<T> source, int batchSize)
+        {
+            yield return source.Current;
+            for (int i = 0; i < batchSize && source.MoveNext(); i++)
+                yield return source.Current;
+        }
     }
 }
