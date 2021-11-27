@@ -475,8 +475,9 @@ namespace GLOOP.HPL
 
         private void GBufferPass(FrameBuffer finalBuffer)
         {
-            using var debugGroup = new DebugGroup(nameof(GBufferPass));
             Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
+            using var debugGroup = new DebugGroup(nameof(GBufferPass));
+            GL.Enable(EnableCap.FramebufferSrgb);
             using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
                 using (new DebugGroup("Occluders"))
@@ -497,6 +498,7 @@ namespace GLOOP.HPL
 
                 scene.RenderTerrain();
             }
+            GL.Disable(EnableCap.FramebufferSrgb);
         }
 
         private void ReadbackQueries()
