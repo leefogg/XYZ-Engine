@@ -92,7 +92,7 @@ namespace GLOOP.HPL
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90)
+            Camera = new DebugCamera(CustomMapCameraPosition, new Vector3(), 90)
             {
                 Width = width,
                 Height = height
@@ -241,7 +241,7 @@ namespace GLOOP.HPL
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
             var portals = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm";
             var Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
-            var mapToLoad = phi;
+            var mapToLoad = custom;
 
             /*
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
@@ -419,25 +419,36 @@ namespace GLOOP.HPL
             GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
             GBufferPass(currentBuffer);
 
-            if (enableBloom)
-                currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
-
-            var newBuffer = PostMan.NextFramebuffer;
-            using (new DebugGroup("Color Correction"))
+            if (debugGBufferTexture > -1)
             {
-                newBuffer.Use();
-                DoPostEffect(ColorCorrectionShader, currentBuffer.ColorBuffers[0]);
-                currentBuffer = newBuffer;
+                DisplayGBuffer(currentBuffer = PostMan.NextFramebuffer, debugGBufferTexture);
             }
-
-            if (useFXAA)
+            else
             {
-                using (new DebugGroup("FXAA"))
+                ResolveGBuffer(currentBuffer = PostMan.NextFramebuffer);
+                if (!debugLightBuffer)
                 {
-                    newBuffer = PostMan.NextFramebuffer;
-                    newBuffer.Use();
-                    DoPostEffect(FXAAShader, currentBuffer.ColorBuffers[0]);
-                    currentBuffer = newBuffer;
+                    if (enableBloom)
+                        currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
+
+                    var newBuffer = PostMan.NextFramebuffer;
+                    using (new DebugGroup("Color Correction"))
+                    {
+                        newBuffer.Use();
+                        DoPostEffect(ColorCorrectionShader, currentBuffer.ColorBuffers[0]);
+                        currentBuffer = newBuffer;
+                    }
+
+                    if (useFXAA)
+                    {
+                        using (new DebugGroup("FXAA"))
+                        {
+                            newBuffer = PostMan.NextFramebuffer;
+                            newBuffer.Use();
+                            DoPostEffect(FXAAShader, currentBuffer.ColorBuffers[0]);
+                            currentBuffer = newBuffer;
+                        }
+                    }
                 }
             }
 
@@ -485,15 +496,6 @@ namespace GLOOP.HPL
                 DetermineVisibleAreas();
 
                 scene.RenderTerrain();
-            }
-
-            if (debugGBufferTexture > -1)
-            {
-                DisplayGBuffer(finalBuffer, debugGBufferTexture);
-            }
-            else
-            {
-                ResolveGBuffer(finalBuffer);
             }
         }
 
@@ -686,8 +688,8 @@ namespace GLOOP.HPL
 
         private void DisplayGBuffer(FrameBuffer finalBuffer, int buffer)
         {
-            finalBuffer.Use();
             GL.Enable(EnableCap.FramebufferSrgb);
+            finalBuffer.Use();
 
             DoPostEffect(FullBrightShader, GBuffers.ColorBuffers[buffer]);
 
