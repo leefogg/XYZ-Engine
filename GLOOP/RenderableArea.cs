@@ -151,7 +151,7 @@ namespace GLOOP
                 );
                 OccluderMatriciesBuffer = new Buffer<Matrix4>(
                     numModelsApprox,
-                    BufferTarget.UniformBuffer,
+                    BufferTarget.ShaderStorageBuffer,
                     BufferUsageHint.StreamDraw,
                     Name + " Occluder ModelMatricies"
                 );
@@ -176,7 +176,7 @@ namespace GLOOP
                 );
                 NonOccluderMatriciesBuffer = new Buffer<Matrix4>(
                     numModelsApprox,
-                    BufferTarget.UniformBuffer,
+                    BufferTarget.ShaderStorageBuffer,
                     BufferUsageHint.StreamDraw,
                     Name + " Non-Occluder ModelMatricies"
                 );
@@ -247,7 +247,7 @@ namespace GLOOP
             {
                 var light = PointLights[i];
 
-                if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
+                //if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
                 {
                     light.GetLightingScalars(out float diffuseScalar, out float specularScalar);
                     lights[numCulledLights++] = new GPUPointLight(
@@ -276,7 +276,7 @@ namespace GLOOP
             for (var i = 0; i < lights.Length; i++)
             {
                 var light = SpotLights[i];
-                if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
+                //if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
                 {
                     light.GetLightingScalars(out float diffuseScalar, out float specularScalar);
                     var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
@@ -325,8 +325,6 @@ namespace GLOOP
             if (!Models.Any())
                 return;
 
-            var sizeOfMatrix = Marshal.SizeOf<Matrix4>();
-
             var modelMatricies = new List<Matrix4>();
             var drawCommands = new List<DrawElementsIndirectData>();
             var materials = new List<GPUDeferredGeoMaterial>();
@@ -356,20 +354,6 @@ namespace GLOOP
                         command.NumInstances,
                         i++
                     ));
-                }
-
-                var batchMatrixSize = i * sizeOfMatrix;
-                var offAlignment = batchMatrixSize % Globals.UniformBufferOffsetAlignment;
-                if (offAlignment > 0)
-                {
-                    var bytesToAdd = Globals.UniformBufferOffsetAlignment - offAlignment;
-                    var entriesToAdd = bytesToAdd / sizeOfMatrix;
-                    for (i = 0; i < entriesToAdd; i++)
-                    {
-                        modelMatricies.Add(new Matrix4());
-                        materials.Add(new GPUDeferredGeoMaterial());
-                        drawCommands.Add(new DrawElementsIndirectData());
-                    }
                 }
             }
 
@@ -519,15 +503,6 @@ namespace GLOOP
                     batchSize,
                     0
                 );
-
-                var batchMatrixSize = batchSize * matrixSize;
-                var offAlignment = batchMatrixSize % Globals.UniformBufferOffsetAlignment;
-                if (offAlignment > 0)
-                {
-                    var bytesToAdd = Globals.UniformBufferOffsetAlignment - offAlignment;
-                    var entriesToAdd = bytesToAdd / matrixSize;
-                    batchSize += entriesToAdd;
-                }
 
                 drawCommandPtr += batchSize * commandSize;
                 modelMatrixPtr += batchSize * matrixSize;
