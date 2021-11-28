@@ -7,24 +7,13 @@ namespace GLOOP.Rendering
 {
     public class PostMan
     {
-        private static readonly FrameBuffer[] Pool = new FrameBuffer[2];
-        private static int CurrentBufferIndex;
+        private static Ring<FrameBuffer> Ring;
 
-        public static FrameBuffer NextFramebuffer
-        {
-            get
-            {
-                CurrentBufferIndex = ++CurrentBufferIndex & 1;
-                return Pool[CurrentBufferIndex];
-            }
-        }
+        public static FrameBuffer NextFramebuffer => Ring.Next;
 
         public static void Init(int width, int height, PixelInternalFormat format)
         {
-            for (int i = 0; i < Pool.Length; i++)
-            {
-                Pool[i] = new FrameBuffer(width, height, false, format);
-            }
+            Ring = new Ring<FrameBuffer>(PowerOfTwo.Two, i => new FrameBuffer(width, height, false, format));
         }
     }
 }

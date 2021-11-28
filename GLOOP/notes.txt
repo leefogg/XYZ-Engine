@@ -1,24 +1,30 @@
-
 TODO:
 	Optimizations:
-		Replace Position buffer with depth buffer
-		Replace the illum GBuffer with an extracted one from the lighting buffer
-		Instancing
-		Lazy model matrix'
-		Use OpenTK's Matrix methods
-		Clean up struct uses
-		Frustum Culling
-		Add Tint to objects materials to tint objects that are outside frustum
-	Object combining
-		Measure how small render batches can get if static objects are combined
-	Compine bloom combine, color correction, gamma correction, SSAO and dithering into one shader
-	IndirectList
-		Stores proper list and a list of indicies
-		Indicies mirrored on GPU to flag objects that are visible
-	Combine area's objects back into one buffer set
-		Start with lights - simpler
-	ref/in/out
-	swapchain
+		GPU:
+			Replace Position buffer with depth buffer
+			Replace the illum GBuffer with an extracted one from the lighting buffer
+			Instancing
+			Use SSBOs instead of UBOs
+				Removes padding BS which enables the use of compute shaders
+			Object combining
+				Measure how small render batches can get if static objects are combined
+			Compine bloom combine, color correction, gamma correction, SSAO and dithering into one shader
+			Combine area's objects back into one buffer set
+				Start with lights - simpler
+			Remove FinalFrameBuffer
+		CPU:
+			Lazy model matrix'
+			Use OpenTK's Matrix methods
+			Clean up struct uses
+			Frustum Culling
+			IndirectList
+				Stores proper list and a list of indicies
+				Indicies mirrored on GPU to flag objects that are visible
+			ref/in/out
+			swapchain
+		Other:
+			Rename HLP to HPL
+			Handle VR startup errors in SetUpOpenVR
 
 	To be inline with HPL:
 		Illum geometry pass
@@ -34,11 +40,6 @@ TODO:
 	Portal culling
 		VR
 		Check when render portals are dispatched on SOMA by searching ANY_SAMPLES_PASSED
-
-	Rename HLP to HPL
-	Handle VR startup errors in SetUpOpenVR
-	Model scales
-	Remove FinalFrameBuffer
 
 	Graphics
 		albedo color.w is translucentcy
