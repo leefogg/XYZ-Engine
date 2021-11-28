@@ -631,64 +631,73 @@ namespace GLOOP.HPL
         {
             using (new DebugGroup("Bloom"))
             {
-                // Extract bright parts
                 var currentFB = PostMan.NextFramebuffer;
-                currentFB.Use();
-                ExtractBright.Use();
-                diffuse.Use(TextureUnit.Texture0);
-                ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
-                ExtractBright.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
-                ExtractBright.Set("afBrightPass", 15f);
-                Primitives.Quad.Draw();
-
-                // Take bright parts and blur
-                bloomBuffer.Bind();
-
-                int width = frameBufferWidth,
-                    height = frameBufferHeight;
-                var previousTexture = currentFB.ColorBuffers[0];
-                Shader shader;
-                for (var i = 0; i < BloomBuffers.Length;)
+                using (new DebugGroup("Extract"))
                 {
-                    width /= 2;
-                    height /= 2;
-                    GL.Viewport(0, 0, width, height);
+                    // Extract bright parts
+                    currentFB.Use();
+                    ExtractBright.Use();
+                    diffuse.Use(TextureUnit.Texture0);
+                    ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
+                    ExtractBright.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
+                    ExtractBright.Set("afBrightPass", 15f);
+                    Primitives.Quad.Draw();
+                }
 
-                    var shaderSteps = new[] { VerticalBlurShader, HorizontalBlurShader };
-                    foreach (var step in shaderSteps)
+                using (new DebugGroup("Blur"))
+                {
+                    // Take bright parts and blur
+                    bloomBuffer.Bind();
+
+                    int width = frameBufferWidth,
+                        height = frameBufferHeight;
+                    var previousTexture = currentFB.ColorBuffers[0];
+                    Shader shader;
+                    for (var i = 0; i < BloomBuffers.Length;)
                     {
-                        shader = step;
-                        shader.Use();
-                        BloomBuffers[i].Use();
+                        width /= 2;
+                        height /= 2;
+                        GL.Viewport(0, 0, width, height);
 
-                        bloomBuffer.BindRange(bloomDataStride * i, 3);
+                        var shaderSteps = new[] { VerticalBlurShader, HorizontalBlurShader };
+                        foreach (var step in shaderSteps)
+                        {
+                            shader = step;
+                            shader.Use();
+                            BloomBuffers[i].Use();
 
-                        DoPostEffect(shader, previousTexture);
+                            bloomBuffer.BindRange(bloomDataStride * i, 3);
 
-                        previousTexture = BloomBuffers[i].ColorBuffers[0];
-                        i++;
+                            DoPostEffect(shader, previousTexture);
+
+                            previousTexture = BloomBuffers[i].ColorBuffers[0];
+                            i++;
+                        }
                     }
                 }
 
-                // Add all to finished frame
-                GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
-                currentFB = PostMan.NextFramebuffer;
-                currentFB.Use();
-                GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+                using (new DebugGroup("Combine"))
+                {
+                    // Add all to finished frame
+                    GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
+                    currentFB = PostMan.NextFramebuffer;
+                    currentFB.Use();
+                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
 
-                shader = BloomCombineShader;
-                shader.Use();
-                Texture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], NoiseMap }, TextureUnit.Texture0);
-                shader.Set("blurMap0", TextureUnit.Texture0);
-                shader.Set("blurMap1", TextureUnit.Texture1);
-                shader.Set("blurMap2", TextureUnit.Texture2);
-                shader.Set("noiseMap", TextureUnit.Texture3);
-                shader.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
-                shader.Set("timeMilliseconds", elapsedMilliseconds);
-                Primitives.Quad.Draw();
+                    var shader = BloomCombineShader;
+                    shader.Use();
+                    Texture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], NoiseMap }, TextureUnit.Texture0);
+                    shader.Set("blurMap0", TextureUnit.Texture0);
+                    shader.Set("blurMap1", TextureUnit.Texture1);
+                    shader.Set("blurMap2", TextureUnit.Texture2);
+                    shader.Set("noiseMap", TextureUnit.Texture3);
+                    shader.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
+                    shader.Set("timeMilliseconds", elapsedMilliseconds);
+                    Primitives.Quad.Draw();
 
-                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
-                GL.Disable(EnableCap.FramebufferSrgb);
+                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                    GL.Disable(EnableCap.FramebufferSrgb);
+                }
 
                 return currentFB;
             }
