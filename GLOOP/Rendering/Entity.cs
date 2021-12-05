@@ -88,15 +88,25 @@ namespace GLOOP.Rendering
             for (var i = 0; i < scene.Meshes.Count; i++)
             {
                 var mesh = scene.Meshes[i];
-
                 var mat = scene.Materials[mesh.MaterialIndex];
+                string diffTex = mat.TextureDiffuse.FilePath;
+                string normTex = mat.TextureNormal.FilePath;
+                string specTex = mat.TextureSpecular.FilePath;
+                string emmtex = mat.TextureEmissive.FilePath;
+                foreach (var m in scene.Materials)
+                {
+                    diffTex ??= m.TextureDiffuse.FilePath;
+                    normTex ??= m.TextureNormal.FilePath;
+                    specTex ??= m.TextureSpecular.FilePath;
+                    emmtex ??= m.TextureEmissive.FilePath;
+                }
                 var beforeLoadingTextures = DateTime.Now;
                 GetTextures(
-                    mat.TextureDiffuse.FilePath,
-                    mat.TextureNormal.FilePath,
-                    mat.TextureSpecular.FilePath,
-                    mat.TextureEmissive.FilePath,
-                    currentFolder,
+                    diffTex,
+                    normTex,
+                    specTex,
+                    emmtex,
+                    path,
                     out var diffuseTex,
                     out var normalTex,
                     out var specularTex,
@@ -143,7 +153,7 @@ namespace GLOOP.Rendering
             string normalPath,
             string specularPath,
             string illumPath,
-            string currentFolder,
+            string sourceFile,
             out Texture2D diffuseTex,
             out Texture2D normalTex,
             out Texture2D specularTex,

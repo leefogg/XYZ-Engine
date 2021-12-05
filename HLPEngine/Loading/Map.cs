@@ -26,8 +26,8 @@ namespace GLOOP.HPL.Loading
 
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
             loadEntities(mapPath + "_Entity", assimp, material);
-            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
-            loadPrimitives(mapPath + "_Primitive", material);
+            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            //loadPrimitives(mapPath + "_Primitive", material);
             //loadTerrain(mapPath);
         }
 
@@ -191,6 +191,11 @@ namespace GLOOP.HPL.Loading
                             entities[entFile.Id] = entity;
 
                             var daePath = Path.Combine(SOMARoot, entity.Model.Mesh.FileName);
+                            //if (!File.Exists(daePath))
+                            //    daePath = Path.Combine(SOMARoot, Path.ChangeExtension(entFile.Path, "dae"));
+                            //if (!File.Exists(daePath))
+                            //    throw new FileNotFoundException(daePath);
+                            //entity.Model.Mesh.FileName = daePath;
                             files[entFile.Id] = entity.Load(assimp, material);
 
                             //Console.WriteLine("SUCCESS.");

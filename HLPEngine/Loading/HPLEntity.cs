@@ -35,7 +35,7 @@ namespace GLOOP.HPL.Loading
             string normalPath,
             string specularPath,
             string illumPath,
-            string currentFolder,
+            string sourceFile,
             out Texture2D diffuseTex,
             out Texture2D normalTex,
             out Texture2D specularTex,
@@ -46,7 +46,7 @@ namespace GLOOP.HPL.Loading
                 normalPath,
                 specularPath,
                 illumPath,
-                currentFolder,
+                sourceFile,
                 out diffuseTex,
                 out normalTex,
                 out specularTex,
@@ -59,7 +59,7 @@ namespace GLOOP.HPL.Loading
             string normalPath,
             string specularPath,
             string illumPath, 
-            string currentFolder,
+            string sourceFile,
             out Texture2D diffuseTex, 
             out Texture2D normalTex,
             out Texture2D specularTex, 
@@ -69,6 +69,9 @@ namespace GLOOP.HPL.Loading
             specularTex = null;
             illumTex = null;
             normalTex = null;
+
+            if (string.IsNullOrEmpty(diffusePath))
+                diffusePath = Path.ChangeExtension(sourceFile, "dds");
 
             try
             {
@@ -91,10 +94,22 @@ namespace GLOOP.HPL.Loading
                     return tex;
                 }
 
+                string materialPath = null;
                 if (Path.GetExtension(diffusePath) == ".mat")
                 {
+                    var matPath = Path.Combine(Constants.MaterialsFolder, Path.GetFileName(diffusePath));
+                    if (File.Exists(matPath))
+                        materialPath = matPath;
+                }
+                if (materialPath == null)
+                {
                     var materialName = Path.GetFileName(diffusePath);
-                    var materialPath = Path.Combine(Constants.MaterialsFolder, materialName);
+                    var matPath = Path.Combine(Constants.MaterialsFolder, Path.ChangeExtension(materialName, "mat"));
+                    if (File.Exists(matPath))
+                        materialPath = matPath;
+                }
+                if (materialPath != null)
+                {
                     var material = Deserialize<Material>(materialPath);
 
                     diffusePath = material.Textures.Diffuse?.Path ?? diffusePath;
