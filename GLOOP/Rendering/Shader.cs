@@ -44,6 +44,11 @@ namespace GLOOP.Rendering
             vertexShaderSource = insertDefines(vertexShaderSource, hashDefines);
             fragmentShaderSource = insertDefines(fragmentShaderSource, hashDefines);
 
+            return load(vertexShaderSource, fragmentShaderSource);
+        }
+
+        protected static int load(string vertexShaderSource, string fragmentShaderSource)
+        {
             var vertexShader = GL.CreateShader(ShaderType.VertexShader);
             GL.ShaderSource(vertexShader, vertexShaderSource);
             CompileShader(vertexShader);

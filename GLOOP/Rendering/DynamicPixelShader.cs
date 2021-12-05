@@ -16,7 +16,8 @@ namespace GLOOP.Rendering
         private IDictionary<string, string> defines;
         private FileSystemWatcher watcher;
 
-        public DynamicPixelShader(string vertPath, string fragPath, IDictionary<string, string> defines = null, string name = null) : base(vertPath, fragPath, defines, name)
+        public DynamicPixelShader(string vertPath, string fragPath, IDictionary<string, string> defines = null, string name = null) 
+            : base(vertPath, fragPath, defines, name)
         {
             this.vertPath = vertPath;
             this.fragPath = fragPath;

@@ -24,6 +24,7 @@ namespace GLOOP
 
         private int framesThisSecond;
         private DateTime lastSecond;
+        public bool bindMouse = true;
 
 #if DEBUG
         private DebugProc _debugProcCallback = DebugCallback;
@@ -164,7 +165,7 @@ namespace GLOOP
 
                 if (Mouse.CurrentState.IsButtonDown(MouseButton.Right))
                     Mouse.Grabbed = false;
-                if (Mouse.CurrentState.IsButtonDown(MouseButton.Left))
+                if (bindMouse && Mouse.CurrentState.IsButtonDown(MouseButton.Left))
                     Mouse.Grabbed = true;
             }
 

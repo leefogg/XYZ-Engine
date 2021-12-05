@@ -8,10 +8,18 @@ TODO:
 				Removes padding BS which enables the use of compute shaders
 			Object combining
 				Measure how small render batches can get if static objects are combined
-			Compine bloom combine, color correction, gamma correction, SSAO and dithering into one shader
+			Combine bloom combine, color correction, gamma correction, SSAO and dithering into one shader
 			Combine area's objects back into one buffer set
 				Start with lights - simpler
 			Remove FinalFrameBuffer
+			Culling
+				High-z
+					https://miketuritzin.com/post/hierarchical-depth-buffers/
+					https://www.rastergrid.com/blog/2010/10/hierarchical-z-map-based-occlusion-culling/
+					https://www.gamasutra.com/view/feature/3394/occlusion_culling_algorithms.php?print=1
+					https://interplayoflight.wordpress.com/2017/11/15/experiments-in-gpu-based-occlusion-culling/
+				Frustum
+					https://iquilezles.org/www/articles/frustumcorrect/frustumcorrect.htm
 		CPU:
 			Lazy model matrix'
 			Use OpenTK's Matrix methods
@@ -27,6 +35,8 @@ TODO:
 			Handle VR startup errors in SetUpOpenVR
 
 	To be inline with HPL:
+		Textures seem to be loading RGB not sRGB
+		material SpecificVariables
 		Illum geometry pass
 		Detail textures
 		Box lights
@@ -35,7 +45,6 @@ TODO:
 		Sky
 		Shadows
 		Particles
-		Colour correction / White Point / Exposure
 
 	Portal culling
 		VR

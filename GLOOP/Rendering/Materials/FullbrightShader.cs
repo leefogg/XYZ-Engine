@@ -23,7 +23,7 @@ namespace GLOOP.Rendering.Materials
         }
 
         public FullbrightShader() 
-            : base("assets/shaders/FullBright/3D/VertexShader.vert", "assets/shaders/FullBright/3D/FragmentShader.frag", name: "Fullbright")
+            : base("assets/shaders/FullBright/3D/VertexShader.vert", "assets/shaders/FullBright/3D/FragmentShader.frag", null, "Fullbright")
         {
             diffuse = new UniformBindlessTexture(this, "texture0");
             modelMatrix = new Uniform16f(this, "ModelMatrix");

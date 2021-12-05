@@ -26,6 +26,7 @@ using HLPEngine;
 using Valve.VR;
 using System.Diagnostics;
 using GLOOP.Rendering.Debugging;
+using ImGuiNET;
 
 namespace GLOOP.HPL
 {
@@ -67,6 +68,9 @@ namespace GLOOP.HPL
         private bool enableBloom = false;
         private bool showBoundingBoxes = false;
         private const bool enablePortalCulling = true;
+        private bool enableImGui = false;
+
+        private float gamma = 2.1f;
 
         private Query GeoPassQuery;
         private Buffer<float> bloomBuffer;
@@ -76,8 +80,8 @@ namespace GLOOP.HPL
         private float elapsedMilliseconds = 0;
         private readonly DateTime startTime = DateTime.Now;
         private readonly FrameBuffer backBuffer;
-        private int frameBufferWidth, frameBufferHeight;
-
+        private readonly int frameBufferWidth, frameBufferHeight;
+        private readonly ImGuiController ImGuiController;
         private readonly Vector3
             CustomMapCameraPosition = new Vector3(6.3353596f, 1.6000088f, 8.1601305f),
             PhiMapCameraPosition = new Vector3(-17.039896f, 14.750014f, 64.48185f),
@@ -92,7 +96,7 @@ namespace GLOOP.HPL
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(CustomMapCameraPosition, new Vector3(), 90)
+            Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90)
             {
                 Width = width,
                 Height = height
@@ -106,10 +110,12 @@ namespace GLOOP.HPL
 #if VR
             DebugCamera.MAX_LOOK_UP = DebugCamera.MAX_LOOK_DOWN = 0;
 #endif
+            ImGuiController = new ImGuiController(ClientSize.X, ClientSize.Y);
         }
 
         protected override void OnLoad() {
             base.OnLoad();
+
 
             GL.Enable(EnableCap.Blend);
 
@@ -170,17 +176,20 @@ namespace GLOOP.HPL
             FinalCombineShader = new StaticPixelShader(
                 "assets/shaders/FinalCombine/vertex.vert",
                 "assets/shaders/FinalCombine/fragment.frag",
-                name: "Final combine"
+                null,
+                "Final combine"
             );
             FullBrightShader = new StaticPixelShader(
                 "assets/shaders/FullBright/2D/VertexShader.vert",
                 "assets/shaders/FullBright/2D/FragmentShader.frag",
-                name: "Fullbright"
+                null,
+                "Fullbright"
             );
             ExtractBright = new StaticPixelShader(
                 "assets/shaders/Bloom/Extract/vertex.vert",
-               "assets/shaders/Bloom/Extract/fragment.frag",
-                name: "Extract brightness"
+                "assets/shaders/Bloom/Extract/fragment.frag",
+                null,
+                "Extract brightness"
             );
             VerticalBlurShader = new StaticPixelShader(
                "assets/shaders/Blur/VertexShader.vert",
@@ -203,22 +212,26 @@ namespace GLOOP.HPL
             BloomCombineShader = new DynamicPixelShader(
                "assets/shaders/Bloom/Combine/vertex.vert",
                "assets/shaders/Bloom/Combine/fragment.frag",
-               name: "Bloom combine"
+               null,
+               "Bloom combine"
             );
             FXAAShader = new StaticPixelShader(
                 "assets/shaders/FXAA/VertexShader.vert",
                 "assets/shaders/FXAA/FragmentShader.frag",
-                name: "FXAA"
+                null,
+                "FXAA"
             );
             SSAOShader = new StaticPixelShader(
                 "assets/shaders/SSAO/VertexShader.vert",
                 "assets/shaders/SSAO/FragmentShader.frag",
-                name: "SSAO"
+                null,
+                "SSAO"
             );
             ColorCorrectionShader = new DynamicPixelShader(
                 "assets/shaders/ColorCorrection/vertex.vert",
                 "assets/shaders/ColorCorrection/fragment.frag",
-                name: "Color Correction"
+                null,
+                "Color Correction"
             );
             frustumMaterial = new FrustumMaterial(new FrustumShader());
             queryPool = new QueryPool(15);
@@ -241,7 +254,7 @@ namespace GLOOP.HPL
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
             var portals = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm";
             var Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
-            var mapToLoad = custom;
+            var mapToLoad = phi;
 
             /*
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
@@ -336,10 +349,18 @@ namespace GLOOP.HPL
 
             LeftEyeBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
 #else
+            ImGuiController.Update(this, (float)args.Time);
+
+            //ImGui.ShowDemoWindow();
+
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
             ResetGBuffer();
             RenderPass(FinalBuffer);
             FinalBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
+            if (enableImGui)
+            {
+                ImGuiController.Render();
+            }
 #endif
 
             SwapBuffers();
@@ -353,10 +374,19 @@ namespace GLOOP.HPL
             if (!enablePortalCulling)
                 return;
 
+            ImGui.Begin("Portals");
+            foreach (var area in VisibleAreas)
+                ImGui.Text(area.Name);
+            ImGui.Separator();
+            foreach (var portal in PortalQueries)
+                ImGui.Text(portal.Item1.Name);
+
             // Dont need to check every frame
             // Also must only run every odd frame for VR support
-            if ((FrameNumber & 1) != 0)
+            if ((FrameNumber & 1) != 0) {
+                ImGui.End();
                 return;
+            }
 
             VisibleAreas.Clear();
 
@@ -402,6 +432,8 @@ namespace GLOOP.HPL
             // If we're flying around outside any area, just show them all
             if (!VisibleAreas.Any())
                 VisibleAreas.AddRange(scene.VisibilityAreas.Values);
+
+            ImGui.End();
         }
 
         private void ResetGBuffer()
@@ -449,11 +481,30 @@ namespace GLOOP.HPL
                     if (enableBloom)
                         currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
 
-                    using (new DebugGroup("Color Correction"))
+                    using (new DebugGroup("Colour Correction"))
                     {
+                        float key = 2f;
+                        float exposure = 0.5f;
+                        float whiteCut = 3f;
+                        bool open = false;
+
+                        if (ImGui.Begin("Colour Correction", ref open))
+                        {
+                            ImGui.DragFloat("Key", ref key, 0.01f, 0.0f, 2.0f);
+                            ImGui.DragFloat("exposure", ref exposure, 0.01f, 0.5f, 2.0f);
+                            ImGui.DragFloat("gamma", ref gamma, 0.01f, 1.0f, 2.5f);
+                            ImGui.DragFloat("white cut", ref whiteCut, 0.01f, 0.1f, 10.0f);
+                        }
+
                         var newBuffer = PostMan.NextFramebuffer;
                         newBuffer.Use();
-                        DoPostEffect(ColorCorrectionShader, currentBuffer.ColorBuffers[0]);
+                        var shader = ColorCorrectionShader;
+                        shader.Use();
+                        shader.Set("afKey", key);
+                        shader.Set("afExposure", exposure);
+                        shader.Set("afInvGammaCorrection", 1f / gamma);
+                        shader.Set("afWhiteCut", whiteCut);
+                        DoPostEffect(shader, currentBuffer.ColorBuffers[0]);
                         currentBuffer = newBuffer;
                     }
                 }
@@ -585,7 +636,6 @@ namespace GLOOP.HPL
             };
             NoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
         }
-
         private FrameBuffer ResolveGBuffer(Texture albedo)
         {
             var outputBuffer = PostMan.NextFramebuffer;
@@ -627,20 +677,27 @@ namespace GLOOP.HPL
             return outputBuffer;
         }
 
+
         private FrameBuffer DoBloomPass(Texture diffuse)
         {
+            float brightPass = 20;
+            System.Numerics.Vector3 sizeWeight = new System.Numerics.Vector3(0.1f, 0.5f, 0.25f);
+            float weightScalar = 3.5f;
+
+            ImGui.Begin("Bloom");
             using (new DebugGroup("Bloom"))
             {
                 var currentFB = PostMan.NextFramebuffer;
                 using (new DebugGroup("Extract"))
                 {
+                    ImGui.DragFloat("Bright pass", ref brightPass, 0.1f, 1f, 100f);
                     // Extract bright parts
                     currentFB.Use();
                     ExtractBright.Use();
                     diffuse.Use(TextureUnit.Texture0);
                     ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
                     ExtractBright.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
-                    ExtractBright.Set("afBrightPass", 15f);
+                    ExtractBright.Set("afBrightPass", brightPass);
                     Primitives.Quad.Draw();
                 }
 
@@ -678,6 +735,10 @@ namespace GLOOP.HPL
 
                 using (new DebugGroup("Combine"))
                 {
+                    ImGui.Separator();
+                    ImGui.SliderFloat3("Size Weight", ref sizeWeight, 0f, 1f);
+                    ImGui.DragFloat("Weight Scalar", ref weightScalar, 0.01f, 0, 10f);
+
                     // Add all to finished frame
                     GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
                     currentFB = PostMan.NextFramebuffer;
@@ -693,12 +754,14 @@ namespace GLOOP.HPL
                     shader.Set("noiseMap", TextureUnit.Texture3);
                     shader.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
                     shader.Set("timeMilliseconds", elapsedMilliseconds);
+                    shader.Set("avSizeWeight", new Vector3(sizeWeight.X * weightScalar, sizeWeight.Y * weightScalar, sizeWeight.Z * weightScalar));
                     Primitives.Quad.Draw();
 
                     GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
                     GL.Disable(EnableCap.FramebufferSrgb);
                 }
 
+                ImGui.End();
                 return currentFB;
             }
         }
@@ -797,6 +860,13 @@ namespace GLOOP.HPL
             Primitives.Quad.Draw();
         }
 
+        protected override void OnResize(ResizeEventArgs e)
+        {
+            base.OnResize(e);
+
+            ImGuiController.WindowResized(ClientSize.X, ClientSize.Y);
+        }
+
         protected override void OnUpdateFrame(FrameEventArgs args)
         {
             base.OnUpdateFrame(args);
@@ -844,8 +914,29 @@ namespace GLOOP.HPL
 
                 if (input.IsKeyPressed(Keys.B))
                     showBoundingBoxes = !showBoundingBoxes;
+
+                if (input.IsKeyPressed(Keys.F1))
+                {
+                    enableImGui = !enableImGui;
+                    bindMouse = !enableImGui;
+                }
             }
         }
+
+        protected override void OnTextInput(TextInputEventArgs e)
+        {
+            base.OnTextInput(e);
+
+            ImGuiController.PressChar((char)e.Unicode);
+        }
+
+        protected override void OnMouseWheel(MouseWheelEventArgs e)
+        {
+            base.OnMouseWheel(e);
+
+            ImGuiController.MouseScroll(e.Offset);
+        }
+
 
         protected override void OnClosing(CancelEventArgs e) {
             Mouse.Grabbed = false;

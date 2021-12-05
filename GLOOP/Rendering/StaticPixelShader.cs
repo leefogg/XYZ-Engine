@@ -15,6 +15,12 @@ namespace GLOOP.Rendering
             
         }
 
+        public StaticPixelShader(string vertexShaderSource, string fragmentShaderSource, string name = null)
+            : base(load(vertexShaderSource, fragmentShaderSource), name)
+        {
+
+        }
+
         public virtual int AverageSamplesPerFragment => 0;
         public virtual int NumOutputTargets => 1;
     }
