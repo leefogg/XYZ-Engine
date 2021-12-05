@@ -5,7 +5,6 @@ in vec2 texCoord;
 
 uniform sampler2D texture0;
 uniform sampler2D texture1;
-uniform float gamma = 1.4;
 uniform int frame;
 uniform vec2 resolution;
 
@@ -65,5 +64,4 @@ void main()
     dither -= 0.000025;
 
     FragColor = albedo * (lighting - vec3(dither));
-	FragColor = pow(FragColor, vec3(1.0 / gamma));
 }
