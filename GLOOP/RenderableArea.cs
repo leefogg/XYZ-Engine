@@ -558,8 +558,7 @@ namespace GLOOP
             return a.VAO.container.Handle == b.VAO.container.Handle
                 && mat1.DiffuseTexture == mat2.DiffuseTexture
                 && mat1.SpecularTexture == mat2.SpecularTexture
-                && mat1.NormalTexture == mat2.NormalTexture
-                && mat1.IlluminationColor == mat2.IlluminationColor;
+                && mat1.NormalTexture == mat2.NormalTexture;
         }
 
         private static List<RenderBatch> GroupBy(IEnumerable<Model> models, Func<Model, Model, bool> comparer)
