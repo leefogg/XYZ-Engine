@@ -9,7 +9,7 @@ uniform sampler2D normalTex;
 uniform sampler2D specularTex;
 uniform sampler2D illumTex;
 
-layout (location = 0) out vec3 diffuse;
+layout (location = 0) out vec4 diffuse;
 layout (location = 1) out vec3 position;
 layout (location = 2) out vec3 normal;
 layout (location = 3) out vec4 specular;
@@ -69,7 +69,7 @@ void main()
 		discard;
 	diff.rgb *= mat.AlbedoColourTint;
 
-	diffuse = diff.rgb;
+	diffuse = diff;
 
 #if (USE_NORMAL_MAP == 1)
 	vec3 norm = UnpackNormalmapYW(texture(normalTex, textureCoord), mat.NormalStrength);
@@ -94,7 +94,7 @@ void main()
 
 #if (USE_ILLUM_MAP == 1)
 	vec3 illum = texture(illumTex, textureCoord).rgb * mat.IlluminationColor;
-    diffuse += illum;
+    diffuse.rgb += illum;
 #endif
 
 	position = fragPos - getCamPos();
