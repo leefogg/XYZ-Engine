@@ -60,6 +60,23 @@ namespace GLOOP.HPL
         private QueryPool queryPool;
         private List<(VisibilityPortal, Query)> PortalQueries = new List<(VisibilityPortal, Query)>();
 
+        private float OffsetByNormalScalar = 0.05f;
+        private float LightBrightnessMultiplier = 16f;
+        private float SpecularPowerScalar = 8.0f;
+        private float LightingScalar = 8.0f;
+        private float DiffuseScalar = 1.0f;
+        private float SpecularScalar = 1.0f;
+        private bool UseLightDiffuse = true;
+        private bool UseLightSpecular = true;
+        private float LightScatterScalar = 1f;
+        private float BrightPass = 20;
+        private System.Numerics.Vector3 SizeWeight = new System.Numerics.Vector3(0.1f, 0.5f, 0.25f);
+        private float WeightScalar = 3.5f;
+        private float Key = 2f;
+        private float Exposure = 0.5f;
+        private float WhiteCut = 3f;
+        private float Gamma = 2.1f;
+
         private bool debugLights;
         private int debugGBufferTexture = -1;
         private bool debugLightBuffer;
@@ -69,8 +86,6 @@ namespace GLOOP.HPL
         private bool showBoundingBoxes = false;
         private const bool enablePortalCulling = true;
         private bool enableImGui = false;
-
-        private float gamma = 2.1f;
 
         private Query GeoPassQuery;
         private Buffer<float> bloomBuffer;
@@ -115,7 +130,6 @@ namespace GLOOP.HPL
 
         protected override void OnLoad() {
             base.OnLoad();
-
 
             GL.Enable(EnableCap.Blend);
 
@@ -483,27 +497,21 @@ namespace GLOOP.HPL
 
                     using (new DebugGroup("Colour Correction"))
                     {
-                        float key = 2f;
-                        float exposure = 0.5f;
-                        float whiteCut = 3f;
-                        bool open = false;
-
-                        if (ImGui.Begin("Colour Correction", ref open))
-                        {
-                            ImGui.DragFloat("Key", ref key, 0.01f, 0.0f, 2.0f);
-                            ImGui.DragFloat("exposure", ref exposure, 0.01f, 0.5f, 2.0f);
-                            ImGui.DragFloat("gamma", ref gamma, 0.01f, 1.0f, 2.5f);
-                            ImGui.DragFloat("white cut", ref whiteCut, 0.01f, 0.1f, 10.0f);
-                        }
+                        ImGui.Begin("Colour Correction");
+                        ImGui.DragFloat("Key", ref Key, 0.01f, 0.0f, 2.0f);
+                        ImGui.DragFloat("exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
+                        ImGui.DragFloat("gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
+                        ImGui.DragFloat("white cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
+                        ImGui.End();
 
                         var newBuffer = PostMan.NextFramebuffer;
                         newBuffer.Use();
                         var shader = ColorCorrectionShader;
                         shader.Use();
-                        shader.Set("afKey", key);
-                        shader.Set("afExposure", exposure);
-                        shader.Set("afInvGammaCorrection", 1f / gamma);
-                        shader.Set("afWhiteCut", whiteCut);
+                        shader.Set("afKey", Key);
+                        shader.Set("afExposure", Exposure);
+                        shader.Set("afInvGammaCorrection", 1f / Gamma);
+                        shader.Set("afWhiteCut", WhiteCut);
                         DoPostEffect(shader, currentBuffer.ColorBuffers[0]);
                         currentBuffer = newBuffer;
                     }
@@ -680,24 +688,20 @@ namespace GLOOP.HPL
 
         private FrameBuffer DoBloomPass(Texture diffuse)
         {
-            float brightPass = 20;
-            System.Numerics.Vector3 sizeWeight = new System.Numerics.Vector3(0.1f, 0.5f, 0.25f);
-            float weightScalar = 3.5f;
-
             ImGui.Begin("Bloom");
             using (new DebugGroup("Bloom"))
             {
                 var currentFB = PostMan.NextFramebuffer;
                 using (new DebugGroup("Extract"))
                 {
-                    ImGui.DragFloat("Bright pass", ref brightPass, 0.1f, 1f, 100f);
+                    ImGui.DragFloat("Bright pass", ref BrightPass, 0.1f, 1f, 100f);
                     // Extract bright parts
                     currentFB.Use();
                     ExtractBright.Use();
                     diffuse.Use(TextureUnit.Texture0);
                     ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
                     ExtractBright.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
-                    ExtractBright.Set("afBrightPass", brightPass);
+                    ExtractBright.Set("afBrightPass", BrightPass);
                     Primitives.Quad.Draw();
                 }
 
@@ -736,8 +740,8 @@ namespace GLOOP.HPL
                 using (new DebugGroup("Combine"))
                 {
                     ImGui.Separator();
-                    ImGui.SliderFloat3("Size Weight", ref sizeWeight, 0f, 1f);
-                    ImGui.DragFloat("Weight Scalar", ref weightScalar, 0.01f, 0, 10f);
+                    ImGui.SliderFloat3("Size Weight", ref SizeWeight, 0f, 1f);
+                    ImGui.DragFloat("Weight Scalar", ref WeightScalar, 0.01f, 0, 10f);
 
                     // Add all to finished frame
                     GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
@@ -754,7 +758,7 @@ namespace GLOOP.HPL
                     shader.Set("noiseMap", TextureUnit.Texture3);
                     shader.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
                     shader.Set("timeMilliseconds", elapsedMilliseconds);
-                    shader.Set("avSizeWeight", new Vector3(sizeWeight.X * weightScalar, sizeWeight.Y * weightScalar, sizeWeight.Z * weightScalar));
+                    shader.Set("avSizeWeight", new Vector3(SizeWeight.X * WeightScalar, SizeWeight.Y * WeightScalar, SizeWeight.Z * WeightScalar));
                     Primitives.Quad.Draw();
 
                     GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
@@ -811,6 +815,43 @@ namespace GLOOP.HPL
 
         private void RenderLights()
         {
+#if DEBUG
+            if (enableImGui)
+            {
+                ImGui.Begin("Deferred Rendering Material");
+                ImGui.SliderFloat(nameof(DiffuseScalar), ref DiffuseScalar, 0.0f, 2.0f);
+                ImGui.SliderFloat(nameof(LightBrightnessMultiplier), ref LightBrightnessMultiplier, 0.0f, 128.0f);
+                ImGui.Checkbox(nameof(UseLightDiffuse), ref UseLightDiffuse);
+                ImGui.Separator();
+                ImGui.SliderFloat(nameof(SpecularScalar), ref SpecularScalar, 0.0f, 2.0f);
+                ImGui.SliderFloat(nameof(SpecularPowerScalar), ref SpecularPowerScalar, 0.0f, 32.0f);
+                ImGui.SliderFloat(nameof(OffsetByNormalScalar), ref OffsetByNormalScalar, 0.0f, 0.5f);
+                ImGui.Checkbox(nameof(UseLightSpecular), ref UseLightSpecular);
+                ImGui.Separator();
+                ImGui.SliderFloat(nameof(LightScatterScalar), ref LightScatterScalar, 0.0f, 2.0f);
+                ImGui.NewLine();
+                ImGui.NewLine();
+                ImGui.SliderFloat(nameof(LightingScalar), ref LightingScalar, 1.0f, 16.0f);
+                ImGui.End();
+
+                var shaders = new[] { SpotLightShader, PointLightShader };
+                foreach (var shader in shaders)
+                {
+                    shader.Use();
+                    shader.Set("offsetByNormalScalar", OffsetByNormalScalar);
+                    shader.Set("lightBrightnessMultiplier", LightBrightnessMultiplier);
+                    shader.Set("specularPowerScalar", SpecularPowerScalar);
+                    shader.Set("lightingScalar", LightingScalar);
+                    shader.Set("diffuseScalar", DiffuseScalar);
+                    shader.Set("specularScalar", SpecularScalar);
+                    shader.Set("useLightSpecular", UseLightSpecular);
+                    shader.Set("useLightDiffuse", UseLightDiffuse);
+                    shader.Set("lightScatterScalar", LightScatterScalar);
+                }
+                ImGui.End();
+            }
+#endif
+
             var gbuffers = new[] {
                 GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
                 GBuffers.ColorBuffers[(int)GBufferTexture.Position],

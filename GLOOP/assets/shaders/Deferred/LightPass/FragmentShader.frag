@@ -45,9 +45,20 @@ uniform sampler2D positionTex;
 uniform sampler2D normalTex;
 uniform sampler2D specularTex;
 
+uniform float offsetByNormalScalar = 0.05;
+uniform float lightBrightnessMultiplier = 16.0;
+uniform float specularPowerScalar = 8.0;
+uniform float lightingScalar = 8.0;
+uniform float diffuseScalar = 1.0;
+uniform float specularScalar = 1.0;
+uniform bool useLightSpecular = true;
+uniform bool useLightDiffuse = true;
+uniform float lightScatterScalar = 1.0;
+
 uniform vec3 camPos;
 
-vec3 power(vec3 source, float power){
+vec3 power(vec3 source, float power)
+{
 	return vec3(
 		pow(source.r, power),
 		pow(source.g, power),
@@ -63,9 +74,6 @@ void main()
 	if (fragPos == vec3(0.0))
 		discard;
 	
-	vec3 vPos = fragPos - camPos;
-	vec3 vEye = -normalize(vPos);
-
 	vec3 normal = texture(normalTex, ndc).rgb * 2 - 1;
 	
 	// Diffuse
@@ -76,7 +84,16 @@ void main()
 	float localDist =  1.0 - min(fDistance * (1.0 / light.radius * 2.1), 1.0); // Converts to [1,0] inside sphere
 	vLightDir = normalize(vLightDir);
 
-	fragPos += normal * (1 - dot(normal, vLightDir)) * 0.1;
+	fragPos += normal * (1 - dot(normal, vLightDir)) * offsetByNormalScalar;
+	// fragPos was modified
+	vLightDir = light.position.xyz - fragPos;
+	fDistance = length(vLightDir);
+	localDist =  1.0 - min(fDistance * (1.0 / light.radius * 2.1), 1.0); // Converts to [1,0] inside sphere
+	vLightDir = normalize(vLightDir);
+
+	vec3 vPos = fragPos - camPos;
+	vec3 vEye = -normalize(vPos);
+
 	float fAttenuation = localDist;
 	
 	#if (LIGHTTYPE == SPOT)
@@ -90,7 +107,7 @@ void main()
 	if (fAttenuation <= 0.0)
 		discard;
 		
-	vec3 color = light.color * light.brightness * 16.0;
+	vec3 color = light.color * light.brightness * lightBrightnessMultiplier;
 	
 	///////////
 	// A cheaper version of Dice Translucency
@@ -102,7 +119,7 @@ void main()
 	
 	////////
 	// Apply energy conservation and ambient scattering
-	float fLightScatter = min(2.0, fLightTransport * 16.0) + fLightScatterAmount;
+	float fLightScatter = (min(2.0, fLightTransport * 16.0) + fLightScatterAmount) * albedo.a;
 	float fLightAmount = max(fLDotN, 0.0);
 
 	// Specular
@@ -111,20 +128,26 @@ void main()
 	float fSpecPower = specular.a;
 		
 	vec3 vHalfVec = normalize(vLightDir + vEye);
-	fSpecPower = exp2(fSpecPower * 8.0) + 1.0; // Range 0 - 1024
+	fSpecPower = exp2(fSpecPower * specularPowerScalar) + 1.0; // Range 0 - 1024
 	
 	// Calculate the enegry conservation value, this will make sure that the intergral of the specular is 1.0
-	float fEngeryConservation = (fSpecPower + 8.0) * (1.0 / (8.0 * PI));
+	float fEngeryConservation = (fSpecPower + specularPowerScalar) * (1.0 / (8.0 * PI));
 	vec3 vSpecular = vSpecIntensity * min(fEngeryConservation * pow(max(dot(vHalfVec, normal), 0.0), fSpecPower), 1.0);
 	vSpecular *= fSpecPower;
 	
+	if (useLightSpecular)
+		vSpecular *= light.specularScalar;
+	vSpecular *= specularScalar;
+
 	vec3 lighting = diffuse * color;
-	lighting *= light.diffuseScalar;
-	//vSpecular *= light.specularScalar;
+	lighting *= fLightAmount + fLightScatter * fLightScatterAmount * lightScatterScalar;
+	if (useLightDiffuse)
+		lighting *= light.diffuseScalar;
+	lighting *= diffuseScalar;
 	lighting += vSpecular;
 	lighting *= fAttenuation;
 
 	// Multiply with 8.0 to increase precision
-	lighting *= 8.0;
+	lighting *= lightingScalar;
 	fragColor = lighting;
 }

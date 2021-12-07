@@ -125,6 +125,13 @@ namespace GLOOP.Rendering
             else
                 Console.Error.WriteLine($"Cannot find uniform {name}");
         }
+        public void Set(string name, bool data)
+        {
+            if (uniformLocations.TryGetValue(name, out var location))
+                GL.Uniform1(location, data ? 1 : 0);
+            else
+                Console.Error.WriteLine($"Cannot find uniform {name}");
+        }
         public void Set(string name, Matrix4 data)
         {
             if (uniformLocations.TryGetValue(name, out var location))
