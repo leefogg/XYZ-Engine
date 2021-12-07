@@ -11,5 +11,7 @@ namespace GLOOP.HPL.Loading
         public string Name { get; set; }
         [XmlAttribute("Value")]
         public string Value { get; set; }
+
+        public override string ToString() => $"{Name} = {Value}";
     }
 }

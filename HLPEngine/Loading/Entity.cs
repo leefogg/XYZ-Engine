@@ -2,6 +2,7 @@
 using GLOOP.Extensions;
 using GLOOP.Rendering.Materials;
 using System.IO;
+using System.Linq;
 using System.Xml.Serialization;
 using Quaternion = OpenTK.Mathematics.Quaternion;
 
@@ -51,6 +52,10 @@ namespace GLOOP.HPL.Loading
             var SOMAHome = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
             var fullPath = Path.Combine(SOMAHome, Model.Mesh.FileName);
             var entity = new HPLEntity(fullPath, context, shader);
+
+            if (bool.TryParse(Variables.First(v => v.Name == "ShowMesh")?.Value, out var visible) && !visible)
+                throw new System.Exception("Entity not visible (hack)");
+
             if (Model.Mesh.SubMeshes != null)
             {
                 if (Model.Mesh.SubMeshes.Length == entity.Models.Count)
