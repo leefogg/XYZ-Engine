@@ -17,15 +17,15 @@ namespace GLOOP
         private const int maxLights = 200;
 
         [StructLayout(LayoutKind.Explicit, Size = 48)]
-        private struct GPUPointLight
+        private readonly struct GPUPointLight
         {
-            [FieldOffset(0)] Vector3 position;
-            [FieldOffset(16)] Vector3 color;
-            [FieldOffset(28)] float brightness;
-            [FieldOffset(32)] float radius;
-            [FieldOffset(36)] float falloffPow;
-            [FieldOffset(44)] float diffuseScalar;
-            [FieldOffset(44)] float specularScalar;
+            [FieldOffset(0)] readonly Vector3 position;
+            [FieldOffset(16)] readonly Vector3 color;
+            [FieldOffset(28)] readonly float brightness;
+            [FieldOffset(32)] readonly float radius;
+            [FieldOffset(36)] readonly float falloffPow;
+            [FieldOffset(44)] readonly float diffuseScalar;
+            [FieldOffset(44)] readonly float specularScalar;
 
             public GPUPointLight(
                 Vector3 position,
@@ -48,22 +48,22 @@ namespace GLOOP
         };
 
         [StructLayout(LayoutKind.Explicit, Size = 224)]
-        private struct GPUSpotLight
+        private readonly struct GPUSpotLight
         {
-            [FieldOffset(0)] Matrix4 modelMatrix;
-            [FieldOffset(64)] Vector3 position;
-            [FieldOffset(80)] Vector3 color;
-            [FieldOffset(96)] Vector3 direction;
-            [FieldOffset(112)] Vector3 scale;
-            [FieldOffset(124)] float aspectRatio;
-            [FieldOffset(128)] float brightness;
-            [FieldOffset(132)] float radius;
-            [FieldOffset(136)] float falloffPow;
-            [FieldOffset(140)] float angularFalloffPow;
-            [FieldOffset(144)] float FOV;
-            [FieldOffset(148)] float diffuseScalar;
-            [FieldOffset(152)] float specularScalar;
-            [FieldOffset(160)] Matrix4 ViewProjection;
+            [FieldOffset(0)] readonly Matrix4 modelMatrix;
+            [FieldOffset(64)] readonly Vector3 position;
+            [FieldOffset(80)] readonly Vector3 color;
+            [FieldOffset(96)] readonly Vector3 direction;
+            [FieldOffset(112)] readonly Vector3 scale;
+            [FieldOffset(124)] readonly float aspectRatio;
+            [FieldOffset(128)] readonly float brightness;
+            [FieldOffset(132)] readonly float radius;
+            [FieldOffset(136)] readonly float falloffPow;
+            [FieldOffset(140)] readonly float angularFalloffPow;
+            [FieldOffset(144)] readonly float FOV;
+            [FieldOffset(148)] readonly float diffuseScalar;
+            [FieldOffset(152)] readonly float specularScalar;
+            [FieldOffset(160)] readonly Matrix4 ViewProjection;
 
             public GPUSpotLight(
                 Matrix4 modelMatrix,
@@ -100,20 +100,36 @@ namespace GLOOP
         }
 
         [StructLayout(LayoutKind.Explicit, Size = 64)]
-        public struct GPUDeferredGeoMaterial
+        public readonly struct GPUDeferredGeoMaterial
         {
-            [FieldOffset(00)] public Vector3 IlluminationColor;
-            [FieldOffset(16)] public Vector3 AlbedoColourTint;
-            [FieldOffset(32)] public Vector2 TextureRepeat;
-            [FieldOffset(40)] public Vector2 TextureOffset;
-            [FieldOffset(48)] public float NormalStrength;
-            [FieldOffset(52)] public bool IsWorldSpaceUVs;
+            [FieldOffset(00)] public readonly Vector3 IlluminationColor;
+            [FieldOffset(16)] public readonly Vector3 AlbedoColourTint;
+            [FieldOffset(32)] public readonly Vector2 TextureRepeat;
+            [FieldOffset(40)] public readonly Vector2 TextureOffset;
+            [FieldOffset(48)] public readonly float NormalStrength;
+            [FieldOffset(52)] public readonly bool IsWorldSpaceUVs;
+
+            public GPUDeferredGeoMaterial(Vector3 illuminationColor, Vector3 albedoColourTint, Vector2 textureRepeat, Vector2 textureOffset, float normalStrength, bool isWorldSpaceUVs)
+            {
+                IlluminationColor = illuminationColor;
+                AlbedoColourTint = albedoColourTint;
+                TextureRepeat = textureRepeat;
+                TextureOffset = textureOffset;
+                NormalStrength = normalStrength;
+                IsWorldSpaceUVs = isWorldSpaceUVs;
+            }
         }
 
-        private struct QueryPair
+        private readonly struct QueryPair
         {
-            public Query Query;
-            public StaticPixelShader shader;
+            public readonly Query Query;
+            public readonly StaticPixelShader shader;
+
+            public QueryPair(Query query, StaticPixelShader shader)
+            {
+                Query = query;
+                this.shader = shader;
+            }
         }
 
         public string Name { get; private set; }
@@ -336,15 +352,7 @@ namespace GLOOP
                     modelMatricies.Add(model.Transform.Matrix);
 
                     var mat = (DeferredRenderingGeoMaterial)model.Material;
-                    materials.Add(new GPUDeferredGeoMaterial()
-                    {
-                        AlbedoColourTint = mat.AlbedoColourTint,
-                        IlluminationColor = mat.IlluminationColor,
-                        IsWorldSpaceUVs = mat.HasWorldpaceUVs,
-                        TextureOffset = mat.TextureOffset,
-                        TextureRepeat = mat.TextureRepeat,
-                        NormalStrength = 1,
-                    });
+                    materials.Add(new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs));
 
                     var command = model.VAO.description;
                     drawCommands.Add(new DrawElementsIndirectData(
@@ -487,11 +495,7 @@ namespace GLOOP
                 {
                     runningQuery?.EndScope();
                     runningQuery = QueryPool.BeginScope(QueryTarget.SamplesPassed);
-                    GeoStageQueries.Add(new QueryPair()
-                    {
-                        Query = runningQuery,
-                        shader = (StaticPixelShader)Shader.Current
-                    });
+                    GeoStageQueries.Add(new QueryPair(runningQuery, (StaticPixelShader)Shader.Current));
                 }
 
                 matriciesBuffer.BindRange(modelMatrixPtr, 1, batchSize * matrixSize);
