@@ -14,6 +14,9 @@ namespace GLOOP.HPL
     {
         public static void Main(string[] _)
         {
+            const int screenSizeX = 2560;
+            const int screenSizeY = 1440;
+
             uint width = 1920;
             uint height = 1080;
 #if VR
@@ -36,8 +39,8 @@ namespace GLOOP.HPL
                 Title = "prototype engine"
             };
             nativeWindowSettings.Location = new Vector2i(
-                3840 / 2 - nativeWindowSettings.Size.X / 2,
-                2160 / 2 - nativeWindowSettings.Size.Y / 2
+                screenSizeX / 2 - nativeWindowSettings.Size.X / 2,
+                screenSizeY / 2 - nativeWindowSettings.Size.Y / 2
             );
             using var window = new Game((int)width, (int)height, gameWindowSettings, nativeWindowSettings);
             window.VSync =

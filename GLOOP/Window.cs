@@ -22,8 +22,6 @@ namespace GLOOP
         private static readonly DateTime startTime = DateTime.Now;
         public static float MillisecondsElapsed => (DateTime.Now - startTime).Milliseconds;
 
-        private int framesThisSecond;
-        private DateTime lastSecond;
         public bool bindMouse = true;
 
 #if DEBUG
@@ -63,8 +61,6 @@ namespace GLOOP
 #endif
 
             setupCameraUniformBuffer();
-
-            lastSecond = DateTime.Now;
 
             base.OnLoad();
         }
@@ -135,17 +131,8 @@ namespace GLOOP
         public void NewFrame()
         {
             FrameNumber++;
-            var now = DateTime.Now;
-            if (now > lastSecond + TimeSpan.FromSeconds(1))
-            {
-                FPS = framesThisSecond;
-                lastSecond = now;
-                framesThisSecond = 0;
-            }
-            else
-            {
-                framesThisSecond++;
-            }
+
+            TaskMaster.Process();
         }
 
         public virtual void Render()

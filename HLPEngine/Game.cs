@@ -87,7 +87,6 @@ namespace GLOOP.HPL
         private const bool enablePortalCulling = true;
         private bool enableImGui = false;
 
-        private Query GeoPassQuery;
         private Buffer<float> bloomBuffer;
         private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
 
@@ -97,6 +96,8 @@ namespace GLOOP.HPL
         private readonly FrameBuffer backBuffer;
         private readonly int frameBufferWidth, frameBufferHeight;
         private readonly ImGuiController ImGuiController;
+        private readonly Ring<float> CPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
+        private readonly Ring<float> GPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         private readonly Vector3
             CustomMapCameraPosition = new Vector3(6.3353596f, 1.6000088f, 8.1601305f),
             PhiMapCameraPosition = new Vector3(-17.039896f, 14.750014f, 64.48185f),
@@ -111,7 +112,7 @@ namespace GLOOP.HPL
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90)
+            Camera = new DebugCamera(CustomMapCameraPosition, new Vector3(), 90)
             {
                 Width = width,
                 Height = height
@@ -268,7 +269,7 @@ namespace GLOOP.HPL
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
             var portals = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm";
             var Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
-            var mapToLoad = phi;
+            var mapToLoad = custom;
 
             /*
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
@@ -333,52 +334,82 @@ namespace GLOOP.HPL
 
         protected override void OnRenderFrame(FrameEventArgs args)
         {
-            ReadbackQueries();
+            using (var query = queryPool.BeginScope(QueryTarget.TimeElapsed))
+            {
+                TaskMaster.AddTask(query.IsResultAvailable, () => { GPUFrameTimings.Set(1000f / (query.GetResult() / 1000000f)); GPUFrameTimings.MoveNext(); });
+
+                var frameStart = DateTime.Now;
+                ReadbackQueries();
 
 #if VR
-            if (FrameNumber == 1)
-                VRSystem.SetOriginHeadTransform();
+                if (FrameNumber == 1)
+                    VRSystem.SetOriginHeadTransform();
 
-            VRSystem.UpdateEyes();
-            VRSystem.UpdatePoses();
+                VRSystem.UpdateEyes();
+                VRSystem.UpdatePoses();
 
-            updateCameraUBO(
-                VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Left), 
-                Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Left)
-            );
-            ResetGBuffer();
-            VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Left, FullBrightShader);
-            RenderPass(LeftEyeBuffer);
+                updateCameraUBO(
+                    VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Left), 
+                    Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Left)
+                );
+                ResetGBuffer();
+                VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Left, FullBrightShader);
+                RenderPass(LeftEyeBuffer);
 
-            updateCameraUBO(
-                VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Right),
-                Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Right)
-            );
-            ResetGBuffer();
-            VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Right, FullBrightShader);
-            RenderPass(RightEyeBuffer);
+                updateCameraUBO(
+                    VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Right),
+                    Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Right)
+                );
+                ResetGBuffer();
+                VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Right, FullBrightShader);
+                RenderPass(RightEyeBuffer);
 
-            VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
-            VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
+                VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
+                VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
 
-            LeftEyeBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
+                LeftEyeBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
 #else
-            ImGuiController.Update(this, (float)args.Time);
+                ImGuiController.Update(this, (float)args.Time);
 
-            //ImGui.ShowDemoWindow();
+                updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+                ResetGBuffer();
+                RenderPass(FinalBuffer);
 
-            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
-            ResetGBuffer();
-            RenderPass(FinalBuffer);
-            FinalBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
-            if (enableImGui)
-            {
-                ImGuiController.Render();
-            }
+                FinalBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
 #endif
+                var frameElapsedMs = (float)(DateTime.Now - frameStart).TotalMilliseconds;
+                CPUFrameTimings.SetAndMove(frameElapsedMs);
 
-            SwapBuffers();
+                if (ImGui.Begin("Metrics"))
+                {
+                    const int TargetFPS = 144;
+                    var values = GPUFrameTimings.ToArray();
+                    float average = values.Average();
+                    var red = (float)MathFunctions.Map(average, 144, 120, 0, 1);
+                    ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(red, 1 - red, 0, 1));
+                    ImGui.PlotHistogram("GPU", ref values[0], values.Length, 0, null, 60, 144, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
+                    ImGui.Text($"Average: {1000f / average:0.00}ms ({average:0.000} fps)");
+                    ImGui.PopStyleColor();
+
+                    values = CPUFrameTimings.ToArray();
+                    average = values.Average();
+                    ImGui.PlotHistogram("CPU", ref values[0], values.Length, 0, null, 0, 1000f / TargetFPS, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
+                    ImGui.Text($"Average: {average:0.000}ms ({1000f / average:00.00} fps)");
+                    ImGui.SameLine();
+
+                }
+                ImGui.End();
+
+                if (enableImGui)
+                {
+                    ImGuiController.Render();
+                }
+
+                SwapBuffers();
+            }
+
             NewFrame();
+
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
             Title = FPS.ToString() + "FPS";
         }
@@ -394,13 +425,12 @@ namespace GLOOP.HPL
             ImGui.Separator();
             foreach (var portal in PortalQueries)
                 ImGui.Text(portal.Item1.Name);
+            ImGui.End();
 
             // Dont need to check every frame
             // Also must only run every odd frame for VR support
-            if ((FrameNumber & 1) != 0) {
-                ImGui.End();
+            if ((FrameNumber & 1) != 0)
                 return;
-            }
 
             VisibleAreas.Clear();
 
@@ -447,7 +477,6 @@ namespace GLOOP.HPL
             if (!VisibleAreas.Any())
                 VisibleAreas.AddRange(scene.VisibilityAreas.Values);
 
-            ImGui.End();
         }
 
         private void ResetGBuffer()
@@ -460,9 +489,9 @@ namespace GLOOP.HPL
 
         private void RenderPass(FrameBuffer finalBuffer)
         {
-            var currentBuffer = PostMan.NextFramebuffer;
-
             GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
+
+            var currentBuffer = PostMan.NextFramebuffer;
             GBufferPass(currentBuffer);
 
             if (debugGBufferTexture > -1)
@@ -544,37 +573,29 @@ namespace GLOOP.HPL
             Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
             using var debugGroup = new DebugGroup(nameof(GBufferPass));
             GL.Enable(EnableCap.FramebufferSrgb);
-            using (GeoPassQuery = queryPool.BeginScope(QueryTarget.TimeElapsed))
+            using (new DebugGroup("Occluders"))
             {
-                using (new DebugGroup("Occluders"))
-                {
-                    foreach (var area in VisibleAreas)
-                        area.RenderOccluderGeometry();
-                    scene.RenderOccluderGeometry();
-                }
-
-                using (new DebugGroup("Non Occluders"))
-                {
-                    foreach (var area in VisibleAreas)
-                        area.RenderNonOccluderGeometry();
-                    scene.RenderNonOccluderGeometry();
-                }
-
-                DetermineVisibleAreas();
-
-                scene.RenderTerrain();
+                foreach (var area in VisibleAreas)
+                    area.RenderOccluderGeometry();
+                scene.RenderOccluderGeometry();
             }
+
+            using (new DebugGroup("Non Occluders"))
+            {
+                foreach (var area in VisibleAreas)
+                    area.RenderNonOccluderGeometry();
+                scene.RenderNonOccluderGeometry();
+            }
+
+            DetermineVisibleAreas();
+
+            scene.RenderTerrain();
             GL.Disable(EnableCap.FramebufferSrgb);
         }
 
         private void ReadbackQueries()
         {
             using var debugGroup = new DebugGroup("Readback queries");
-            if (GeoPassQuery != null)
-            {
-                var time = GeoPassQuery.GetResult();
-                //Console.WriteLine(time / 1000000f + "ms");
-            }
 
             scene.BeforeFrame();
             foreach (var area in scene.VisibilityAreas.Values)

@@ -52,7 +52,7 @@ namespace GLOOP.Rendering.Materials
             NormalTexture != Texture.Gray, 
             SpecularTexture != Texture.Black, 
             IlluminationTexture != Texture.Black
-        );
+        ); // TODO: Make this lazy to cache
 
         public DeferredRenderingGeoMaterial()
         {

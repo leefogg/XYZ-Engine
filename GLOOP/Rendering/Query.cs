@@ -52,5 +52,7 @@ namespace GLOOP.Rendering
         }
 
         public void Dispose() => EndScope();
+
+        public override string ToString() => $"ID: {Handle}, Running:{Running}";
     }
 }
