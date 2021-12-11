@@ -339,7 +339,6 @@ namespace GLOOP.HPL
                 TaskMaster.AddTask(query.IsResultAvailable, () => { GPUFrameTimings.Set(1000f / (query.GetResult() / 1000000f)); GPUFrameTimings.MoveNext(); });
 
                 var frameStart = DateTime.Now;
-                ReadbackQueries();
 
 #if VR
                 if (FrameNumber == 1)
@@ -404,9 +403,9 @@ namespace GLOOP.HPL
                 {
                     ImGuiController.Render();
                 }
-
-                SwapBuffers();
             }
+
+            SwapBuffers();
 
             NewFrame();
 
@@ -591,15 +590,6 @@ namespace GLOOP.HPL
 
             scene.RenderTerrain();
             GL.Disable(EnableCap.FramebufferSrgb);
-        }
-
-        private void ReadbackQueries()
-        {
-            using var debugGroup = new DebugGroup("Readback queries");
-
-            scene.BeforeFrame();
-            foreach (var area in scene.VisibilityAreas.Values)
-                area.BeforeFrame();
         }
 
         private void setupBuffers()

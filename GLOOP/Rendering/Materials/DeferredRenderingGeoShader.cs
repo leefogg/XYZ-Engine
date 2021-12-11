@@ -68,8 +68,5 @@ namespace GLOOP.Rendering.Materials
                 if (value == "1")
                     numSamples++;
         }
-
-        public override int AverageSamplesPerFragment => numSamples;
-        public override int NumOutputTargets => 3;
     }
 }

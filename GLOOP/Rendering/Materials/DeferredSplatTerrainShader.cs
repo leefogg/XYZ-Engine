@@ -56,8 +56,5 @@ namespace GLOOP.Rendering.Materials
             blendLayer0TileAmount = new CachedUniform4f(this, "BlendLayer0TileAmount");
             specularPower = new CachedUniform1f(this, "SpecularPower");
         }
-
-        public override int AverageSamplesPerFragment => 1;
-        public override int NumOutputTargets => 3;
     }
 }

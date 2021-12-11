@@ -138,8 +138,6 @@ namespace GLOOP
         public List<PointLight> PointLights = new List<PointLight>();
         public List<SpotLight> SpotLights = new List<SpotLight>();
         public List<RenderBatch> OccluderBatches, NonOccluderBatches;
-        private QueryPool QueryPool = new QueryPool(10);
-        private List<QueryPair> GeoStageQueries = new List<QueryPair>();
 
         private Buffer<Matrix4> OccluderMatriciesBuffer, NonOccluderMatriciesBuffer;
         private Buffer<DrawElementsIndirectData> OccluderDrawIndirectBuffer, NonOccluderDrawIndirectBuffer;
@@ -482,8 +480,6 @@ namespace GLOOP
             var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
             var matrixSize = Marshal.SizeOf<Matrix4>();
             var materialSize = Marshal.SizeOf<GPUDeferredGeoMaterial>();
-
-            Query runningQuery = null;
             int i = 0;
             foreach (var batch in batches)
             {
@@ -491,12 +487,6 @@ namespace GLOOP
 
                 var oldShader = Shader.Current;
                 batch.BindState();
-                if (Shader.Current != oldShader)
-                {
-                    runningQuery?.EndScope();
-                    runningQuery = QueryPool.BeginScope(QueryTarget.SamplesPassed);
-                    GeoStageQueries.Add(new QueryPair(runningQuery, (StaticPixelShader)Shader.Current));
-                }
 
                 matriciesBuffer.BindRange(modelMatrixPtr, 1, batchSize * matrixSize);
                 materialsBuffer.BindRange(materialPtr, 2, batchSize * materialSize);
@@ -513,29 +503,6 @@ namespace GLOOP
                 materialPtr += batchSize * materialSize;
                 i++;
             }
-
-            runningQuery?.EndScope();
-        }
-
-        public void BeforeFrame()
-        {
-            ReadbackQueries();
-        }
-
-        private void ReadbackQueries()
-        {
-            // TODO: Move this to end of frame
-            long totalNumTextureSamples = 0;
-            foreach (var pair in GeoStageQueries)
-            {
-                var fragments = pair.Query.GetResult();
-                var avgTexReads = pair.shader.AverageSamplesPerFragment;
-                var texWrites = pair.shader.NumOutputTargets;
-                totalNumTextureSamples += fragments * avgTexReads * texWrites;
-            }
-            //Console.WriteLine(totalNumTextureSamples + " Texture samples");
-
-            GeoStageQueries.Clear();
         }
 
         private static void GetLightVars(SpotLight light, out float ar, out Vector3 scale)
