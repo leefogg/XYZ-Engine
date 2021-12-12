@@ -33,8 +33,8 @@ namespace GLOOP.HPL.Loading
 
         protected LightType ToCommonType()
         {
-            if (string.IsNullOrEmpty(GoboTexture))
-                return LightType.DiffuseAndSpecular;
+            //if (string.IsNullOrEmpty(GoboTexture))
+            //    return LightType.DiffuseAndSpecular;
 
             return Type switch
             {

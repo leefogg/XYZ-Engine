@@ -40,8 +40,6 @@ namespace GLOOP.HPL
 #if VR
         private FrameBuffer LeftEyeBuffer;
         private FrameBuffer RightEyeBuffer;
-#else
-        private FrameBuffer FinalBuffer;
 #endif
         private Shader PointLightShader;
         private Shader SpotLightShader;
@@ -60,29 +58,41 @@ namespace GLOOP.HPL
         private QueryPool queryPool;
         private List<(VisibilityPortal, Query)> PortalQueries = new List<(VisibilityPortal, Query)>();
 
+        // ImGUI variables
+        // Lighting
         private float OffsetByNormalScalar = 0.05f;
-        private float LightBrightnessMultiplier = 16f;
-        private float SpecularPowerScalar = 8.0f;
+        private float LightBrightnessMultiplier = 1f;
+        private float SpecularPowerScalar = 8f;
         private float LightingScalar = 8.0f;
         private float DiffuseScalar = 1.0f;
         private float SpecularScalar = 1.0f;
         private bool UseLightDiffuse = true;
         private bool UseLightSpecular = true;
-        private float LightScatterScalar = 1f;
-        private float BrightPass = 20;
+        private float LightScatterScalar = 0.1f;
+        // Bloom
+        private float BrightPass = 10;
         private System.Numerics.Vector3 SizeWeight = new System.Numerics.Vector3(0.1f, 0.5f, 0.25f);
         private float WeightScalar = 3.5f;
-        private float Key = 2f;
-        private float Exposure = 0.5f;
-        private float WhiteCut = 3f;
-        private float Gamma = 2.1f;
+        // Post
+        private float Key = 1f;
+        private float Exposure = 1f;
+        private float Gamma = 2f;
+        private float WhiteCut = 1f;
+        // SSAO
+        private int MinSamples = 8;
+        private int MaxSamples = 16;
+        private float MaxSamplesDistance = 0.5f;
+        private float Intensity = 8f;
+        private float Bias = 0.5f;
+        private float SampleRadius = 0.005f;
+        private float MaxDistance = 0.1f;
 
         private bool debugLights;
         private int debugGBufferTexture = -1;
         private bool debugLightBuffer;
-        private bool useFXAA = false;
-        private bool useSSAO = false;
-        private bool enableBloom = false;
+        private bool enableFXAA = true;
+        private bool enableSSAO = true;
+        private bool enableBloom = true;
         private bool showBoundingBoxes = false;
         private const bool enablePortalCulling = false;
         private bool enableImGui = true;
@@ -108,7 +118,8 @@ namespace GLOOP.HPL
             TauMapCameraPosition = new Vector3(26.263678f, 1.7000114f, 36.090767f),
             ThetaExitCameraPosition = new Vector3(11.340768f, 1.6000444f, 47.520298f),
             WauMapCameraPosition = new Vector3(-26.12f, 93.691f, 167.313f),
-            AwakeMapCameraPosition = new Vector3(9.325157f, -0.44998702f, 50.61429f);
+            AwakeMapCameraPosition = new Vector3(9.325157f, -0.44998702f, 50.61429f),
+            BedroomMapCameraPosition = new Vector3(-11.600799f, 1.4500086f, 11.624353f);
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
@@ -125,6 +136,8 @@ namespace GLOOP.HPL
 
 #if VR
             DebugCamera.MAX_LOOK_UP = DebugCamera.MAX_LOOK_DOWN = 0;
+            useFXAA = false;
+            enableBloom = false;
 #endif
             ImGuiController = new ImGuiController(ClientSize.X, ClientSize.Y);
         }
@@ -161,8 +174,6 @@ namespace GLOOP.HPL
 #if VR
             LeftEyeBuffer = new FrameBuffer(width, height, false, PixelInternalFormat.Rgba, 1, "LeftEyeBuffer");
             RightEyeBuffer = new FrameBuffer(width, height, false, PixelInternalFormat.Rgba, 1, "RightEyeBuffer");
-#else
-            FinalBuffer = new FrameBuffer(width, height, false, PixelInternalFormat.Rgb, 1, "FinalBuffer");
 #endif
             PostMan.Init(width, height, PixelInternalFormat.Rgb16f);
 
@@ -341,6 +352,14 @@ namespace GLOOP.HPL
                 var frameStart = DateTime.Now;
 
                 ImGuiController.Update(this, (float)args.Time);
+                if (ImGui.Begin("Options"))
+                {
+                    ImGui.Checkbox("FXAA", ref enableFXAA);
+                    ImGui.Checkbox("SSAO", ref enableSSAO);
+                    ImGui.Checkbox("Bloom", ref enableBloom);
+                }
+                ImGui.End();
+
 #if VR
                 if (FrameNumber == 1)
                     VRSystem.SetOriginHeadTransform();
@@ -373,9 +392,7 @@ namespace GLOOP.HPL
 #else
                 updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
                 ResetGBuffer();
-                RenderPass(FinalBuffer);
-
-                FinalBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
+                RenderPass(backBuffer);
 #endif
                 backBuffer.Use();
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
@@ -393,7 +410,6 @@ namespace GLOOP.HPL
             NewFrame();
 
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
-            Title = FPS.ToString() + "FPS";
         }
 
         private void DrawMetrics()
@@ -510,7 +526,7 @@ namespace GLOOP.HPL
             else
             {
                 Texture albedo;
-                if (!debugLightBuffer && useFXAA)
+                if (!debugLightBuffer && enableFXAA)
                 {
                     using (new DebugGroup("FXAA"))
                     {
@@ -537,9 +553,9 @@ namespace GLOOP.HPL
                     {
                         ImGui.Begin("Colour Correction");
                         ImGui.DragFloat("Key", ref Key, 0.01f, 0.0f, 2.0f);
-                        ImGui.DragFloat("exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
-                        ImGui.DragFloat("gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
-                        ImGui.DragFloat("white cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
+                        ImGui.DragFloat("Exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
+                        ImGui.DragFloat("Gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
+                        ImGui.DragFloat("White cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
                         ImGui.End();
 
                         var newBuffer = PostMan.NextFramebuffer;
@@ -826,12 +842,46 @@ namespace GLOOP.HPL
                 GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
                 GL.BlendEquation(BlendEquationMode.FuncReverseSubtract);
 
-                if (useSSAO)
-                    SSAOPostEffect(); // TODO: Fix
+                if (enableSSAO)
+                    SSAOPostEffect();
 
                 GL.BlendEquation(BlendEquationMode.FuncAdd);
                 GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
             }
+        }
+
+        private void SSAOPostEffect()
+        {
+            using var debugGroup = new DebugGroup("SSAO");
+            var shader = SSAOShader;
+            shader.Use();
+            GBuffers.ColorBuffers[(int)GBufferTexture.Position].Use(TextureUnit.Texture0);
+            GBuffers.ColorBuffers[(int)GBufferTexture.Normal].Use(TextureUnit.Texture1);
+            shader.Set("positionTexture", TextureUnit.Texture0);
+            shader.Set("normalTexture", TextureUnit.Texture1);
+            shader.Set("Time", elapsedMilliseconds);
+
+            if (ImGui.Begin("SSAO"))
+            {
+                ImGui.DragInt("Min Samples", ref MinSamples, 1, 1, MaxSamples);
+                ImGui.DragInt("Max Samples", ref MaxSamples, 1, MinSamples, 64);
+                ImGui.DragFloat("Max Samples Distance", ref MaxSamplesDistance, 0.1f, 0, Camera.ZFar);
+                ImGui.DragFloat("Intensity", ref Intensity, 0.01f, 0.01f, 8f * 8);
+                ImGui.DragFloat("Bias", ref Bias, 0.01f, 0.01f, 0.5f);
+                ImGui.DragFloat("Sample Radius", ref SampleRadius, 0.001f, 0.001f, 0.2f);
+                ImGui.DragFloat("Sample Disatance", ref MaxDistance, 0.0f, 0.1f, 1);
+            }
+            ImGui.End();
+
+            shader.Set("MinSamples", MinSamples);
+            shader.Set("MaxSamples", MaxSamples);
+            shader.Set("MaxSamplesDistance", MaxSamplesDistance);
+            shader.Set("Intensity", Intensity);
+            shader.Set("Bias", Bias);
+            shader.Set("SampleRadius", SampleRadius);
+            shader.Set("MaxDistance", MaxDistance);
+
+            Primitives.Quad.Draw();
         }
 
         private void RenderLights()
@@ -899,28 +949,6 @@ namespace GLOOP.HPL
             }
         }
 
-        private void SSAOPostEffect()
-        {
-            using var debugGroup = new DebugGroup("SSAO");
-            var shader = SSAOShader;
-            shader.Use();
-            GBuffers.ColorBuffers[(int)GBufferTexture.Position].Use(TextureUnit.Texture0);
-            GBuffers.ColorBuffers[(int)GBufferTexture.Normal].Use(TextureUnit.Texture1);
-            shader.Set("positionTexture", TextureUnit.Texture0);
-            shader.Set("normalTexture", TextureUnit.Texture1);
-            var cameraRotation = Camera.Rotation * (float)(Math.PI / 180);
-            var rotationMatrix =
-                Matrix4.CreateRotationX(cameraRotation.X) *
-                Matrix4.CreateRotationY(cameraRotation.Y) *
-                Matrix4.CreateRotationZ(cameraRotation.Z);
-            rotationMatrix.Invert();
-            shader.Set("RotationMatrix", rotationMatrix);
-            //shader.Set("Time", FrameNumber / 0.0001f);
-            shader.Set("campos", Camera.Position);
-
-            Primitives.Quad.Draw();
-        }
-
         protected override void OnResize(ResizeEventArgs e)
         {
             base.OnResize(e);
@@ -960,15 +988,6 @@ namespace GLOOP.HPL
 
                 if (input.IsKeyReleased(Keys.D9))
                     debugLightBuffer = !debugLightBuffer;
-
-                if (input.IsKeyReleased(Keys.F))
-                    useFXAA = !useFXAA;
-
-                if (input.IsKeyReleased(Keys.O))
-                    useSSAO = !useSSAO;
-
-                if (input.IsKeyReleased(Keys.G))
-                    enableBloom = !enableBloom;
 
                 if (input.IsKeyPressed(Keys.V))
                     VSync = VSync == VSyncMode.Off ? VSyncMode.On : VSyncMode.Off;

@@ -25,8 +25,8 @@ namespace GLOOP.HPL.Loading
             loadLights(mapPath + "_Light");
 
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
-            loadEntities(mapPath + "_Entity", assimp, material);
-            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            //loadEntities(mapPath + "_Entity", assimp, material);
+            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
             //loadTerrain(mapPath);
         }
@@ -212,7 +212,7 @@ namespace GLOOP.HPL.Loading
 
                 foreach (var instance in section.Objects) {
                     var pos = instance.Position.ParseVector3();
-                    var rot = OpenTK.Mathematics.Quaternion.FromEulerAngles(-instance.Rotation.ParseVector3());
+                    var rot = Quaternion.FromEulerAngles(-instance.Rotation.ParseVector3());
                     var scale = instance.Scale.ParseVector3();
 
                     var model = files[instance.Index];
