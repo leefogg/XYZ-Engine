@@ -19,13 +19,13 @@ namespace GLOOP
         [StructLayout(LayoutKind.Explicit, Size = 48)]
         private readonly struct GPUPointLight
         {
-            [FieldOffset(0)] readonly Vector3 position;
+            [FieldOffset(00)] readonly Vector3 position;
+            [FieldOffset(12)] readonly float brightness;
             [FieldOffset(16)] readonly Vector3 color;
-            [FieldOffset(28)] readonly float brightness;
-            [FieldOffset(32)] readonly float radius;
-            [FieldOffset(36)] readonly float falloffPow;
-            [FieldOffset(44)] readonly float diffuseScalar;
-            [FieldOffset(44)] readonly float specularScalar;
+            [FieldOffset(28)] readonly float radius;
+            [FieldOffset(32)] readonly float falloffPow;
+            [FieldOffset(36)] readonly float diffuseScalar;
+            [FieldOffset(40)] readonly float specularScalar;
 
             public GPUPointLight(
                 Vector3 position,

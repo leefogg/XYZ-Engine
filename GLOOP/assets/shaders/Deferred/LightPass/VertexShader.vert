@@ -19,8 +19,8 @@ layout (std140, binding = 0) uniform CameraMatricies {
 #if (LIGHTTYPE == POINT)
 	struct PointLight {
 		vec3 position;
-		vec3 color;
 		float brightness;
+		vec3 color;
 		float radius;
 		float falloffPow;
 		float diffuseScalar;

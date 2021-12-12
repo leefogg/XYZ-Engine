@@ -25,11 +25,17 @@ namespace GLOOP.HPL.Loading
         [XmlAttribute("FalloffPow")]
         public float FalloffPower { get; set; }
 
+        [XmlAttribute("Gobo")]
+        public string GoboTexture { get; set; }
+
         [XmlAttribute("GoboType")]
         public string Type { get; set; }
 
         protected LightType ToCommonType()
         {
+            if (string.IsNullOrEmpty(GoboTexture))
+                return LightType.DiffuseAndSpecular;
+
             return Type switch
             {
                 "Diffuse" => LightType.Diffuse,
