@@ -1,4 +1,5 @@
 ﻿using GLOOP.Rendering;
+using GLOOP.Rendering.Materials;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
@@ -14,6 +15,7 @@ namespace HLPEngine
         private static CVRSystem System;
         private static Matrix4 HMDPose;
         public static Matrix4 InverseOriginlHMDPose { get; private set; } = Matrix4.Identity;
+        private static SingleColorShader2D hiddenAreaMeshShader;
 
         struct Eye
         {
@@ -108,7 +110,7 @@ namespace HLPEngine
             global::System.Diagnostics.Debug.Assert(error == EVRCompositorError.None);
         }
 
-        public static void RenderEyeHiddenAreaMesh(EVREye eye, Shader fullbrightShader)
+        public static void RenderEyeHiddenAreaMesh(EVREye eye)
         {
             ref var e = ref Eyes[(int)eye];
             if (e.HiddenAreaMeshVAO == 0)
@@ -150,7 +152,9 @@ namespace HLPEngine
                 e.HiddenAreaMeshVAO = vao;
             }
 
-            fullbrightShader.Use();
+            hiddenAreaMeshShader ??= new SingleColorShader2D();
+
+            hiddenAreaMeshShader.Use();
             GL.Disable(EnableCap.CullFace);
             GL.BindVertexArray(e.HiddenAreaMeshVAO);
             GL.DrawArrays(PrimitiveType.Triangles, 0, e.NumHiddenAreaMeshElements);

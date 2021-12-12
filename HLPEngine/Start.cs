@@ -29,14 +29,18 @@ namespace GLOOP.HPL
                 API = ContextAPI.OpenGL,
                 APIVersion = new Version(4, 3),
                 Profile = ContextProfile.Core,
-#if Debug
+#if DEBUG
                 Flags = ContextFlags.Debug,
 #else
                 Flags = ContextFlags.Default,
 #endif
+#if VR
+                Size = new Vector2i((int)width / 2, (int)height / 2),
+#else
                 Size = new Vector2i((int)width, (int)height),
+#endif
                 IsEventDriven = false,
-                Title = "prototype engine"
+                Title = "prototype engine",
             };
             nativeWindowSettings.Location = new Vector2i(
                 screenSizeX / 2 - nativeWindowSettings.Size.X / 2,

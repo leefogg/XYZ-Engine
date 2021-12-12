@@ -84,8 +84,8 @@ namespace GLOOP.HPL
         private bool useSSAO = false;
         private bool enableBloom = false;
         private bool showBoundingBoxes = false;
-        private const bool enablePortalCulling = true;
-        private bool enableImGui = false;
+        private const bool enablePortalCulling = false;
+        private bool enableImGui = true;
 
         private Buffer<float> bloomBuffer;
         private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
@@ -112,7 +112,7 @@ namespace GLOOP.HPL
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(CustomMapCameraPosition, new Vector3(), 90)
+            Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90)
             {
                 Width = width,
                 Height = height
@@ -141,7 +141,7 @@ namespace GLOOP.HPL
                 width, height,
                 new[] { 
                     PixelInternalFormat.Srgb8Alpha8,// Diffuse
-                    PixelInternalFormat.Rgb16f,     // Position
+                    PixelInternalFormat.Rgba16f,     // Position
                     PixelInternalFormat.Rgb8,       // Normal
                     PixelInternalFormat.Srgb8Alpha8,// Specular
                 },
@@ -269,7 +269,7 @@ namespace GLOOP.HPL
             var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
             var portals = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm";
             var Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
-            var mapToLoad = custom;
+            var mapToLoad = phi;
 
             /*
             var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
@@ -340,6 +340,7 @@ namespace GLOOP.HPL
 
                 var frameStart = DateTime.Now;
 
+                ImGuiController.Update(this, (float)args.Time);
 #if VR
                 if (FrameNumber == 1)
                     VRSystem.SetOriginHeadTransform();
@@ -347,62 +348,44 @@ namespace GLOOP.HPL
                 VRSystem.UpdateEyes();
                 VRSystem.UpdatePoses();
 
+                // Left Eye
                 updateCameraUBO(
-                    VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Left), 
+                    VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Left),
                     Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Left)
                 );
                 ResetGBuffer();
-                VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Left, FullBrightShader);
+                VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Left);
                 RenderPass(LeftEyeBuffer);
+                VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
 
+                // Right Eye
                 updateCameraUBO(
                     VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Right),
                     Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Right)
                 );
                 ResetGBuffer();
-                VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Right, FullBrightShader);
+                VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Right);
                 RenderPass(RightEyeBuffer);
-
-                VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
                 VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
 
-                LeftEyeBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
+                RightEyeBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
+                
 #else
-                ImGuiController.Update(this, (float)args.Time);
-
                 updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
                 ResetGBuffer();
                 RenderPass(FinalBuffer);
 
                 FinalBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
 #endif
+                backBuffer.Use();
+                GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+                GL.Viewport(0, 0, Size.X, Size.Y);
+                DrawMetrics();
+                if (enableImGui)
+                    ImGuiController.Render();
+
                 var frameElapsedMs = (float)(DateTime.Now - frameStart).TotalMilliseconds;
                 CPUFrameTimings.SetAndMove(frameElapsedMs);
-
-                if (ImGui.Begin("Metrics"))
-                {
-                    const int TargetFPS = 144;
-                    var values = GPUFrameTimings.ToArray();
-                    float average = values.Average();
-                    var red = (float)MathFunctions.Map(average, 144, 120, 0, 1);
-                    ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(red, 1 - red, 0, 1));
-                    ImGui.PlotHistogram("GPU", ref values[0], values.Length, 0, null, 60, 144, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
-                    ImGui.Text($"Average: {1000f / average:0.00}ms ({average:0.000} fps)");
-                    ImGui.PopStyleColor();
-
-                    values = CPUFrameTimings.ToArray();
-                    average = values.Average();
-                    ImGui.PlotHistogram("CPU", ref values[0], values.Length, 0, null, 0, 1000f / TargetFPS, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
-                    ImGui.Text($"Average: {average:0.000}ms ({1000f / average:00.00} fps)");
-                    ImGui.SameLine();
-
-                }
-                ImGui.End();
-
-                if (enableImGui)
-                {
-                    ImGuiController.Render();
-                }
             }
 
             SwapBuffers();
@@ -413,17 +396,44 @@ namespace GLOOP.HPL
             Title = FPS.ToString() + "FPS";
         }
 
+        private void DrawMetrics()
+        {
+            if (ImGui.Begin("Metrics"))
+            {
+                const int TargetFPS = 144;
+                var values = GPUFrameTimings.ToArray();
+                float average = values.Average();
+                var red = (float)MathFunctions.Map(average, 144, 120, 0, 1);
+                ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(red, 1 - red, 0, 1));
+                ImGui.PlotHistogram("GPU", ref values[0], values.Length, 0, null, 60, 144, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
+                ImGui.Text($"Average: {1000f / average:0.00}ms ({average:0.000} fps)");
+                ImGui.PopStyleColor();
+
+                values = CPUFrameTimings.ToArray();
+                average = values.Average();
+                ImGui.PlotHistogram("CPU", ref values[0], values.Length, 0, null, 0, 1000f / TargetFPS, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
+                ImGui.Text($"Average: {average:0.000}ms ({1000f / average:00.00} fps)");
+                ImGui.SameLine();
+
+            }
+            ImGui.End();
+        }
+
         private void DetermineVisibleAreas()
         {
             if (!enablePortalCulling)
                 return;
 
-            ImGui.Begin("Portals");
-            foreach (var area in VisibleAreas)
-                ImGui.Text(area.Name);
-            ImGui.Separator();
-            foreach (var portal in PortalQueries)
-                ImGui.Text(portal.Item1.Name);
+            if (ImGui.Begin("Portals"))
+            {
+                ImGui.Text("Visible Areas");
+                foreach (var area in VisibleAreas)
+                    ImGui.Text(area.Name);
+                ImGui.Separator();
+                ImGui.Text("Active Portal Queries");
+                foreach (var portal in PortalQueries)
+                    ImGui.Text(portal.Item1.Name);
+            }
             ImGui.End();
 
             // Dont need to check every frame
@@ -432,49 +442,48 @@ namespace GLOOP.HPL
                 return;
 
             VisibleAreas.Clear();
-
             // Get touching areas
             // This should be first to render closer areas first
             // "A visibility area that is connected to a portal will only be visible if the portal is visible or if the camera is inside it."
             VisibleAreas.AddRange(scene.VisibilityAreas.Values.Where(area => area.BoundingBox.Contains(Camera.Position)));
-
-            // To avoid seams, always consider all connecting areas of touching portals to be visible
-            // "If the camera is inside of a visibility area then all the portals connected to it will be used as a portal to the outside."
-            var touchingPortals = scene.VisibilityPortals.Where(area => area.BoundingBox.Contains(Camera.Position));
-            foreach (var portal in touchingPortals)
-                foreach (var areaName in portal.VisibilityAreas)
-                    VisibleAreas.Add(scene.VisibilityAreas[areaName]);
-
-            if (PortalQueries.Any(pair => !pair.Item2.IsResultAvailable()))
-                return;
-            foreach (var (portal, query) in PortalQueries)
-                if (query.GetResult() > 0) // Is visible
-                    VisibleAreas.AddRange(portal.VisibilityAreas.Select(areaName => scene.VisibilityAreas[areaName]));
-            PortalQueries.Clear();
-
-            using (new DebugGroup("Portals"))
+            if (VisibleAreas.Any())
             {
-                // Render portals
-                GL.ColorMask(false, false, false, false);
-                GL.Disable(EnableCap.CullFace);
-                GL.DepthMask(false);
-                // Dispatch queries for rooms visible from previous queries and current areas
-                foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Except(PortalQueries.Select(x => x.Item1)).Distinct())
-                {
-                    using var query = queryPool.BeginScope(QueryTarget.AnySamplesPassed);
-                    Draw.Box(portal.ModelMatrix, new Vector4(1,1,0,0));
-                    PortalQueries.Add((portal, query));
-                }
-                GL.ColorMask(true, true, true, true);
-                GL.DepthMask(true);
-                GL.Enable(EnableCap.CullFace);
-            }
-            
-            VisibleAreas = VisibleAreas.Distinct().ToList(); // Remove duplicates
+                // To avoid seams, always consider all connecting areas of touching portals to be visible
+                // "If the camera is inside of a visibility area then all the portals connected to it will be used as a portal to the outside."
+                var touchingPortals = scene.VisibilityPortals.Where(area => area.BoundingBox.Contains(Camera.Position));
+                foreach (var portal in touchingPortals)
+                    foreach (var areaName in portal.VisibilityAreas)
+                        VisibleAreas.Add(scene.VisibilityAreas[areaName]);
 
-            // If we're flying around outside any area, just show them all
-            if (!VisibleAreas.Any())
-                VisibleAreas.AddRange(scene.VisibilityAreas.Values);
+                if (PortalQueries.Any(pair => !pair.Item2.IsResultAvailable()))
+                    return;
+                foreach (var (portal, query) in PortalQueries)
+                    if (query.GetResult() > 0) // Is visible
+                        VisibleAreas.AddRange(portal.VisibilityAreas.Select(areaName => scene.VisibilityAreas[areaName]));
+                PortalQueries.Clear();
+
+                using (new DebugGroup("Portals"))
+                {
+                    // Render portals
+                    GL.ColorMask(false, false, false, false);
+                    GL.Disable(EnableCap.CullFace);
+                    GL.DepthMask(false);
+                    // Dispatch queries for rooms visible from previous queries and current areas
+                    foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Except(PortalQueries.Select(x => x.Item1)).Distinct())
+                    {
+                        using var query = queryPool.BeginScope(QueryTarget.AnySamplesPassed);
+                        Draw.Box(portal.ModelMatrix, new Vector4(1, 1, 0, 0));
+                        PortalQueries.Add((portal, query));
+                    }
+                    GL.ColorMask(true, true, true, true);
+                    GL.DepthMask(true);
+                    GL.Enable(EnableCap.CullFace);
+                }
+
+                VisibleAreas = VisibleAreas.Distinct().ToList(); // Remove duplicates
+            }
+            else
+                VisibleAreas.AddRange(scene.VisibilityAreas.Values); // If we're flying around outside any area, just show them all
 
         }
 
@@ -482,8 +491,9 @@ namespace GLOOP.HPL
         {
             GBuffers.Use();
             var clearColor = debugLights ? 0.2f : 0;
-            GL.ClearColor(clearColor, clearColor, clearColor, 1);
+            GL.ClearColor(clearColor, clearColor, clearColor, 0);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
         }
 
         private void RenderPass(FrameBuffer finalBuffer)
@@ -662,7 +672,7 @@ namespace GLOOP.HPL
             GL.Disable(EnableCap.DepthTest);
             //GL.DepthMask(false);
 
-            DoLightPass(new Vector3(0.01f));
+            DoLightPass(new Vector3(0.00f));
 
             if (debugLightBuffer) {
                 GL.Enable(EnableCap.FramebufferSrgb);
@@ -859,7 +869,6 @@ namespace GLOOP.HPL
                     shader.Set("useLightDiffuse", UseLightDiffuse);
                     shader.Set("lightScatterScalar", LightScatterScalar);
                 }
-                ImGui.End();
             }
 #endif
 
@@ -916,7 +925,7 @@ namespace GLOOP.HPL
         {
             base.OnResize(e);
 
-            ImGuiController.WindowResized(ClientSize.X, ClientSize.Y);
+            //ImGuiController.WindowResized(ClientSize.X, ClientSize.Y);
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)

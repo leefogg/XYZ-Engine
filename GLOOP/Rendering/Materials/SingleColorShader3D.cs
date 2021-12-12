@@ -6,7 +6,7 @@ using System.Text;
 
 namespace GLOOP.Rendering.Materials
 {
-    public class SingleColorShader : StaticPixelShader
+    public class SingleColorShader3D : StaticPixelShader
     {
         public readonly Uniform16f modelMatrix;
         private Uniform4f color;
@@ -20,9 +20,9 @@ namespace GLOOP.Rendering.Materials
             set => color.Set(value);
         }
 
-        public SingleColorShader(IDictionary<string, string> defines = null, string name = null) 
-            : base("assets/shaders/SingleColor/basic.vert",
-                   "assets/shaders/SingleColor/basic.frag", defines, name)
+        public SingleColorShader3D(IDictionary<string, string> defines = null, string name = null) 
+            : base("assets/shaders/SingleColor/3D/vertexShader.vert",
+                   "assets/shaders/SingleColor/3D/fragmentShader.frag", defines, name)
         {
             modelMatrix = new Uniform16f(this, "ModelMatrix");
 

@@ -70,9 +70,10 @@ void main()
 {
 	vec2 ndc = (clipSpace.xy / clipSpace.w) / 2.0 + 0.5;
 
-	vec3 fragPos = texture(positionTex, ndc).rgb + camPos;
-	if (fragPos == vec3(0.0))
+	vec4 rawPos = texture(positionTex, ndc);
+	if (rawPos.a == 0.0)
 		discard;
+	vec3 fragPos = rawPos.rgb + camPos;
 	
 	vec3 normal = texture(normalTex, ndc).rgb * 2 - 1;
 	

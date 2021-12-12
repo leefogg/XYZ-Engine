@@ -10,7 +10,7 @@ uniform sampler2D specularTex;
 uniform sampler2D illumTex;
 
 layout (location = 0) out vec4 diffuse;
-layout (location = 1) out vec3 position;
+layout (location = 1) out vec4 position;
 layout (location = 2) out vec3 normal;
 layout (location = 3) out vec4 specular;
 
@@ -97,5 +97,5 @@ void main()
     diffuse.rgb += illum;
 #endif
 
-	position = fragPos - getCamPos();
+	position = vec4(fragPos - getCamPos(), 1.0);
 }

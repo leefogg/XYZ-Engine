@@ -8,11 +8,11 @@ namespace GLOOP.Rendering.Materials
     public class SingleColorMaterial : Material
     {
         public Vector4 Color;
-        private SingleColorShader shader;
+        private SingleColorShader3D shader;
 
         public override Shader Shader => shader;
 
-        public SingleColorMaterial(SingleColorShader shader)
+        public SingleColorMaterial(SingleColorShader3D shader)
         {
             this.shader = shader;
         }
