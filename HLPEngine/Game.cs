@@ -107,22 +107,42 @@ namespace GLOOP.HPL
         private readonly ImGuiController ImGuiController;
         private readonly Ring<float> CPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         private readonly Ring<float> GPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
-        private readonly Vector3
-            CustomMapCameraPosition = new Vector3(6.3353596f, 1.6000088f, 8.1601305f),
-            PhiMapCameraPosition = new Vector3(-17.039896f, 14.750014f, 64.48185f),
-            deltaMapCameraPosition = new Vector3(0, 145, -10),
-            thetaTunnelsMapCameraPosition = new Vector3(4, 9, -61),
-            LightsMapCameraPosition = new Vector3(-0.5143715f, 4.3500123f, 11.639848f),
-            PortalsMapCameraPosition = new Vector3(4.5954947f, 1.85f, 16.95526f),
-            TauMapCameraPosition = new Vector3(26.263678f, 1.7000114f, 36.090767f),
-            ThetaExitCameraPosition = new Vector3(11.340768f, 1.6000444f, 47.520298f),
-            WauMapCameraPosition = new Vector3(-26.12f, 93.691f, 167.313f),
-            AwakeMapCameraPosition = new Vector3(9.325157f, -0.44998702f, 50.61429f),
-            BedroomMapCameraPosition = new Vector3(-11.600799f, 1.4500086f, 11.624353f);
+
+        private const string lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
+        private const string theta_outside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_04_theta_outside\02_04_theta_outside.hpm";
+        private const string upsilon = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_02_upsilon_inside\01_02_upsilon_inside.hpm";
+        private const string theta_inside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_05_theta_inside\02_05_theta_inside.hpm";
+        private const string boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
+        private const string terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
+        private const string Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
+        private struct MapSetup
+        {
+            public string Path;
+            public Vector3 CameraPos;
+
+            public MapSetup(string path, Vector3 cameraPos)
+            {
+                Path = path;
+                CameraPos = cameraPos;
+            }
+        }
+        private MapSetup Custom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm", new Vector3(6.3353596f, 1.6000088f, 8.1601305f));
+        private MapSetup Phi = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm", new Vector3(-17.039896f, 14.750014f, 64.48185f));
+        private MapSetup Delta = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_03_delta\02_03_delta.hpm", new Vector3(0, 145, -10));
+        private MapSetup ThetaTunnels = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_06_theta_tunnels\02_06_theta_tunnels.hpm", new Vector3(4, 9, -61));
+        private MapSetup Lights = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm", new Vector3(-0.5143715f, 4.3500123f, 11.639848f));
+        private MapSetup Portals = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm", new Vector3(4.5954947f, 1.85f, 16.95526f));
+        private MapSetup Tau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm", new Vector3(26.263678f, 1.7000114f, 36.090767f));
+        private MapSetup ThetaExit = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_07_theta_exit\02_07_theta_exit.hpm", new Vector3(11.340768f, 1.6000444f, 47.520298f));
+        private MapSetup Wau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_03_tau_escape\04_03_tau_escape.hpm", new Vector3(-26.12f, 93.691f, 167.313f));
+        private MapSetup Awake = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_01_upsilon_awake\01_01_upsilon_awake.hpm", new Vector3(9.325157f, -0.44998702f, 50.61429f));
+        private MapSetup Bedroom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm", new Vector3(-11.600799f, 1.4500086f, 11.624353f));
+        private MapSetup MapToUse;
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(PhiMapCameraPosition, new Vector3(), 90)
+            MapToUse = Phi;
+            Camera = new DebugCamera(MapToUse.CameraPos, new Vector3(), 90)
             {
                 Width = width,
                 Height = height
@@ -262,47 +282,10 @@ namespace GLOOP.HPL
             frustumMaterial = new FrustumMaterial(new FrustumShader());
             queryPool = new QueryPool(15);
 
-            var lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
-            var bedroom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm";
-            var awake = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_01_upsilon_awake\01_01_upsilon_awake.hpm";
-            var theta_outside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_04_theta_outside\02_04_theta_outside.hpm";
-            var upsilon = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_02_upsilon_inside\01_02_upsilon_inside.hpm";
-            var theta_inside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_05_theta_inside\02_05_theta_inside.hpm";
-            var theta_tunnels = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_06_theta_tunnels\02_06_theta_tunnels.hpm";
-            var tau = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm";
-            var wau = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_03_tau_escape\04_03_tau_escape.hpm";
-            var delta = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_03_delta\02_03_delta.hpm";
-            var phi = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm";
-            var thetaExit = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_07_theta_exit\02_07_theta_exit.hpm";
-            var custom = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm";
-            var boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
-            var terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
-            var lights = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm";
-            var portals = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm";
-            var Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
-            var mapToLoad = phi;
-
-            /*
-            var metaFilePath = Path.Combine("meta", Path.GetFileName(mapToLoad));
-            if (File.Exists(metaFilePath))
-            {
-                var textures = JsonConvert.DeserializeObject<TextureArrayManager.TextureShapeSummary[]>(File.ReadAllText(metaFilePath));
-                foreach (var tex in textures)
-                {
-                    var toCreateRemaining = tex.AllocatedSlices;
-                    var toCreate = (ushort)Math.Min(ushort.MaxValue, toCreateRemaining);
-                    while (toCreateRemaining > 0)
-                    {
-                        TextureArrayManager.CreateTexture(tex.Shape, toCreate);
-                        toCreateRemaining -= toCreate;
-                    }
-                }
-            }
-            */
             var assimp = new AssimpContext();
             var beforeMapLoad = DateTime.Now;
             var map = new Map(
-                mapToLoad,
+                MapToUse.Path,
                 assimp,
                 deferredMaterial
             );
