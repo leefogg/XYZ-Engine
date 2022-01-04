@@ -36,7 +36,8 @@ TODO:
 
 	To be inline with HPL:
 		Textures seem to be loading RGB not sRGB
-		material SpecificVariables
+		Material SpecificVariables
+		Reflections (done in geo pass)
 		Illum geometry pass
 		Detail textures
 		Box lights
@@ -45,6 +46,12 @@ TODO:
 		Sky
 		Shadows
 		Particles
+		Remove lighting map
+		Attached lights
+		Fog
+		Light Gobos
+		Skybox
+
 
 	Portal culling
 		VR
@@ -63,26 +70,16 @@ TODO:
 	FPS graph
 	Investigate if materials have a global specular scaler
 
-Things to experiment with in VR:
-	Stereo fusion
-	blur
-	cromatic abbraration
-	portals
-	stencil
-
 Proposed ideal render pipeline:
 	Draw static objects
-	foreach (var portal in scene.portals) {
-		using Query x {
-			Draw portal
-		}
-		begin conditional render using x {
-			Dispatch intersection shader
-		]
-	}
 	Dispatch hierarchical z culling compute shader using drawn static objects
+	foreach (var area in Scene.VisibleAreas) {
+		Dispatch culling shader 
+	}
 	Dispatch buffer copying shader
 	Draw dynamic objects
+		Barrier PARAMETER_BUFFER_ARB
+		MultiDrawElementsIndirectCountARB
 
 	intersection shader {
 		uniform box3 areaBoundingBox;
@@ -121,3 +118,22 @@ Proposed ideal render pipeline:
 			}
 		}
 	}
+
+Culling test project
+	Draw spheres using MDI
+	Basic compute shader to clone buffer
+	Use clone buffer to draw (use barrier)
+	Store spheres info in other buffer
+	Count visible spheres in atomic counter
+	Use atomic counter as a buffer (GL_ATOMIC_COUNTER_BUFFER)
+	Bind atomic counter buffer as draw parameter buffer (PARAMETER_BUFFER_ARB)
+	Use parameter buffer MultiDrawElementsIndirectCountARB (use barrier)
+	Dont copy occluded objects
+Move room buffers to one global buffers
+	Add model matrix buffer
+		Use for bounding box pass to test
+	Move buffers
+		4 buffers - DrawCommands, ModelMatrcies, Materials and Bounding boxes
+		Stored in room-by-room sections for cache coherency
+		One to one relationship, no index buffer?
+		Use BindBufferRange to keep indicies in shader starting from 0?
