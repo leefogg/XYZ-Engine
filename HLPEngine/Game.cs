@@ -20,7 +20,6 @@ using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using TextureWrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode;
 using GLOOP.Rendering.Materials;
-using GLOOP.Tests.Assets.Shaders;
 using GLOOP.HPL.Loading;
 using HLPEngine;
 using Valve.VR;
@@ -94,7 +93,7 @@ namespace GLOOP.HPL
         private bool enableSSAO = true;
         private bool enableBloom = true;
         private bool showBoundingBoxes = false;
-        private const bool enablePortalCulling = false;
+        private const bool enablePortalCulling = true;
         private bool enableImGui = true;
 
         private Buffer<float> bloomBuffer;
@@ -136,7 +135,8 @@ namespace GLOOP.HPL
 
 #if VR
             DebugCamera.MAX_LOOK_UP = DebugCamera.MAX_LOOK_DOWN = 0;
-            useFXAA = false;
+            enableFXAA = false;
+            enableSSAO = false;
             enableBloom = false;
 #endif
             ImGuiController = new ImGuiController(ClientSize.X, ClientSize.Y);

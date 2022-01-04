@@ -1,7 +1,6 @@
 ﻿using GLOOP.Rendering;
 using GLOOP.Rendering.Debugging;
 using GLOOP.Rendering.Materials;
-using GLOOP.Tests.Assets.Shaders;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;

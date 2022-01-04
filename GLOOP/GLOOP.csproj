@@ -245,10 +245,10 @@
     <None Update="assets\textures\white.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Tests\Assets\Shaders\frustum.frag">
+    <None Update="assets\shaders\Frustum\frustum.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Tests\Assets\Shaders\frustum.vert">
+    <None Update="assets\shaders\Frustum\frustum.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

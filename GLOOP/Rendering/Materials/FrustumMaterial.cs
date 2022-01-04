@@ -1,11 +1,10 @@
 ﻿using GLOOP.Rendering;
-using GLOOP.Tests.Assets.Shaders;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP.Tests.Assets.Shaders
+namespace GLOOP.Rendering.Materials
 {
     public class FrustumMaterial : Material
     {

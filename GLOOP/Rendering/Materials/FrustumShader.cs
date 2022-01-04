@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP.Tests.Assets.Shaders
+namespace GLOOP.Rendering.Materials
 {
     public class FrustumShader : StaticPixelShader
     {
@@ -27,8 +27,8 @@ namespace GLOOP.Tests.Assets.Shaders
         }
 
         public FrustumShader(IDictionary<string, string> defines = null, string name = null)
-           : base("tests/assets/shaders/frustum.vert",
-                  "tests/assets/shaders/frustum.frag", defines, name)
+           : base("assets/shaders/frustum/frustum.vert",
+                  "assets/shaders/frustum/frustum.frag", defines, name)
         {
             modelMatrix = new Uniform16f(this, "ModelMatrix");
 
