@@ -24,9 +24,9 @@ namespace GLOOP.HPL.Loading
         [XmlAttribute("Aspect")]
         public float AspectRatio { get; set; }
 
-        public GLOOP.SpotLight ToCommon()
+        public Rendering.SpotLight ToCommon()
         {
-            return new GLOOP.SpotLight(
+            return new Rendering.SpotLight(
                         Position.ParseVector3(),
                         Quaternion.FromEulerAngles(-Rotation.ParseVector3()),
                         DiffuseColor.ParseVector3(),

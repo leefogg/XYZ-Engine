@@ -16,8 +16,8 @@ namespace GLOOP.HPL.Loading
         private const string SOMARoot = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
         public List<HPLEntity> Entities = new List<HPLEntity>();
         public List<Model> Terrain = new List<Model>();
-        public List<GLOOP.PointLight> PointLights = new List<GLOOP.PointLight>();
-        public List<GLOOP.SpotLight> SpotLights = new List<GLOOP.SpotLight>();
+        public List<Rendering.PointLight> PointLights = new List<Rendering.PointLight>();
+        public List<Rendering.SpotLight> SpotLights = new List<Rendering.SpotLight>();
         public Areas Areas;
 
         public Map(string mapPath, Assimp.AssimpContext assimp, DeferredRenderingGeoMaterial material) {
@@ -25,8 +25,8 @@ namespace GLOOP.HPL.Loading
             loadLights(mapPath + "_Light");
 
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
-            loadEntities(mapPath + "_Entity", assimp, material);
-            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            //loadEntities(mapPath + "_Entity", assimp, material);
+            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
             loadPrimitives(mapPath + "_Primitive", material);
             //loadTerrain(mapPath);
         }
@@ -101,7 +101,7 @@ namespace GLOOP.HPL.Loading
                 for (int x = 0; x < numChunks.X; x++)
                 {
                     var chunkPosition = new Vector2i(x, z);
-                    var chunk = GLOOP.Primitives.CreatePlane(chunkResolution.X-1, chunkResolution.Y-1);
+                    var chunk = Rendering.Primitives.CreatePlane(chunkResolution.X-1, chunkResolution.Y-1);
                     chunk.UVs = chunk.UVs.Select(uv => uv * chunkUVScale + chunkUVScale * new Vector2(chunkPosition.Y, chunkPosition.X)).Select(uv => new Vector2(uv.Y, uv.X)).ToList();
                     var minUV = chunk.UVs[0];
                     var maxUV = chunk.UVs[^1];
@@ -362,7 +362,7 @@ namespace GLOOP.HPL.Loading
                             plane.Corner4UV.ParseVector2(),
                         };
 
-                        var geo = GLOOP.Primitives.CreatePlane(scale, uvs);
+                        var geo = Rendering.Primitives.CreatePlane(scale, uvs);
                         var vao = geo.ToVirtualVAO(plane.Name);
 
                         HPLEntity.getTextures(

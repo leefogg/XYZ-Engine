@@ -2,9 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using static GLOOP.MatrixExtensions;
+using static GLOOP.Extensions.MatrixExtensions;
 using static GLOOP.Extensions.Vector3Extensions;
-using static GLOOP.QuaternionExtensions;
+using static GLOOP.Extensions.QuaternionExtensions;
 using OpenTK.Mathematics;
 
 namespace GLOOP

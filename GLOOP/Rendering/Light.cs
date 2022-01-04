@@ -3,14 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP
+namespace GLOOP.Rendering
 {
     public abstract class Light
     {
         public Vector3 Position { get; set; }
         public Vector3 Color { get; }
         public float Brightness { get; }
-        public string DiffuseColor { get;}
+        public string DiffuseColor { get; }
         public float Radius { get; }
         public float FalloffPower { get; }
         public LightType Type { get; set; }

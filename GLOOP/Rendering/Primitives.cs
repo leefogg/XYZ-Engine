@@ -1,6 +1,5 @@
 ﻿using Assimp;
 using GLOOP.Extensions;
-using GLOOP.Rendering;
 using OpenTK;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
@@ -9,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace GLOOP
+namespace GLOOP.Rendering
 {
     public static class Primitives
     {
@@ -145,30 +144,30 @@ namespace GLOOP
             };
 
             var stepSize = new Vector2(1f / xSections, 1f / zSections);
-            for (int z = 0; z <= zSections; z++)
+            for (var z = 0; z <= zSections; z++)
             {
-                for (int x = 0; x <= xSections; x++)
+                for (var x = 0; x <= xSections; x++)
                 {
                     geo.Positions.Add(new Vector3(stepSize.X * x, 0, stepSize.Y * z));
                     geo.UVs.Add(new Vector2(stepSize.X * z, stepSize.Y * x));
                 }
             }
 
-            for (int i = 0; i < numIndicies; i++)
+            for (var i = 0; i < numIndicies; i++)
                 geo.Indicies.Add(0);
 
-            for (int z = 0; z < zSections; z++)
+            for (var z = 0; z < zSections; z++)
             {
-                for (int x = 0; x < xSections; x++)
+                for (var x = 0; x < xSections; x++)
                 {
                     var i = (z * xSections + x) * 6;
 
-                    geo.Indicies[i + 0] = (uint)((z * (xSections + 1)) + x);
-                    geo.Indicies[i + 1] = (uint)(((z + 1) * (xSections + 1)) + x);
-                    geo.Indicies[i + 2] = (uint)(((z + 1) * (xSections + 1)) + x + 1);
-                    geo.Indicies[i + 3] = (uint)((z * (xSections + 1)) + x);
-                    geo.Indicies[i + 4] = (uint)(((z + 1) * (xSections + 1)) + x + 1);
-                    geo.Indicies[i + 5] = (uint)((z * (xSections + 1)) + x + 1);
+                    geo.Indicies[i + 0] = (uint)(z * (xSections + 1) + x);
+                    geo.Indicies[i + 1] = (uint)((z + 1) * (xSections + 1) + x);
+                    geo.Indicies[i + 2] = (uint)((z + 1) * (xSections + 1) + x + 1);
+                    geo.Indicies[i + 3] = (uint)(z * (xSections + 1) + x);
+                    geo.Indicies[i + 4] = (uint)((z + 1) * (xSections + 1) + x + 1);
+                    geo.Indicies[i + 5] = (uint)(z * (xSections + 1) + x + 1);
                 }
             }
 
@@ -180,7 +179,7 @@ namespace GLOOP
         {
             var geo = new Geometry()
             {
-                Indicies = new List<uint> 
+                Indicies = new List<uint>
                 {
                     3, 1, 0,
                     3, 2, 1

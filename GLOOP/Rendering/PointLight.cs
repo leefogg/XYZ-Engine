@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP
+namespace GLOOP.Rendering
 {
     public class PointLight : Light
     {

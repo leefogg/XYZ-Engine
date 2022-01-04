@@ -1,4 +1,5 @@
-﻿using GLOOP.Rendering;
+﻿using GLOOP.Extensions;
+using GLOOP.Rendering;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System;

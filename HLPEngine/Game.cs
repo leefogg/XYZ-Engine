@@ -26,6 +26,7 @@ using Valve.VR;
 using System.Diagnostics;
 using GLOOP.Rendering.Debugging;
 using ImGuiNET;
+using Primitives = GLOOP.Rendering.Primitives;
 
 namespace GLOOP.HPL
 {

@@ -1,4 +1,4 @@
-﻿using GLOOP.Rendering;
+﻿using GLOOP.Extensions;
 using GLOOP.Rendering.Debugging;
 using GLOOP.Rendering.Materials;
 using OpenTK.Graphics.OpenGL4;
@@ -9,7 +9,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace GLOOP
+namespace GLOOP.Rendering
 {
     public abstract class RenderableArea
     {
@@ -86,12 +86,12 @@ namespace GLOOP
                 this.color = color;
                 this.direction = direction;
                 this.scale = scale;
-                this.aspectRatio = ar;
+                aspectRatio = ar;
                 this.brightness = brightness;
                 this.radius = radius;
                 this.falloffPow = falloffPow;
                 this.angularFalloffPow = angularFalloffPow;
-                this.FOV = fov;
+                FOV = fov;
                 this.diffuseScalar = diffuseScalar;
                 this.specularScalar = specularScalar;
                 this.ViewProjection = ViewProjection;
@@ -262,7 +262,7 @@ namespace GLOOP
 
                 //if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
                 {
-                    light.GetLightingScalars(out float diffuseScalar, out float specularScalar);
+                    light.GetLightingScalars(out var diffuseScalar, out var specularScalar);
                     lights[numCulledLights++] = new GPUPointLight(
                         light.Position,
                         light.Color,
@@ -291,7 +291,7 @@ namespace GLOOP
                 var light = SpotLights[i];
                 //if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
                 {
-                    light.GetLightingScalars(out float diffuseScalar, out float specularScalar);
+                    light.GetLightingScalars(out var diffuseScalar, out var specularScalar);
                     var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
                     var dir = Matrix4.CreateFromQuaternion(light.Rotation) * new Vector4(0, 0, 1, 1);
 
@@ -331,8 +331,8 @@ namespace GLOOP
 
         private void PrepareModelUBOs(
             IEnumerable<RenderBatch> batches,
-            Buffer<DrawElementsIndirectData> drawIndirectBuffer, 
-            Buffer<Matrix4> matriciesBuffer, 
+            Buffer<DrawElementsIndirectData> drawIndirectBuffer,
+            Buffer<Matrix4> matriciesBuffer,
             Buffer<GPUDeferredGeoMaterial> materialsBuffer)
         {
             if (!Models.Any())
@@ -394,10 +394,10 @@ namespace GLOOP
         }
 
         public void RenderLights(
-            FrustumMaterial frustumMaterial, 
+            FrustumMaterial frustumMaterial,
             Shader SpotLightShader,
             Shader PointLightShader,
-            SingleColorMaterial singleColorMaterial, 
+            SingleColorMaterial singleColorMaterial,
             Texture2D[] gbuffer,
             bool debugLights)
         {
@@ -479,7 +479,7 @@ namespace GLOOP
             var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
             var matrixSize = Marshal.SizeOf<Matrix4>();
             var materialSize = Marshal.SizeOf<GPUDeferredGeoMaterial>();
-            int i = 0;
+            var i = 0;
             foreach (var batch in batches)
             {
                 var batchSize = batch.Models.Count;
