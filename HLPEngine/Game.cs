@@ -34,6 +34,13 @@ namespace GLOOP.HPL
                 CameraPos = cameraPos;
             }
         }
+        private const string lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
+        private const string theta_outside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_04_theta_outside\02_04_theta_outside.hpm";
+        private const string upsilon = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_02_upsilon_inside\01_02_upsilon_inside.hpm";
+        private const string theta_inside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_05_theta_inside\02_05_theta_inside.hpm";
+        private const string boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
+        private const string terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
+        private const string Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
         private static readonly MapSetup Custom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm", new Vector3(6.3353596f, 1.6000088f, 8.1601305f));
         private static readonly MapSetup Phi = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm", new Vector3(-17.039896f, 14.750014f, 64.48185f));
         private static readonly MapSetup Delta = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_03_delta\02_03_delta.hpm", new Vector3(0, 145, -10));
@@ -112,7 +119,7 @@ namespace GLOOP.HPL
         private bool enableSSAO = false;
         private bool enableBloom = true;
         private bool showBoundingBoxes = false;
-        private const bool enablePortalCulling = true;
+        private bool enablePortalCulling = true;
         private bool enableImGui = true;
 
         private Buffer<float> bloomBuffer;
@@ -126,14 +133,6 @@ namespace GLOOP.HPL
         private readonly ImGuiController ImGuiController;
         private readonly Ring<float> CPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         private readonly Ring<float> GPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
-
-        private const string lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
-        private const string theta_outside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_04_theta_outside\02_04_theta_outside.hpm";
-        private const string upsilon = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_02_upsilon_inside\01_02_upsilon_inside.hpm";
-        private const string theta_inside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_05_theta_inside\02_05_theta_inside.hpm";
-        private const string boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
-        private const string terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
-        private const string Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
@@ -169,7 +168,7 @@ namespace GLOOP.HPL
                 width, height,
                 new[] { 
                     PixelInternalFormat.Srgb8Alpha8,// Diffuse
-                    PixelInternalFormat.Rgba16f,     // Position
+                    PixelInternalFormat.Rgba16f,    // Position
                     PixelInternalFormat.Rgb8,       // Normal
                     PixelInternalFormat.Srgb8Alpha8,// Specular
                 },
@@ -192,6 +191,7 @@ namespace GLOOP.HPL
 #endif
             PostMan.Init(width, height, PixelInternalFormat.Rgb16f);
 
+            #region Shaders
             var deferredMaterial = new DeferredRenderingGeoMaterial();
             PointLightShader = new DynamicPixelShader(
                 "assets/shaders/deferred/LightPass/VertexShader.vert",
@@ -274,6 +274,8 @@ namespace GLOOP.HPL
                 null,
                 "Color Correction"
             );
+            #endregion
+            
             frustumMaterial = new FrustumMaterial(new FrustumShader());
             queryPool = new QueryPool(15);
 
@@ -306,9 +308,6 @@ namespace GLOOP.HPL
             var allModels = scene.Models.Count() + scene.VisibilityAreas.Values.SelectMany(area => area.Models).Count();
             Console.WriteLine($"Scene: {numStatic} Static, {numStaticOccluders} of which occlude. {numDynamic} Dynamic. {allModels} Total.");
 
-            if (!enablePortalCulling)
-                VisibleAreas.AddRange(scene.VisibilityAreas.Values);
-
             setupBuffers();
 
             /*
@@ -330,13 +329,7 @@ namespace GLOOP.HPL
                 var frameStart = DateTime.Now;
 
                 ImGuiController.Update(this, (float)args.Time);
-                if (ImGui.Begin("Options"))
-                {
-                    ImGui.Checkbox("FXAA", ref enableFXAA);
-                    ImGui.Checkbox("SSAO", ref enableSSAO);
-                    ImGui.Checkbox("Bloom", ref enableBloom);
-                }
-                ImGui.End();
+                DrawImGuiOptionsWindow();
 
 #if VR
                 if (FrameNumber == 1)
@@ -375,7 +368,7 @@ namespace GLOOP.HPL
                 backBuffer.Use();
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
                 GL.Viewport(0, 0, Size.X, Size.Y);
-                DrawMetrics();
+                DrawImGuiMetricsWindow();
                 if (enableImGui)
                     ImGuiController.Render();
 
@@ -390,8 +383,23 @@ namespace GLOOP.HPL
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
         }
 
-        private void DrawMetrics()
+        [Conditional("DEBUG")]
+        private void DrawImGuiOptionsWindow()
         {
+            if (ImGui.Begin("Options"))
+            {
+                ImGui.Checkbox("FXAA", ref enableFXAA);
+                ImGui.Checkbox("SSAO", ref enableSSAO);
+                ImGui.Checkbox("Bloom", ref enableBloom);
+            }
+            ImGui.End();
+        }
+
+        private void DrawImGuiMetricsWindow()
+        {
+            if (!enableImGui)
+                return;
+
             if (ImGui.Begin("Metrics"))
             {
                 const int TargetFPS = 144;
@@ -415,20 +423,14 @@ namespace GLOOP.HPL
 
         private void DetermineVisibleAreas()
         {
-            if (!enablePortalCulling)
-                return;
+            DrawImGuiPortalWindow();
 
-            if (ImGui.Begin("Portals"))
+            if (!enablePortalCulling)
             {
-                ImGui.Text("Visible Areas");
-                foreach (var area in VisibleAreas)
-                    ImGui.Text(area.Name);
-                ImGui.Separator();
-                ImGui.Text("Active Portal Queries");
-                foreach (var portal in PortalQueries)
-                    ImGui.Text(portal.Item1.Name);
+                VisibleAreas.Clear();
+                VisibleAreas.AddRange(scene.VisibilityAreas.Values);
+                return;
             }
-            ImGui.End();
 
             // Dont need to check every frame
             // Also must only run every odd frame for VR support
@@ -481,6 +483,23 @@ namespace GLOOP.HPL
 
         }
 
+        [Conditional("DEBUG")]
+        private void DrawImGuiPortalWindow()
+        {
+            if (ImGui.Begin("Portals"))
+            {
+                ImGui.Checkbox("Enable", ref enablePortalCulling);
+                ImGui.Text("Visible Areas");
+                foreach (var area in VisibleAreas)
+                    ImGui.Text(area.Name);
+                ImGui.Separator();
+                ImGui.Text("Active Portal Queries");
+                foreach (var portal in PortalQueries)
+                    ImGui.Text(portal.Item1.Name);
+            }
+            ImGui.End();
+        }
+
         private void ResetGBuffer()
         {
             GBuffers.Use();
@@ -529,12 +548,7 @@ namespace GLOOP.HPL
 
                     using (new DebugGroup("Colour Correction"))
                     {
-                        ImGui.Begin("Colour Correction");
-                        ImGui.DragFloat("Key", ref Key, 0.01f, 0.0f, 2.0f);
-                        ImGui.DragFloat("Exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
-                        ImGui.DragFloat("Gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
-                        ImGui.DragFloat("White cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
-                        ImGui.End();
+                        DrawImGUIColourCorrectionWindow();
 
                         var newBuffer = PostMan.NextFramebuffer;
                         newBuffer.Use();
@@ -569,6 +583,20 @@ namespace GLOOP.HPL
             }
 
             currentBuffer.BlitTo(finalBuffer, ClearBufferMask.ColorBufferBit);
+        }
+
+        [Conditional("DEBUG")]
+        private void DrawImGUIColourCorrectionWindow()
+        {
+            if (!enableImGui)
+                return;
+
+            ImGui.Begin("Colour Correction");
+            ImGui.DragFloat("Key", ref Key, 0.01f, 0.0f, 2.0f);
+            ImGui.DragFloat("Exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
+            ImGui.DragFloat("Gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
+            ImGui.DragFloat("White cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
+            ImGui.End();
         }
 
         private void GBufferPass(FrameBuffer finalBuffer)
@@ -700,16 +728,14 @@ namespace GLOOP.HPL
             return outputBuffer;
         }
 
-
         private FrameBuffer DoBloomPass(Texture diffuse)
         {
-            ImGui.Begin("Bloom");
             using (new DebugGroup("Bloom"))
             {
+                DrawImGuiBloomWindow();
                 var currentFB = PostMan.NextFramebuffer;
                 using (new DebugGroup("Extract"))
                 {
-                    ImGui.DragFloat("Bright pass", ref BrightPass, 0.1f, 1f, 100f);
                     // Extract bright parts
                     currentFB.Use();
                     ExtractBright.Use();
@@ -754,10 +780,6 @@ namespace GLOOP.HPL
 
                 using (new DebugGroup("Combine"))
                 {
-                    ImGui.Separator();
-                    ImGui.SliderFloat3("Size Weight", ref SizeWeight, 0f, 1f);
-                    ImGui.DragFloat("Weight Scalar", ref WeightScalar, 0.01f, 0, 10f);
-
                     // Add all to finished frame
                     GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
                     currentFB = PostMan.NextFramebuffer;
@@ -780,9 +802,22 @@ namespace GLOOP.HPL
                     GL.Disable(EnableCap.FramebufferSrgb);
                 }
 
-                ImGui.End();
                 return currentFB;
             }
+        }
+
+        [Conditional("DEBUG")]
+        private void DrawImGuiBloomWindow()
+        {
+            if (!enableImGui)
+                return;
+
+            ImGui.Begin("Bloom");
+            ImGui.DragFloat("Bright pass", ref BrightPass, 0.1f, 1f, 100f);
+            ImGui.Separator();
+            ImGui.SliderFloat3("Size Weight", ref SizeWeight, 0f, 1f);
+            ImGui.DragFloat("Weight Scalar", ref WeightScalar, 0.01f, 0, 10f);
+            ImGui.End();
         }
 
         private void DisplayGBuffer(FrameBuffer finalBuffer, int buffer)
@@ -864,41 +899,21 @@ namespace GLOOP.HPL
 
         private void RenderLights()
         {
-#if DEBUG
-            if (enableImGui)
+            DrawImGuiMaterialWindow();
+            var shaders = new[] { SpotLightShader, PointLightShader };
+            foreach (var shader in shaders)
             {
-                ImGui.Begin("Deferred Rendering Material");
-                ImGui.SliderFloat(nameof(DiffuseScalar), ref DiffuseScalar, 0.0f, 2.0f);
-                ImGui.SliderFloat(nameof(LightBrightnessMultiplier), ref LightBrightnessMultiplier, 0.0f, 128.0f);
-                ImGui.Checkbox(nameof(UseLightDiffuse), ref UseLightDiffuse);
-                ImGui.Separator();
-                ImGui.SliderFloat(nameof(SpecularScalar), ref SpecularScalar, 0.0f, 2.0f);
-                ImGui.SliderFloat(nameof(SpecularPowerScalar), ref SpecularPowerScalar, 0.0f, 32.0f);
-                ImGui.SliderFloat(nameof(OffsetByNormalScalar), ref OffsetByNormalScalar, 0.0f, 0.5f);
-                ImGui.Checkbox(nameof(UseLightSpecular), ref UseLightSpecular);
-                ImGui.Separator();
-                ImGui.SliderFloat(nameof(LightScatterScalar), ref LightScatterScalar, 0.0f, 2.0f);
-                ImGui.NewLine();
-                ImGui.NewLine();
-                ImGui.SliderFloat(nameof(LightingScalar), ref LightingScalar, 1.0f, 16.0f);
-                ImGui.End();
-
-                var shaders = new[] { SpotLightShader, PointLightShader };
-                foreach (var shader in shaders)
-                {
-                    shader.Use();
-                    shader.Set("offsetByNormalScalar", OffsetByNormalScalar);
-                    shader.Set("lightBrightnessMultiplier", LightBrightnessMultiplier);
-                    shader.Set("specularPowerScalar", SpecularPowerScalar);
-                    shader.Set("lightingScalar", LightingScalar);
-                    shader.Set("diffuseScalar", DiffuseScalar);
-                    shader.Set("specularScalar", SpecularScalar);
-                    shader.Set("useLightSpecular", UseLightSpecular);
-                    shader.Set("useLightDiffuse", UseLightDiffuse);
-                    shader.Set("lightScatterScalar", LightScatterScalar);
-                }
+                shader.Use();
+                shader.Set("offsetByNormalScalar", OffsetByNormalScalar);
+                shader.Set("lightBrightnessMultiplier", LightBrightnessMultiplier);
+                shader.Set("specularPowerScalar", SpecularPowerScalar);
+                shader.Set("lightingScalar", LightingScalar);
+                shader.Set("diffuseScalar", DiffuseScalar);
+                shader.Set("specularScalar", SpecularScalar);
+                shader.Set("useLightSpecular", UseLightSpecular);
+                shader.Set("useLightDiffuse", UseLightDiffuse);
+                shader.Set("lightScatterScalar", LightScatterScalar);
             }
-#endif
 
             var gbuffers = new[] {
                 GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
@@ -925,6 +940,29 @@ namespace GLOOP.HPL
                     debugLights
                 );
             }
+        }
+
+        [Conditional("DEBUG")]
+        private void DrawImGuiMaterialWindow()
+        {
+            if (!enableImGui)
+                return;
+
+            ImGui.Begin("Deferred Rendering Material");
+            ImGui.SliderFloat(nameof(DiffuseScalar), ref DiffuseScalar, 0.0f, 2.0f);
+            ImGui.SliderFloat(nameof(LightBrightnessMultiplier), ref LightBrightnessMultiplier, 0.0f, 128.0f);
+            ImGui.Checkbox(nameof(UseLightDiffuse), ref UseLightDiffuse);
+            ImGui.Separator();
+            ImGui.SliderFloat(nameof(SpecularScalar), ref SpecularScalar, 0.0f, 2.0f);
+            ImGui.SliderFloat(nameof(SpecularPowerScalar), ref SpecularPowerScalar, 0.0f, 32.0f);
+            ImGui.SliderFloat(nameof(OffsetByNormalScalar), ref OffsetByNormalScalar, 0.0f, 0.5f);
+            ImGui.Checkbox(nameof(UseLightSpecular), ref UseLightSpecular);
+            ImGui.Separator();
+            ImGui.SliderFloat(nameof(LightScatterScalar), ref LightScatterScalar, 0.0f, 2.0f);
+            ImGui.NewLine();
+            ImGui.NewLine();
+            ImGui.SliderFloat(nameof(LightingScalar), ref LightingScalar, 1.0f, 16.0f);
+            ImGui.End();
         }
 
         protected override void OnResize(ResizeEventArgs e)
