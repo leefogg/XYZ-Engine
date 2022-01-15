@@ -1,19 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Xml.Serialization;
 using Assimp;
-using GLOOP.Extensions;
 using GLOOP.Rendering;
-using GLOOP.HPL;
-using Newtonsoft.Json;
-using OpenTK;
-using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
-using OpenTK.Input;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
@@ -31,6 +23,33 @@ using Primitives = GLOOP.Rendering.Primitives;
 namespace GLOOP.HPL
 {
     public class Game : Window {
+        private readonly struct MapSetup
+        {
+            public readonly string Path;
+            public readonly Vector3 CameraPos;
+
+            public MapSetup(string path, Vector3 cameraPos)
+            {
+                Path = path;
+                CameraPos = cameraPos;
+            }
+        }
+        private static readonly MapSetup Custom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm", new Vector3(6.3353596f, 1.6000088f, 8.1601305f));
+        private static readonly MapSetup Phi = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm", new Vector3(-17.039896f, 14.750014f, 64.48185f));
+        private static readonly MapSetup Delta = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_03_delta\02_03_delta.hpm", new Vector3(0, 145, -10));
+        private static readonly MapSetup Lights = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm", new Vector3(-0.5143715f, 4.3500123f, 11.639848f));
+        private static readonly MapSetup Portals = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm", new Vector3(4.5954947f, 1.85f, 16.95526f));
+        private static readonly MapSetup ThetaInsideLab = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_05_theta_inside\02_05_theta_inside.hpm", new Vector3(0,5,0));
+        private static readonly MapSetup ThetaTunnels = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_06_theta_tunnels\02_06_theta_tunnels.hpm", new Vector3(4, 9, -61));
+        private static readonly MapSetup ThetaExit = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_07_theta_exit\02_07_theta_exit.hpm", new Vector3(11.340768f, 1.6000444f, 47.520298f));
+        private static readonly MapSetup Wau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_03_tau_escape\04_03_tau_escape.hpm", new Vector3(-26.12f, 93.691f, 167.313f));
+        private static readonly MapSetup Awake = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_01_upsilon_awake\01_01_upsilon_awake.hpm", new Vector3(9.325157f, -0.44998702f, 50.61429f));
+        private static readonly MapSetup Bedroom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm", new Vector3(-11.600799f, 1.4500086f, 11.624353f));
+        private static readonly MapSetup Omicron = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter03\03_02_omicron_inside\03_02_omicron_inside.hpm", new Vector3(-1.0284736f, -2.0497713f, 21.69069f));
+        private static readonly MapSetup TauOutside = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_01_tau_outside\04_01_tau_outside.hpm", new Vector3(0,5,0));
+        private static readonly MapSetup Tau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm", new Vector3(26.263678f, 1.7000114f, 36.090767f));
+        private readonly MapSetup MapToUse = Phi;
+
         private Camera Camera;
         private Scene scene;
 
@@ -58,7 +77,6 @@ namespace GLOOP.HPL
         private QueryPool queryPool;
         private List<(VisibilityPortal, Query)> PortalQueries = new List<(VisibilityPortal, Query)>();
 
-        // ImGUI variables
         // Lighting
         private float OffsetByNormalScalar = 0.05f;
         private float LightBrightnessMultiplier = 1f;
@@ -76,7 +94,7 @@ namespace GLOOP.HPL
         // Post
         private float Key = 1f;
         private float Exposure = 1f;
-        private float Gamma = 2f;
+        private float Gamma = 2.4f;
         private float WhiteCut = 1f;
         // SSAO
         private int MinSamples = 8;
@@ -86,12 +104,12 @@ namespace GLOOP.HPL
         private float Bias = 0.5f;
         private float SampleRadius = 0.005f;
         private float MaxDistance = 0.1f;
-
+        // ImGUI variables
         private bool debugLights;
         private int debugGBufferTexture = -1;
         private bool debugLightBuffer;
-        private bool enableFXAA = true;
-        private bool enableSSAO = true;
+        private bool enableFXAA = false;
+        private bool enableSSAO = false;
         private bool enableBloom = true;
         private bool showBoundingBoxes = false;
         private const bool enablePortalCulling = true;
@@ -116,33 +134,9 @@ namespace GLOOP.HPL
         private const string boundingBoxes = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\BoundingBoxes\BoundingBoxes.hpm";
         private const string terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
         private const string Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
-        private struct MapSetup
-        {
-            public string Path;
-            public Vector3 CameraPos;
-
-            public MapSetup(string path, Vector3 cameraPos)
-            {
-                Path = path;
-                CameraPos = cameraPos;
-            }
-        }
-        private MapSetup Custom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm", new Vector3(6.3353596f, 1.6000088f, 8.1601305f));
-        private MapSetup Phi = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm", new Vector3(-17.039896f, 14.750014f, 64.48185f));
-        private MapSetup Delta = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_03_delta\02_03_delta.hpm", new Vector3(0, 145, -10));
-        private MapSetup ThetaTunnels = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_06_theta_tunnels\02_06_theta_tunnels.hpm", new Vector3(4, 9, -61));
-        private MapSetup Lights = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm", new Vector3(-0.5143715f, 4.3500123f, 11.639848f));
-        private MapSetup Portals = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm", new Vector3(4.5954947f, 1.85f, 16.95526f));
-        private MapSetup Tau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm", new Vector3(26.263678f, 1.7000114f, 36.090767f));
-        private MapSetup ThetaExit = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_07_theta_exit\02_07_theta_exit.hpm", new Vector3(11.340768f, 1.6000444f, 47.520298f));
-        private MapSetup Wau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_03_tau_escape\04_03_tau_escape.hpm", new Vector3(-26.12f, 93.691f, 167.313f));
-        private MapSetup Awake = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_01_upsilon_awake\01_01_upsilon_awake.hpm", new Vector3(9.325157f, -0.44998702f, 50.61429f));
-        private MapSetup Bedroom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm", new Vector3(-11.600799f, 1.4500086f, 11.624353f));
-        private MapSetup MapToUse;
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) {
-            MapToUse = Phi;
             Camera = new DebugCamera(MapToUse.CameraPos, new Vector3(), 90)
             {
                 Width = width,
