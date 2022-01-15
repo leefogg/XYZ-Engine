@@ -51,6 +51,10 @@ TODO:
 		Fog
 		Light Gobos
 		Skybox
+		Terrain
+			Smoother
+			All layers
+		Connected lights
 
 
 	Portal culling
