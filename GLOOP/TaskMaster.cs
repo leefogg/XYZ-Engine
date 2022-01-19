@@ -27,7 +27,7 @@ namespace GLOOP
 
         public static void Process()
         {
-            if (Jobs.Peek().Condition())
+            if (Jobs.Count > 0 && Jobs.Peek().Condition())
             {
                 Jobs.Dequeue().Action();
             }
