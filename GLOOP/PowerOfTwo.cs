@@ -15,5 +15,6 @@ namespace GLOOP
         ThrirtyTwo = 1 << 5,
         SixtyFour = 1 << 6,
         OneHundrendAndTwentyEight = 1 << 7,
+        TwoHundredAndFiftySix = 1 << 8
     }
 }

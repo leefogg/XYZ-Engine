@@ -7,7 +7,7 @@ namespace GLOOP
 {
     public class Ring<T> : IEnumerable<T>
     {
-        private T[] Items { get; }
+        private readonly T[] Items;
         private int CurrentIndex;
 
         private int NextIndex => (CurrentIndex + 1) & (Items.Length - 1);

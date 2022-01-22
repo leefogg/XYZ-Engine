@@ -20,8 +20,10 @@ namespace GLOOP
         public static ulong FrameNumber { get; protected set; }
         public static int FPS;
 
-        private static readonly DateTime startTime = DateTime.Now;
-        public static float MillisecondsElapsed => (DateTime.Now - startTime).Milliseconds;
+        private static readonly DateTime GameStartTime = DateTime.Now;
+        public static float GameMillisecondsElapsed => (DateTime.Now - GameStartTime).Milliseconds;
+        private static DateTime FrameStartMs;
+        public static float FrameMillisecondsElapsed => (float)(DateTime.Now - FrameStartMs).TotalMilliseconds;
 
         public bool bindMouse = true;
 
@@ -40,7 +42,6 @@ namespace GLOOP
 
         protected override void OnResize(ResizeEventArgs e)
         {
-
             OnResized?.Invoke(this, Size);
 
             base.OnResize(e);
@@ -118,22 +119,29 @@ namespace GLOOP
 
         protected override void OnRenderFrame(FrameEventArgs args)
         {
+            FrameStart();
+
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
             Render();
 
             SwapBuffers();
 
-            NewFrame();
+            FrameEnd();
 
             base.OnRenderFrame(args);
         }
 
-        public void NewFrame()
+        public void FrameEnd()
         {
             FrameNumber++;
 
             TaskMaster.Process();
+        }
+
+        public void FrameStart()
+        {
+            FrameStartMs = DateTime.Now;
         }
 
         public virtual void Render()

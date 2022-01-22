@@ -33,6 +33,7 @@ TODO:
 		Other:
 			Rename HLP to HPL
 			Handle VR startup errors in SetUpOpenVR
+			ICameraDriver
 
 	To be inline with HPL:
 		Textures seem to be loading RGB not sRGB
@@ -45,16 +46,22 @@ TODO:
 		Decals
 		Sky
 		Shadows
-		Particles
 		Remove lighting map
 		Attached lights
-		Fog
 		Light Gobos
-		Skybox
+		Animation
+		Physics
 		Terrain
 			Smoother
 			All layers
 		Connected lights
+		Map settings
+			Skybox
+			Max draw distance
+			Fog
+			Directional light
+			Particles
+
 
 
 	Portal culling

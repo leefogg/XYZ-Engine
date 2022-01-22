@@ -55,7 +55,7 @@ namespace GLOOP.HPL
         private static readonly MapSetup Omicron = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter03\03_02_omicron_inside\03_02_omicron_inside.hpm", new Vector3(-1.0284736f, -2.0497713f, 21.69069f));
         private static readonly MapSetup TauOutside = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_01_tau_outside\04_01_tau_outside.hpm", new Vector3(0,5,0));
         private static readonly MapSetup Tau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm", new Vector3(26.263678f, 1.7000114f, 36.090767f));
-        private readonly MapSetup MapToUse = Phi;
+        private readonly MapSetup MapToUse = Custom;
 
         private Camera Camera;
         private Scene scene;
@@ -120,13 +120,14 @@ namespace GLOOP.HPL
         private bool enableBloom = true;
         private bool showBoundingBoxes = false;
         private bool enablePortalCulling = true;
-        private bool enableImGui = true;
+        private bool enableImGui = false;
 
         private Buffer<float> bloomBuffer;
         private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
 
         private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
+        private FrameProfiler.Frame CurrentFrame = FrameProfiler.CurrentFrame;
         private readonly DateTime startTime = DateTime.Now;
         private readonly FrameBuffer backBuffer;
         private readonly int frameBufferWidth, frameBufferHeight;
@@ -153,7 +154,9 @@ namespace GLOOP.HPL
             enableSSAO = false;
             enableBloom = false;
 #endif
+#if DEBUG || BETA
             ImGuiController = new ImGuiController(ClientSize.X, ClientSize.Y);
+#endif
         }
 
         protected override void OnLoad() {
@@ -191,7 +194,7 @@ namespace GLOOP.HPL
 #endif
             PostMan.Init(width, height, PixelInternalFormat.Rgb16f);
 
-            #region Shaders
+#region Shaders
             var deferredMaterial = new DeferredRenderingGeoMaterial();
             PointLightShader = new DynamicPixelShader(
                 "assets/shaders/deferred/LightPass/VertexShader.vert",
@@ -274,7 +277,7 @@ namespace GLOOP.HPL
                 null,
                 "Color Correction"
             );
-            #endregion
+#endregion
             
             frustumMaterial = new FrustumMaterial(new FrustumShader());
             queryPool = new QueryPool(15);
@@ -322,21 +325,26 @@ namespace GLOOP.HPL
 
         protected override void OnRenderFrame(FrameEventArgs args)
         {
+            FrameStart();
+
+            CurrentFrame.Dispose();
+            var frame = FrameProfiler.CurrentFrame;
+            CurrentFrame = frame;
+
             using (var query = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
                 TaskMaster.AddTask(query.IsResultAvailable, () => { GPUFrameTimings.Set(1000f / (query.GetResult() / 1000000f)); GPUFrameTimings.MoveNext(); });
 
                 var frameStart = DateTime.Now;
 
-                ImGuiController.Update(this, (float)args.Time);
-                DrawImGuiOptionsWindow();
+                ImGuiController?.Update(this, (float)args.Time);
 
 #if VR
-                if (FrameNumber == 1)
-                    VRSystem.SetOriginHeadTransform();
-
                 VRSystem.UpdateEyes();
                 VRSystem.UpdatePoses();
+               
+                if (FrameNumber == 1)
+                   VRSystem.SetOriginHeadTransform();
 
                 // Left Eye
                 updateCameraUBO(
@@ -349,28 +357,29 @@ namespace GLOOP.HPL
                 VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
 
                 // Right Eye
-                updateCameraUBO(
-                    VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Right),
-                    Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Right)
-                );
+                {
+                    using var timer = CurrentFrame[FrameProfiler.Event.UpdateBuffers];
+                    updateCameraUBO(
+                        VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Right),
+                        Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Right)
+                    );
+                }
                 ResetGBuffer();
                 VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Right);
                 RenderPass(RightEyeBuffer);
                 VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
 
                 RightEyeBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
-                
 #else
-                updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+                UpdateBuffers();
                 ResetGBuffer();
                 RenderPass(backBuffer);
 #endif
-                backBuffer.Use();
-                GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
-                GL.Viewport(0, 0, Size.X, Size.Y);
+
+                DrawImGuiOptionsWindow();
                 DrawImGuiMetricsWindow();
-                if (enableImGui)
-                    ImGuiController.Render();
+                FrameProfiler.Render(CurrentFrame);
+                DrawImGui();
 
                 var frameElapsedMs = (float)(DateTime.Now - frameStart).TotalMilliseconds;
                 CPUFrameTimings.SetAndMove(frameElapsedMs);
@@ -378,9 +387,28 @@ namespace GLOOP.HPL
 
             SwapBuffers();
 
-            NewFrame();
+            FrameEnd();
 
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
+        }
+
+        private void UpdateBuffers()
+        {
+            using var timer = CurrentFrame[FrameProfiler.Event.UpdateBuffers];
+            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+        }
+
+        private void DrawImGui()
+        {
+            using var timer = CurrentFrame[FrameProfiler.Event.ImGui];
+
+            if (!enableImGui)
+                return;
+
+            backBuffer.Use();
+            GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+            GL.Viewport(0, 0, Size.X, Size.Y);
+            ImGuiController?.Render();
         }
 
         [Conditional("DEBUG")]
@@ -395,6 +423,8 @@ namespace GLOOP.HPL
             ImGui.End();
         }
 
+        [Conditional("DEBUG")]
+        [Conditional("BETA")]
         private void DrawImGuiMetricsWindow()
         {
             if (!enableImGui)
@@ -415,14 +445,14 @@ namespace GLOOP.HPL
                 average = values.Average();
                 ImGui.PlotHistogram("CPU", ref values[0], values.Length, 0, null, 0, 1000f / TargetFPS, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
                 ImGui.Text($"Average: {average:0.000}ms ({1000f / average:00.00} fps)");
-                ImGui.SameLine();
-
             }
             ImGui.End();
         }
 
         private void DetermineVisibleAreas()
         {
+            using var timer = CurrentFrame[FrameProfiler.Event.PortalCulling];
+
             DrawImGuiPortalWindow();
 
             if (!enablePortalCulling)
@@ -543,24 +573,23 @@ namespace GLOOP.HPL
 
                 if (!debugLightBuffer)
                 {
-                    if (enableBloom)
-                        currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
+                    currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
 
-                    using (new DebugGroup("Colour Correction"))
-                    {
-                        DrawImGUIColourCorrectionWindow();
+                    DrawImGUIColourCorrectionWindow();
 
-                        var newBuffer = PostMan.NextFramebuffer;
-                        newBuffer.Use();
-                        var shader = ColorCorrectionShader;
-                        shader.Use();
-                        shader.Set("afKey", Key);
-                        shader.Set("afExposure", Exposure);
-                        shader.Set("afInvGammaCorrection", 1f / Gamma);
-                        shader.Set("afWhiteCut", WhiteCut);
-                        DoPostEffect(shader, currentBuffer.ColorBuffers[0]);
-                        currentBuffer = newBuffer;
-                    }
+                    using var group = new DebugGroup("Colour Correction");
+                    using var timer = CurrentFrame[FrameProfiler.Event.PostEffects];
+
+                    var newBuffer = PostMan.NextFramebuffer;
+                    newBuffer.Use();
+                    var shader = ColorCorrectionShader;
+                    shader.Use();
+                    shader.Set("afKey", Key);
+                    shader.Set("afExposure", Exposure);
+                    shader.Set("afInvGammaCorrection", 1f / Gamma);
+                    shader.Set("afWhiteCut", WhiteCut);
+                    DoPostEffect(shader, currentBuffer.ColorBuffers[0]);
+                    currentBuffer = newBuffer;
                 }
             }
 
@@ -591,36 +620,44 @@ namespace GLOOP.HPL
             if (!enableImGui)
                 return;
 
-            ImGui.Begin("Colour Correction");
-            ImGui.DragFloat("Key", ref Key, 0.01f, 0.0f, 2.0f);
-            ImGui.DragFloat("Exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
-            ImGui.DragFloat("Gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
-            ImGui.DragFloat("White cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
+            if (ImGui.Begin("Colour Correction"))
+            {
+                ImGui.DragFloat("Key", ref Key, 0.01f, 0.0f, 2.0f);
+                ImGui.DragFloat("Exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
+                ImGui.DragFloat("Gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
+                ImGui.DragFloat("White cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
+            }
             ImGui.End();
         }
 
         private void GBufferPass(FrameBuffer finalBuffer)
         {
             Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
-            using var debugGroup = new DebugGroup(nameof(GBufferPass));
-            GL.Enable(EnableCap.FramebufferSrgb);
-            using (new DebugGroup("Occluders"))
-            {
-                foreach (var area in VisibleAreas)
-                    area.RenderOccluderGeometry();
-                scene.RenderOccluderGeometry();
-            }
 
-            using (new DebugGroup("Non Occluders"))
             {
-                foreach (var area in VisibleAreas)
-                    area.RenderNonOccluderGeometry();
-                scene.RenderNonOccluderGeometry();
+                using var timer = CurrentFrame[FrameProfiler.Event.Geomertry];
+                using var debugGroup = new DebugGroup(nameof(GBufferPass));
+
+                GL.Enable(EnableCap.FramebufferSrgb);
+                using (new DebugGroup("Occluders"))
+                {
+                    foreach (var area in VisibleAreas)
+                        area.RenderOccluderGeometry();
+                    scene.RenderOccluderGeometry();
+                }
+
+                using (new DebugGroup("Non Occluders"))
+                {
+                    foreach (var area in VisibleAreas)
+                        area.RenderNonOccluderGeometry();
+                    scene.RenderNonOccluderGeometry();
+                }
+
+                scene.RenderTerrain();
             }
 
             DetermineVisibleAreas();
 
-            scene.RenderTerrain();
             GL.Disable(EnableCap.FramebufferSrgb);
         }
 
@@ -687,6 +724,7 @@ namespace GLOOP.HPL
             };
             NoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
         }
+       
         private FrameBuffer ResolveGBuffer(Texture albedo)
         {
             var outputBuffer = PostMan.NextFramebuffer;
@@ -730,9 +768,12 @@ namespace GLOOP.HPL
 
         private FrameBuffer DoBloomPass(Texture diffuse)
         {
+            using var timer = CurrentFrame[FrameProfiler.Event.Bloom];
+
             using (new DebugGroup("Bloom"))
             {
                 DrawImGuiBloomWindow();
+
                 var currentFB = PostMan.NextFramebuffer;
                 using (new DebugGroup("Extract"))
                 {
@@ -812,11 +853,13 @@ namespace GLOOP.HPL
             if (!enableImGui)
                 return;
 
-            ImGui.Begin("Bloom");
-            ImGui.DragFloat("Bright pass", ref BrightPass, 0.1f, 1f, 100f);
-            ImGui.Separator();
-            ImGui.SliderFloat3("Size Weight", ref SizeWeight, 0f, 1f);
-            ImGui.DragFloat("Weight Scalar", ref WeightScalar, 0.01f, 0, 10f);
+            if (ImGui.Begin("Bloom"))
+            {
+                ImGui.DragFloat("Bright pass", ref BrightPass, 0.1f, 1f, 100f);
+                ImGui.Separator();
+                ImGui.SliderFloat3("Size Weight", ref SizeWeight, 0f, 1f);
+                ImGui.DragFloat("Weight Scalar", ref WeightScalar, 0.01f, 0, 10f);
+            }
             ImGui.End();
         }
 
@@ -840,27 +883,26 @@ namespace GLOOP.HPL
 
         public void DoLightPass(Vector3 ambientColor)
         {
-            using (new DebugGroup("Lighting"))
-            {
-                LightingBuffer.Use();
-                GL.ClearColor(ambientColor.X, ambientColor.Y, ambientColor.Z, 0);
-                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            using var debugGroup = new DebugGroup("Lighting");
 
-                GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
-                GL.CullFace(CullFaceMode.Front);
+            LightingBuffer.Use();
+            GL.ClearColor(ambientColor.X, ambientColor.Y, ambientColor.Z, 0);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-                RenderLights();
+            GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+            GL.CullFace(CullFaceMode.Front);
 
-                GL.CullFace(CullFaceMode.Back);
-                GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
-                GL.BlendEquation(BlendEquationMode.FuncReverseSubtract);
+            RenderLights();
 
-                if (enableSSAO)
-                    SSAOPostEffect();
+            GL.CullFace(CullFaceMode.Back);
+            GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+            GL.BlendEquation(BlendEquationMode.FuncReverseSubtract);
 
-                GL.BlendEquation(BlendEquationMode.FuncAdd);
-                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
-            }
+            if (enableSSAO)
+                SSAOPostEffect();
+
+            GL.BlendEquation(BlendEquationMode.FuncAdd);
+            GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
         }
 
         private void SSAOPostEffect()
@@ -874,17 +916,7 @@ namespace GLOOP.HPL
             shader.Set("normalTexture", TextureUnit.Texture1);
             shader.Set("Time", elapsedMilliseconds);
 
-            if (ImGui.Begin("SSAO"))
-            {
-                ImGui.DragInt("Min Samples", ref MinSamples, 1, 1, MaxSamples);
-                ImGui.DragInt("Max Samples", ref MaxSamples, 1, MinSamples, 64);
-                ImGui.DragFloat("Max Samples Distance", ref MaxSamplesDistance, 0.1f, 0, Camera.ZFar);
-                ImGui.DragFloat("Intensity", ref Intensity, 0.01f, 0.01f, 8f * 8);
-                ImGui.DragFloat("Bias", ref Bias, 0.01f, 0.01f, 0.5f);
-                ImGui.DragFloat("Sample Radius", ref SampleRadius, 0.001f, 0.001f, 0.2f);
-                ImGui.DragFloat("Sample Disatance", ref MaxDistance, 0.0f, 0.1f, 1);
-            }
-            ImGui.End();
+            DrawImGuiSSAOWindow();
 
             shader.Set("MinSamples", MinSamples);
             shader.Set("MaxSamples", MaxSamples);
@@ -897,9 +929,28 @@ namespace GLOOP.HPL
             Primitives.Quad.Draw();
         }
 
+        [Conditional("DEBUG")]
+        private void DrawImGuiSSAOWindow()
+        {
+            if (ImGui.Begin("SSAO"))
+            {
+                ImGui.DragInt("Min Samples", ref MinSamples, 1, 1, MaxSamples);
+                ImGui.DragInt("Max Samples", ref MaxSamples, 1, MinSamples, 64);
+                ImGui.DragFloat("Max Samples Distance", ref MaxSamplesDistance, 0.1f, 0, Camera.ZFar);
+                ImGui.DragFloat("Intensity", ref Intensity, 0.01f, 0.01f, 8f * 8);
+                ImGui.DragFloat("Bias", ref Bias, 0.01f, 0.01f, 0.5f);
+                ImGui.DragFloat("Sample Radius", ref SampleRadius, 0.001f, 0.001f, 0.2f);
+                ImGui.DragFloat("Sample Disatance", ref MaxDistance, 0.0f, 0.1f, 1);
+            }
+            ImGui.End();
+        }
+
         private void RenderLights()
         {
+            using var timer = CurrentFrame[FrameProfiler.Event.Lighting];
+
             DrawImGuiMaterialWindow();
+
             var shaders = new[] { SpotLightShader, PointLightShader };
             foreach (var shader in shaders)
             {
@@ -948,20 +999,22 @@ namespace GLOOP.HPL
             if (!enableImGui)
                 return;
 
-            ImGui.Begin("Deferred Rendering Material");
-            ImGui.SliderFloat(nameof(DiffuseScalar), ref DiffuseScalar, 0.0f, 2.0f);
-            ImGui.SliderFloat(nameof(LightBrightnessMultiplier), ref LightBrightnessMultiplier, 0.0f, 128.0f);
-            ImGui.Checkbox(nameof(UseLightDiffuse), ref UseLightDiffuse);
-            ImGui.Separator();
-            ImGui.SliderFloat(nameof(SpecularScalar), ref SpecularScalar, 0.0f, 2.0f);
-            ImGui.SliderFloat(nameof(SpecularPowerScalar), ref SpecularPowerScalar, 0.0f, 32.0f);
-            ImGui.SliderFloat(nameof(OffsetByNormalScalar), ref OffsetByNormalScalar, 0.0f, 0.5f);
-            ImGui.Checkbox(nameof(UseLightSpecular), ref UseLightSpecular);
-            ImGui.Separator();
-            ImGui.SliderFloat(nameof(LightScatterScalar), ref LightScatterScalar, 0.0f, 2.0f);
-            ImGui.NewLine();
-            ImGui.NewLine();
-            ImGui.SliderFloat(nameof(LightingScalar), ref LightingScalar, 1.0f, 16.0f);
+            if (ImGui.Begin("Deferred Rendering Material"))
+            {
+                ImGui.SliderFloat(nameof(DiffuseScalar), ref DiffuseScalar, 0.0f, 2.0f);
+                ImGui.SliderFloat(nameof(LightBrightnessMultiplier), ref LightBrightnessMultiplier, 0.0f, 128.0f);
+                ImGui.Checkbox(nameof(UseLightDiffuse), ref UseLightDiffuse);
+                ImGui.Separator();
+                ImGui.SliderFloat(nameof(SpecularScalar), ref SpecularScalar, 0.0f, 2.0f);
+                ImGui.SliderFloat(nameof(SpecularPowerScalar), ref SpecularPowerScalar, 0.0f, 32.0f);
+                ImGui.SliderFloat(nameof(OffsetByNormalScalar), ref OffsetByNormalScalar, 0.0f, 0.5f);
+                ImGui.Checkbox(nameof(UseLightSpecular), ref UseLightSpecular);
+                ImGui.Separator();
+                ImGui.SliderFloat(nameof(LightScatterScalar), ref LightScatterScalar, 0.0f, 2.0f);
+                ImGui.NewLine();
+                ImGui.NewLine();
+                ImGui.SliderFloat(nameof(LightingScalar), ref LightingScalar, 1.0f, 16.0f);
+            }
             ImGui.End();
         }
 
@@ -1023,14 +1076,14 @@ namespace GLOOP.HPL
         {
             base.OnTextInput(e);
 
-            ImGuiController.PressChar((char)e.Unicode);
+            ImGuiController?.PressChar((char)e.Unicode);
         }
 
         protected override void OnMouseWheel(MouseWheelEventArgs e)
         {
             base.OnMouseWheel(e);
 
-            ImGuiController.MouseScroll(e.Offset);
+            ImGuiController?.MouseScroll(e.Offset);
         }
 
 

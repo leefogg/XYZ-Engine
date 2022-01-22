@@ -479,7 +479,6 @@ namespace GLOOP.Rendering
             var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
             var matrixSize = Marshal.SizeOf<Matrix4>();
             var materialSize = Marshal.SizeOf<GPUDeferredGeoMaterial>();
-            var i = 0;
             foreach (var batch in batches)
             {
                 var batchSize = batch.Models.Count;
@@ -500,7 +499,6 @@ namespace GLOOP.Rendering
                 drawCommandPtr += batchSize * commandSize;
                 modelMatrixPtr += batchSize * matrixSize;
                 materialPtr += batchSize * materialSize;
-                i++;
             }
         }
 
