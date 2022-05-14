@@ -1,6 +1,7 @@
 ﻿using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using static GLOOP.Rendering.VAO;
@@ -9,19 +10,23 @@ namespace GLOOP.Rendering
 {
     public class VAOManager
     {
-        private class VAOAllocation
+        public class VAOContainer
         {
             public VAO vao;
             public int ReservedIndiciesBytes;
             public int ReservedVertciesBytes;
             public int UsedIndiciesBytes;
             public int UsedVertciesBytes;
+#if DEBUG
+            public float IndiciesPercentageFilled => (UsedIndiciesBytes / ReservedIndiciesBytes) * 100f;
+            public float VertciesPercentageFilled => (ReservedVertciesBytes/ ReservedVertciesBytes) * 100f;
+#endif
         }
         private static int Total;
 
-        private static Dictionary<byte, List<VAOAllocation>> pool = new Dictionary<byte, List<VAOAllocation>>();
+        private static Dictionary<byte, List<VAOContainer>> pool = new Dictionary<byte, List<VAOContainer>>();
 
-        private static VAOAllocation GetOrCreateAllocation(
+        private static VAOContainer GetOrCreateContainer(
             VAOShape shape, 
             int requiredIndiciesBytes, 
             int requiredVertciesBytes)
@@ -43,19 +48,19 @@ namespace GLOOP.Rendering
                 Math.Max(45 * sizeof(float) * 1024 * 1024, requiredVertciesBytes)
             );
         }
-        public static void Create(VAOShape shape, int numIndicies, int numVertcies)
+        public static VAOContainer Create(VAOShape shape, int numIndicies, int numVertcies)
         {
             var numIndiciesBytes = numIndicies * sizeof(ushort);
             var numVertciesBytes = numVertcies * sizeof(float) * shape.NumElements;
-            create(shape, numIndiciesBytes, numVertciesBytes);
+            return create(shape, numIndiciesBytes, numVertciesBytes);
         }
-        private static VAOAllocation create(VAOShape shape, int numIndiciesBytes, int numVertciesBytes)
+        private static VAOContainer create(VAOShape shape, int numIndiciesBytes, int numVertciesBytes)
         {
             var vao = new VAO(shape, "PooledVAO" + Total, "PooledVAOEBO" + Total);
             Total++;
 
             vao.Allocate(numIndiciesBytes, numVertciesBytes);
-            var alloc = new VAOAllocation
+            var alloc = new VAOContainer
             {
                 ReservedIndiciesBytes = numIndiciesBytes,
                 ReservedVertciesBytes = numVertciesBytes,
@@ -68,7 +73,7 @@ namespace GLOOP.Rendering
             if (pool.ContainsKey(shapeBits))
                 pool[shapeBits].Add(alloc);
             else
-                pool.Add(shapeBits, new List<VAOAllocation>() { alloc });
+                pool.Add(shapeBits, new List<VAOContainer>() { alloc });
 
             return alloc;
         }
@@ -79,28 +84,34 @@ namespace GLOOP.Rendering
             IEnumerable<Vector3> vertexPositions,
             IEnumerable<Vector2> vertexUVs,
             IEnumerable<Vector3> vertexNormals,
-            IEnumerable<Vector3> vertexTangents)
+            IEnumerable<Vector3> vertexTangents,
+            VAOContainer containerOverride = null)
         {
             var numIndicies = vertexIndicies.Count();
-            System.Diagnostics.Debug.Assert(numIndicies < ushort.MaxValue, "Model with more than ui16 indicies");
+            Debug.Assert(numIndicies < ushort.MaxValue, "Model with more than UI16 indicies");
             var estimatedNumIndicies = vertexIndicies.Count() * sizeof(ushort);
             var estimatedNumVertcies = shape.NumElements * sizeof(float) * vertexPositions.Count();
-            var alloc = GetOrCreateAllocation(
+            var container = containerOverride ?? GetOrCreateContainer(
                 shape, 
                 estimatedNumIndicies,
                 estimatedNumVertcies
             );
-            var numIndiciesBefore = alloc.UsedIndiciesBytes;
-            var numVertciesBefore = alloc.UsedVertciesBytes;
-            (int indiciesCount, int usedIndiciesBytes, int usedVertciesBytes) = alloc.vao.FillSubData(
-                alloc.UsedIndiciesBytes,
-                alloc.UsedVertciesBytes,
+            Debug.Assert(container.UsedIndiciesBytes + estimatedNumIndicies <= container.ReservedIndiciesBytes, "VAO IBO overflow.");
+            Debug.Assert(container.UsedVertciesBytes + estimatedNumVertcies <= container.ReservedVertciesBytes, "VAO EBO overflow.");
+
+            var numIndiciesBefore = container.UsedIndiciesBytes;
+            var numVertciesBefore = container.UsedVertciesBytes;
+            (int indiciesCount, int usedIndiciesBytes, int usedVertciesBytes) = container.vao.FillSubData(
+                container.UsedIndiciesBytes,
+                container.UsedVertciesBytes,
                 vertexIndicies,
                 vertexPositions,
                 vertexUVs,
                 vertexNormals,
                 vertexTangents
             );
+            Debug.Assert(estimatedNumIndicies == usedIndiciesBytes);
+            Debug.Assert(estimatedNumVertcies == usedVertciesBytes);
 
             var vao = new VirtualVAO(
                 new DrawElementsIndirectData(
@@ -110,12 +121,13 @@ namespace GLOOP.Rendering
                     1,
                     0
                 ),
-                alloc.vao
+                container.vao
             );
 
-            alloc.UsedIndiciesBytes += usedIndiciesBytes;
-            alloc.UsedVertciesBytes += usedVertciesBytes;
-            if (alloc.UsedIndiciesBytes - numIndiciesBefore != estimatedNumIndicies || alloc.UsedVertciesBytes - numVertciesBefore != estimatedNumVertcies)
+
+            container.UsedIndiciesBytes += usedIndiciesBytes;
+            container.UsedVertciesBytes += usedVertciesBytes;
+            if (container.UsedIndiciesBytes - numIndiciesBefore != estimatedNumIndicies || container.UsedVertciesBytes - numVertciesBefore != estimatedNumVertcies)
                 Console.WriteLine("Incorrect estimate");
 
             return vao;

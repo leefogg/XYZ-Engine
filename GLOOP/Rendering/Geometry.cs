@@ -16,6 +16,7 @@ namespace GLOOP.Rendering
         public List<Vector3> Normals;
         public List<Vector3> Tangents;
         public List<uint> Indicies;
+        public VAO.VAOShape Shape => new VAO.VAOShape(true, UVs?.Any() ?? false, Normals?.Any() ?? false, Tangents?.Any() ?? false);
 
         public bool HasUVs => UVs?.Any() ?? false;
         public bool HasNormals => Normals?.Any() ?? false;
@@ -104,10 +105,7 @@ namespace GLOOP.Rendering
         {
             if (Normals == null)
                 Normals = new List<Vector3>();
-            else
-                Normals.Clear();
-            for (int i = 0; i < Positions.Count; i++)
-                Normals.Add(new Vector3(0));
+            Normals.Resize(Positions.Count);
 
             for (var i = 0; i < Indicies.Count;)
             {
@@ -158,7 +156,7 @@ namespace GLOOP.Rendering
 
             return new VAO(this, vboName, vaoName);
         }
-        public VirtualVAO ToVirtualVAO(string vaoName)
+        public VirtualVAO ToVirtualVAO(string vaoName, VAOManager.VAOContainer containerOverride = null)
         {
             var vboName = vaoName + "VBO";
             if (vboName.Length > Globals.MaxLabelLength)
@@ -169,12 +167,13 @@ namespace GLOOP.Rendering
             //CalculateFaceNormals();
 
             var vao = VAOManager.Get(
-                new VAO.VAOShape(true, UVs?.Any() ?? false, Normals?.Any() ?? false, Tangents?.Any() ?? false),
+                Shape,
                 Indicies,
                 Positions,
                 UVs,
                 Normals,
-                Tangents
+                Tangents,
+                containerOverride
             );
             vao.BoundingBox = GetBoundingBox();
             return vao;

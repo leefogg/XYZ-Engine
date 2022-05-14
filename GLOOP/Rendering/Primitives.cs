@@ -153,8 +153,8 @@ namespace GLOOP.Rendering
                 }
             }
 
-            for (var i = 0; i < numIndicies; i++)
-                geo.Indicies.Add(0);
+            //geo.Indicies = Enumerable.Repeat<uint>(0, numIndicies).ToList();
+            geo.Indicies.Resize(numIndicies);
 
             for (var z = 0; z < zSections; z++)
             {
@@ -171,7 +171,6 @@ namespace GLOOP.Rendering
                 }
             }
 
-            geo.CalculateFaceNormals();
             return geo;
         }
 

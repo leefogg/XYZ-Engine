@@ -5,6 +5,7 @@ using OpenTK;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -67,15 +68,10 @@ namespace GLOOP.HPL.Loading
             var terrainShader = new DeferredSplatTerrainShader();
 
             var heightmapPath = baseFilePath + "_Terrain_heightmap.dds";
-            var pixelData = IO.DDSImage.GetPixelData(heightmapPath, out var width, out var height);
+            var pixelData = IO.DDSImage.GetPixelData(heightmapPath, out var imageWidth, out var imageHeight);
 
-            // Extract heightmap
-            var heightmap = new byte[pixelData.Length / 3];
-            for (int i = 2; i < pixelData.Length; i += 3)
-                heightmap[i / 3] = pixelData[i];
-
-            var terrainResolution = new Vector2i(width, height);
-            var chunkResolution = new Vector2i(128);
+            var terrainResolution = new Vector2i(imageWidth, imageHeight);
+            var chunkResolution = new Vector2i(64); // TODO: Bigger the better but limited by ushort index buffer max size
             var numChunks = new Vector2i(terrainResolution.X / chunkResolution.X, terrainResolution.Y / chunkResolution.Y);
             var terrainSize = new Vector2(terrainInfo.HeightMapSize);
             var halfTerrainSize = new Vector3(terrainSize.X / 2, 0, terrainSize.Y / 2);
@@ -90,37 +86,37 @@ namespace GLOOP.HPL.Loading
             );
             int totalChunks = numChunks.X * numChunks.Y;
 
-            VAOManager.Create(
-                new VAO.VAOShape(true, true, true, false),
-                (chunkResolution.X-1) * (chunkResolution.Y-1) * totalChunks, 
-                chunkResolution.X * chunkResolution.Y * totalChunks
-            );
+            float getHeightMapHeight(int x, int y, int offset = 0)
+            {
+                var heightmapIndex = offset + y * terrainResolution.X + x;
+                return pixelData[heightmapIndex * 3 + 2] / 255f;
+            }
 
+            VAOManager.VAOContainer vaoContainer = null;
+            var chunk = Rendering.Primitives.CreatePlane(chunkResolution.X - 1, chunkResolution.Y - 1);
+            var defaultUVs = chunk.UVs.ToArray();
             for (int z = 0; z < numChunks.Y; z++)
             {
                 for (int x = 0; x < numChunks.X; x++)
                 {
                     var chunkPosition = new Vector2i(x, z);
-                    var chunk = Rendering.Primitives.CreatePlane(chunkResolution.X-1, chunkResolution.Y-1);
-                    chunk.UVs = chunk.UVs.Select(uv => uv * chunkUVScale + chunkUVScale * new Vector2(chunkPosition.Y, chunkPosition.X)).Select(uv => new Vector2(uv.Y, uv.X)).ToList();
-                    var minUV = chunk.UVs[0];
-                    var maxUV = chunk.UVs[^1];
+                    chunk.UVs = new List<Vector2>(chunk.UVs.Count);
+                    chunk.UVs.AddRange(defaultUVs.Select(uv => (uv * chunkUVScale + chunkUVScale * chunkPosition.Yx).Yx));
 
                     var startPixelX = chunkPosition.X * chunkResolution.X;
                     var startPixelY = chunkPosition.Y * chunkResolution.Y;
                     startPixelX -= chunkPosition.X;
                     startPixelY -= chunkPosition.Y;
 
-                    var pixel = startPixelY * terrainResolution.X + startPixelX;
+                    var topLeftPixelIndex = startPixelY * terrainResolution.X + startPixelX;
                     for (int py = 0; py < chunkResolution.Y; py++)
                     {
                         for (int px = 0; px < chunkResolution.X; px++)
                         {
                             var vertexIndex = py * chunkResolution.X + px;
-                            
-                            var index = pixel + py * terrainResolution.X + px;
+                            var heightmapIndex = topLeftPixelIndex + py * terrainResolution.X + px;
 
-                            var y = heightmap[index] / 255f;
+                            var y = getHeightMapHeight(px, py, topLeftPixelIndex);
 
                             var vertex = chunk.Positions[vertexIndex];
                             vertex.Y = y;
@@ -129,7 +125,15 @@ namespace GLOOP.HPL.Loading
                     }
 
                     chunk.CalculateFaceNormals();
-                    var vao = chunk.ToVirtualVAO($"HeightMap[{x},{z}]");
+
+                    // Put all terrain in own VAO
+                    vaoContainer ??= VAOManager.Create(
+                        new VAO.VAOShape(true, true, true, false),
+                        chunk.Indicies.Count * totalChunks,
+                        chunk.Positions.Count * totalChunks
+                    );
+                    var vao = chunk.ToVirtualVAO($"HeightMap[{x},{z}]", vaoContainer);
+
                     var material = new DeferredSplatTerrainMaterial(terrainShader)
                     {
                         SpecularPower = terrainInfo.SpecularPower,

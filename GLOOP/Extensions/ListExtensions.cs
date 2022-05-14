@@ -28,6 +28,7 @@ namespace GLOOP.Extensions
                 yield return vector.Y;
             }
         }
+
         public static int SizeInBytes<T>(this T[] self) => Marshal.SizeOf<T>() * self.Length;
 
         public static void RemoveRange<T>(this IList<T> self, IEnumerable<T> items)
@@ -52,6 +53,25 @@ namespace GLOOP.Extensions
             yield return source.Current;
             for (int i = 0; i < batchSize && source.MoveNext(); i++)
                 yield return source.Current;
+        }
+
+        public static void Transform<T>(this IList<T> self, Func<T, T> transformFunc)
+        {
+            for (int i = 0; i < self.Count; i++)
+                self[i] = transformFunc(self[i]);
+        }
+        
+        public static void Resize<T>(this List<T> self, int newSize, Func<T> factory = null)
+        {
+            var gotBigger = self.Count < newSize;
+            self.Capacity = newSize;
+            
+            if (gotBigger)
+            {
+                var missingElements = newSize - self.Count;
+                for (int i = 0; i < missingElements; i++)
+                    self.Add(factory == null ? default : factory());
+            }
         }
     }
 }
