@@ -53,9 +53,9 @@ namespace GLOOP.HPL
         private static readonly MapSetup Awake = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_01_upsilon_awake\01_01_upsilon_awake.hpm", new Vector3(9.325157f, -0.44998702f, 50.61429f));
         private static readonly MapSetup Bedroom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm", new Vector3(-11.600799f, 1.4500086f, 11.624353f));
         private static readonly MapSetup Omicron = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter03\03_02_omicron_inside\03_02_omicron_inside.hpm", new Vector3(-1.0284736f, -2.0497713f, 21.69069f));
-        private static readonly MapSetup TauOutside = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_01_tau_outside\04_01_tau_outside.hpm", new Vector3(0,5,0));
+        private static readonly MapSetup TauOutside = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_01_tau_outside\04_01_tau_outside.hpm", new Vector3(77.65444f, 315.97113f, -340.09308f));
         private static readonly MapSetup Tau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm", new Vector3(26.263678f, 1.7000114f, 36.090767f));
-        private readonly MapSetup MapToUse = Custom;
+        private readonly MapSetup MapToUse = TauOutside;
 
         private Camera Camera;
         private Scene scene;
@@ -573,7 +573,7 @@ namespace GLOOP.HPL
 
                 if (!debugLightBuffer)
                 {
-                    currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
+                    currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]); // TODO: Take into account enableBloom
 
                     DrawImGUIColourCorrectionWindow();
 
@@ -607,6 +607,8 @@ namespace GLOOP.HPL
                 foreach (var area in VisibleAreas)
                     foreach (var model in area.Models)
                         model.RenderBoundingBox();
+                foreach (var terrainPeice in scene.Terrain)
+                    terrainPeice.RenderBoundingBox();
 
                 GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
             }
