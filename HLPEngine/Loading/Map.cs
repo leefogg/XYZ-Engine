@@ -347,24 +347,24 @@ namespace GLOOP.HPL.Loading
             Console.WriteLine();
             Console.WriteLine("Loading primitives");
             foreach (var section in primitives.Sections) {
-                foreach (var plane in section.Planes) {
+                foreach (var prim in section.Planes) {
                     try {
                         attempted++;
-                        var mat = Deserialize<Material>(Path.Combine(SOMARoot, plane.MaterialPath));
+                        var mat = Deserialize<Material>(Path.Combine(SOMARoot, prim.MaterialPath));
 
-                        var endCorner = plane.Scale.ParseVector3();
+                        var endCorner = prim.Scale.ParseVector3();
                         var scale = new Vector2(endCorner.X, endCorner.Z);
                         var uvs = new Vector2[] {
-                            plane.Corner1UV.ParseVector2(),
-                            plane.Corner2UV.ParseVector2(),
-                            plane.Corner3UV.ParseVector2(),
-                            plane.Corner4UV.ParseVector2(),
+                            prim.Corner1UV.ParseVector2(),
+                            prim.Corner2UV.ParseVector2(),
+                            prim.Corner3UV.ParseVector2(),
+                            prim.Corner4UV.ParseVector2(),
                         };
 
                         var geo = Rendering.Primitives.CreatePlane(scale, uvs);
-                        //var rot = plane.Rotation.ParseVector3().Negated();
+                        //var rot = prim.Rotation.ParseVector3().Negated();
                         //geo.Rotate(-MathHelper.RadiansToDegrees(rot.X), -MathHelper.RadiansToDegrees(rot.Y), -MathHelper.RadiansToDegrees(rot.Z));
-                        var vao = geo.ToVirtualVAO(plane.Name);
+                        var vao = geo.ToVirtualVAO(prim.Name);
 
                         HPLEntity.getTextures(
                             mat.Textures?.Diffuse?.Path,
@@ -379,9 +379,9 @@ namespace GLOOP.HPL.Loading
                         );
 
                         var materialInstance = (DeferredRenderingGeoMaterial)material.Clone();
-                        materialInstance.TextureRepeat = plane.TileAmount.ParseVector2();
-                        materialInstance.TextureOffset = plane.TileOffset.ParseVector2();
-                        materialInstance.HasWorldpaceUVs = plane.AlignToWorldCoords;
+                        materialInstance.TextureRepeat = prim.TileAmount.ParseVector2();
+                        materialInstance.TextureOffset = prim.TileOffset.ParseVector2();
+                        materialInstance.HasWorldpaceUVs = prim.AlignToWorldCoords;
                         materialInstance.DiffuseTexture = diffuseTex;
                         materialInstance.NormalTexture = normalTex;
                         materialInstance.SpecularTexture = specularTex;
@@ -389,8 +389,8 @@ namespace GLOOP.HPL.Loading
 
                         var model = new Model(vao, materialInstance);
                         var ent = new HPLEntity(new List<Model> { model }, vao.BoundingBox);
-                        ent.Transform.Position = plane.Position.ParseVector3();
-                        ent.Transform.Rotation = new Quaternion(plane.Rotation.ParseVector3().Negated());
+                        ent.Transform.Position = prim.Position.ParseVector3();
+                        ent.Transform.Rotation = new Quaternion(prim.Rotation.ParseVector3().Negated());
 
                         Console.Write(".");
                         Entities.Add(ent);
