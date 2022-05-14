@@ -54,9 +54,10 @@ namespace GLOOP.Rendering
             }
         }
 
-        public void Rotate(float x, float y, float z)
+        public void Rotate(Vector3 rotation) => Rotate(rotation.X, rotation.Y, rotation.Z);
+        public void Rotate(float xdeg, float ydeg, float zdeg)
         {
-            var matrix = Matrix4.CreateFromQuaternion(new Quaternion(MathHelper.DegreesToRadians(x), MathHelper.DegreesToRadians(y), MathHelper.DegreesToRadians(z)));
+            var matrix = Matrix4.CreateFromQuaternion(new Quaternion(MathHelper.DegreesToRadians(xdeg), MathHelper.DegreesToRadians(ydeg), MathHelper.DegreesToRadians(zdeg)));
             for (int i = 0; i < Positions.Count; i++)
                 Positions[i] = (matrix * new Vector4(Positions[i], 0)).Xyz;
         }

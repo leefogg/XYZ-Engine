@@ -349,7 +349,6 @@ namespace GLOOP.HPL.Loading
             foreach (var section in primitives.Sections) {
                 foreach (var plane in section.Planes) {
                     try {
-                        Console.Write(".");
                         attempted++;
                         var mat = Deserialize<Material>(Path.Combine(SOMARoot, plane.MaterialPath));
 
@@ -363,6 +362,8 @@ namespace GLOOP.HPL.Loading
                         };
 
                         var geo = Rendering.Primitives.CreatePlane(scale, uvs);
+                        //var rot = plane.Rotation.ParseVector3().Negated();
+                        //geo.Rotate(-MathHelper.RadiansToDegrees(rot.X), -MathHelper.RadiansToDegrees(rot.Y), -MathHelper.RadiansToDegrees(rot.Z));
                         var vao = geo.ToVirtualVAO(plane.Name);
 
                         HPLEntity.getTextures(
@@ -370,7 +371,7 @@ namespace GLOOP.HPL.Loading
                             mat.Textures?.NormalMap?.Path,
                             mat.Textures?.Specular?.Path,
                             null,
-                            "",
+                            string.Empty,
                             out var diffuseTex,
                             out var normalTex,
                             out var specularTex,
@@ -389,13 +390,14 @@ namespace GLOOP.HPL.Loading
                         var model = new Model(vao, materialInstance);
                         var ent = new HPLEntity(new List<Model> { model }, vao.BoundingBox);
                         ent.Transform.Position = plane.Position.ParseVector3();
-                        //model.Rot += new OpenTK.Mathematics.Quaternion(plane.Rotation.ParseVector3().Negated());
+                        ent.Transform.Rotation = new Quaternion(plane.Rotation.ParseVector3().Negated());
 
+                        Console.Write(".");
                         Entities.Add(ent);
                         success++;
                     }
-                    catch (Exception ex) { 
-
+                    catch (Exception ex) {
+                        Console.WriteLine("x");
                     }
                 }
             }
@@ -420,7 +422,6 @@ namespace GLOOP.HPL.Loading
                     try {
                         attempted++;
                         var fullPath = Path.Combine(SOMARoot, detailMesh.FilePath);
-                        Console.Write(".");
 
                         if (true) {
                             var model = new HPLEntity(fullPath, assimp, material);
@@ -440,6 +441,7 @@ namespace GLOOP.HPL.Loading
                         else {
                             Console.WriteLine("Skipped.");
                         }
+                        Console.Write(".");
                     }
                     catch (Exception ex) {
                         //Console.WriteLine("Failed.");
