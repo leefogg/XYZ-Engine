@@ -1,4 +1,5 @@
-﻿using GLOOP.Rendering.Materials;
+﻿using GLOOP.Extensions;
+using GLOOP.Rendering.Materials;
 using OpenTK;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
@@ -18,6 +19,7 @@ namespace GLOOP.Rendering
 
         public Matrix4 BoundingBoxMatrix 
             => Matrix4.CreateScale(VAO.BoundingBox.Size) * Matrix4.CreateTranslation(VAO.BoundingBox.Center) * Transform.Matrix;
+        public Box3 BoundingBox => VAO.BoundingBox.Transform(Transform);
 
         private Matrix4? ModelMatrix;
 

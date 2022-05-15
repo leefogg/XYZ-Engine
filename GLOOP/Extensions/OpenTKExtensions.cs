@@ -188,5 +188,19 @@ namespace GLOOP.Extensions
             var z = Math.Abs(self.Z);
             return new Vector3(x, y, z);
         }
+
+        public static SphereBounds ToSphereBounds(this Box3 self)
+        {
+            return new SphereBounds(self.Center, self.HalfSize.Length);
+        }
+
+        public static Box3 Transform(this Box3 self, Rendering.Transform transform)
+            => Transform(self, transform.Position, transform.Scale);
+        public static Box3 Transform(this Box3 self, Vector3 position, Vector3 scale)
+        {
+            position += self.Center * scale;
+            scale *= self.Size;
+            return new Box3(position, position + scale);
+        }
     }
 }

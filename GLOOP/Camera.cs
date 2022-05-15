@@ -152,6 +152,63 @@ namespace GLOOP
             return inside;
         }
 
+        public bool IsInsideFrustum(SphereBounds sphere) => IsInsideFrustum(sphere.Position, sphere.Radius);
+        public bool IsInsideFrustum(Vector3 center, float radius)
+        {
+            //return true;
+            radius *= 4;
+            // Project sphere into view space.
+            var viewSpace = new Vector4(center.X, center.Y, center.Z, 1) * ViewMatrix;
+            center = (viewSpace / viewSpace.W).Xyz;  // Perspective division.
+
+            var r0 = ProjectionMatrix.Column0;
+            var r1 = ProjectionMatrix.Column1;
+            var r2 = ProjectionMatrix.Column2;
+            var r3 = ProjectionMatrix.Column3;
+
+            radius = -radius;
+            var visible = 
+                   radius <= Vector3.Dot(center, (r3 + r0).Xyz)  // Left plane
+                && radius <= Vector3.Dot(center, (r3 - r0).Xyz)  // Right plane
+                && radius <= Vector3.Dot(center, (r3 + r1).Xyz)  // Bottom plane
+                && radius <= Vector3.Dot(center, (r3 - r1).Xyz)  // Top plane
+                && radius <= Vector3.Dot(center,  r3.Xyz)        // Near plane
+                && radius <= Vector3.Dot(center, (r3 - r2).Xyz); // Far plane
+            return visible;
+        }
+
+        // Untested
+        public bool ProjectSphere(Vector3 center, float radius, out Box2 aabb)
+        {
+            if (center.Z < ZNear + radius)
+            {
+                aabb = default;
+                return false;
+            }
+
+            var cx = -center.Xz;
+            var vx = new Vector2((float)Math.Sqrt(Vector2.Dot(cx, cx) - radius * radius), radius);
+            var minx = cx * new Matrix2(vx.X,  vx.Y, -vx.Y, vx.X);
+            var maxx = cx * new Matrix2(vx.X, -vx.Y,  vx.Y, vx.X);
+
+            var cy = center.Yz;
+            var vy = new Vector2((float)Math.Sqrt(Vector2.Dot(cy, cy) - radius * radius), radius);
+            var miny = cy * new Matrix2(vy.X,  vy.Y, -vy.Y, vy.X);
+            var maxy = cy * new Matrix2(vy.X, -vy.Y,  vy.Y, vy.X);
+
+            var p00 = ProjectionMatrix.M11;
+            var p11 = ProjectionMatrix.M22;
+            var box = new Vector4(
+                minx.X / minx.Y * p00,
+                miny.X / miny.Y * p11,
+                maxx.X / maxx.Y * p00,
+                maxy.X / maxy.Y * p11
+            );
+            box = box.Xwzy * new Vector4(.5f, -.5f, .5f, .5f) + new Vector4(0.5f);
+            aabb = new Box2(box.Xy, box.Zw - box.Xy);
+            return true;
+        }
+
         [Pure]
         public static Vector4 transform(Matrix4 left, float x, float y, float z)
         {
