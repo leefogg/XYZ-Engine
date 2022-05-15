@@ -210,8 +210,7 @@ namespace GLOOP.Rendering
         {
             var occluders = Models.Where(o => o.IsOccluder);
             var occluderbatches = GroupBy(occluders, SameRenderBatch)
-               .OrderBy(b => b.Models[0].Material.Shader.Handle)
-               .ThenBy(AverageDistanceToCamera);
+               .OrderBy(AverageDistanceToCamera);
             return occluderbatches.ToList();
         }
 
@@ -219,8 +218,7 @@ namespace GLOOP.Rendering
         {
             var notOccluders = Models.Where(o => !o.IsOccluder);
             var nonOccluderbatches = GroupBy(notOccluders, SameRenderBatch)
-                .OrderBy(b => b.Models[0].Material.Shader.Handle)
-                .ThenBy(AverageDistanceToCamera);
+                .OrderBy(AverageDistanceToCamera);
             return nonOccluderbatches.ToList();
         }
 
@@ -524,9 +522,8 @@ namespace GLOOP.Rendering
             var mat1 = (DeferredRenderingGeoMaterial)a.Material;
             var mat2 = (DeferredRenderingGeoMaterial)b.Material;
             return a.VAO.container.Handle == b.VAO.container.Handle
-                && mat1.DiffuseTexture == mat2.DiffuseTexture
-                && mat1.SpecularTexture == mat2.SpecularTexture
-                && mat1.NormalTexture == mat2.NormalTexture;
+                && a.Material.Shader.Handle == b.Material.Shader.Handle
+                && mat1.SameTextures(mat2);
         }
 
         private static List<RenderBatch> GroupBy(IEnumerable<Model> models, Func<Model, Model, bool> comparer)

@@ -2,6 +2,7 @@
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace GLOOP.Rendering.Materials
@@ -20,13 +21,16 @@ namespace GLOOP.Rendering.Materials
                 USE_ILLUM
             }
         );
+        private static readonly Texture2D DefaultNormalTexture = Texture.Gray;
+        private static readonly Texture2D DefaultSpecularTexture = Texture.Black;
+        private static readonly Texture2D DefaultImmuminationTexture = Texture.Black;
 
         public Vector2 TextureOffset;
         public Vector2 TextureRepeat = new Vector2(1, 1);
         public Vector3 IlluminationColor = new Vector3(1, 1, 1);
         public Vector3 AlbedoColourTint = new Vector3(1, 1, 1);
         public bool HasWorldpaceUVs;
-        private Texture2D[] Textures = new Texture2D[4] { Texture.Error, Texture.Gray, Texture.Black, Texture.Black };
+        private Texture2D[] Textures = new Texture2D[4] { Texture.Error, DefaultNormalTexture, DefaultSpecularTexture, DefaultImmuminationTexture };
         public Texture2D DiffuseTexture
         {
             get => Textures[0];
@@ -49,9 +53,9 @@ namespace GLOOP.Rendering.Materials
         }
 
         public override Shader Shader => factory.GetVarient(
-            NormalTexture != Texture.Gray, 
-            SpecularTexture != Texture.Black, 
-            IlluminationTexture != Texture.Black
+            NormalTexture != DefaultNormalTexture, 
+            SpecularTexture != DefaultSpecularTexture, 
+            IlluminationTexture != DefaultImmuminationTexture
         ); // TODO: Make this lazy to cache
 
         public DeferredRenderingGeoMaterial()
@@ -95,5 +99,6 @@ namespace GLOOP.Rendering.Materials
                 TextureOffset = TextureOffset,
                 TextureRepeat = TextureRepeat
             };
+        public bool SameTextures(DeferredRenderingGeoMaterial other) => Textures.SequenceEqual(other.Textures);
     }
 }
