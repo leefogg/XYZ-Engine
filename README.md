@@ -1,4 +1,4 @@
-![Phi](docs/phi.png)
+![Phi](docs/Phi.png)
 ![NSight Capture](docs/ProfileCapture.png)
 
 I started this project at the end of 2020 when I discovered that a favorite game of mine, SOMA, has a large modding community that the developers (Frictional Games) encoriages via their Discord, most of the files for the game are therefore mostly in open/common formats including maps, terrain, models and script - this is very rare! Excited at the possibilities that a dataset like this enables, and looking for a reason to re-write my old Java engine in C#, I promptly started hacking something up (this is why you may see references to my old engine GLOOP).
