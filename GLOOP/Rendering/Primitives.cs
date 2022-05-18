@@ -132,6 +132,7 @@ namespace GLOOP.Rendering
         }
 
         // https://www.patrykgalach.com/2019/07/29/procedural-terrain-pt1-plane/?cn-reloaded=1
+        // Creates a unit plane with the top left vertex at origin
         public static Geometry CreatePlane(int xSections, int zSections)
         {
             var numVerts = (xSections + 1) * (zSections + 1);

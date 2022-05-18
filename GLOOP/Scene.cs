@@ -26,12 +26,14 @@ namespace GLOOP
             if (Terrain.Count == 0)
                 return;
 
+            var frustumPlanes = Camera.Current.GetFrustumPlanes();
+            var visibleTiles = Terrain.Where(terrain => Camera.Current.IntersectsFrustum(terrain.BoundingBox.ToSphereBounds()))
+                .OrderBy(terrain => (terrain.Transform.Position - Camera.Current.Position).LengthSquared)
+                .ToList();
+            Console.WriteLine(visibleTiles.Count);
+
             using var deugGroup = new DebugGroup("Terrain");
-            var visible = Terrain.Where(terrain => {
-                var sphere = terrain.BoundingBox.ToSphereBounds();
-                return Camera.Current.IsInsideFrustum(sphere);
-            }).OrderBy(terrain => (terrain.Transform.Position - Camera.Current.Position).LengthSquared);
-            foreach (var terrainPatch in Terrain)
+            foreach (var terrainPatch in visibleTiles)
                 terrainPatch.Render();
         }
     }

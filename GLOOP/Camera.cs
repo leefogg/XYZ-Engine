@@ -4,7 +4,6 @@ using OpenTK.Mathematics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System;
 using System.Diagnostics.Contracts;
-using System.Text;
 
 namespace GLOOP
 {
@@ -38,6 +37,7 @@ namespace GLOOP
                 zfar = value;
             }
         }
+
         public float FOV
         {
             get => fov;
@@ -95,68 +95,11 @@ namespace GLOOP
 
         public abstract void Update(KeyboardState keyboardState);
 
+        public bool IntersectsFrustum(SphereBounds sphere) => IntersectsFrustum(sphere.Position, sphere.Radius);
         [Pure]
-        public bool IsInsideFrustum(Box3 aabb, Matrix4 modelMatrix)
-        {
-            var cameraMatrix = ProjectionMatrix * ViewMatrix * modelMatrix;
-            //var AABBVerts = new[]
-            //{
-            //    cameraMatrix * new Vector4(-1,-1,-1, 1),
-            //    cameraMatrix * new Vector4( 1,-1,-1, 1),
-            //    cameraMatrix * new Vector4(-1, 1,-1, 1),
-            //    cameraMatrix * new Vector4( 1, 1,-1, 1),
-
-            //    cameraMatrix * new Vector4(-1,-1, 1, 1),
-            //    cameraMatrix * new Vector4( 1,-1, 1, 1),
-            //    cameraMatrix * new Vector4(-1, 1, 1, 1),
-            //    cameraMatrix * new Vector4( 1, 1, 1, 1),
-            //};
-            var AABBVerts = new[]
-            {
-                cameraMatrix * new Vector4(aabb.Min.X, aabb.Min.Y, aabb.Min.Z, 1),
-                cameraMatrix * new Vector4(aabb.Max.X, aabb.Min.Y, aabb.Min.Z, 1),
-                cameraMatrix * new Vector4(aabb.Min.X, aabb.Max.Y, aabb.Min.Z, 1),
-                cameraMatrix * new Vector4(aabb.Max.X, aabb.Max.Y, aabb.Min.Z, 1),
-
-                cameraMatrix * new Vector4(aabb.Min.X, aabb.Min.Y, aabb.Max.Z, 1),
-                cameraMatrix * new Vector4(aabb.Max.X, aabb.Min.Y, aabb.Max.Z, 1),
-                cameraMatrix * new Vector4(aabb.Min.X, aabb.Max.Y, aabb.Max.Z, 1),
-                cameraMatrix * new Vector4(aabb.Max.X, aabb.Max.Y, aabb.Max.Z, 1),
-            };
-            // Check verts against all view planes
-            int c1 = 0,
-                c2 = 0,
-                c3 = 0,
-                c4 = 0,
-                c5 = 0,
-                c6 = 0;
-            foreach (var vert in AABBVerts)
-            {
-                if (vert.X < -vert.W)
-                    c1++;
-                if (vert.X > vert.W)
-                    c2++;
-                if (vert.Y < -vert.W)
-                    c3++;
-                if (vert.Y > vert.W)
-                    c4++;
-                if (vert.Z < -vert.W)
-                    c5++;
-                if (vert.Z > vert.W)
-                    c6++;
-            }
-
-            var inside = !(c1 == 8 || c2 == 8 || c3 == 8 || c4 == 8 || c5 == 8 || c6 == 8);
-            if (!inside)
-                Console.WriteLine("filtered");
-            return inside;
-        }
-
-        public bool IsInsideFrustum(SphereBounds sphere) => IsInsideFrustum(sphere.Position, sphere.Radius);
-        public bool IsInsideFrustum(Vector3 center, float radius)
+        public bool IntersectsFrustum(Vector3 center, float radius)
         {
             //return true;
-            radius *= 4;
             // Project sphere into view space.
             var viewSpace = new Vector4(center.X, center.Y, center.Z, 1) * ViewMatrix;
             center = (viewSpace / viewSpace.W).Xyz;  // Perspective division.
@@ -177,54 +120,8 @@ namespace GLOOP
             return visible;
         }
 
-        // Untested
-        public bool ProjectSphere(Vector3 center, float radius, out Box2 aabb)
-        {
-            if (center.Z < ZNear + radius)
-            {
-                aabb = default;
-                return false;
-            }
-
-            var cx = -center.Xz;
-            var vx = new Vector2((float)Math.Sqrt(Vector2.Dot(cx, cx) - radius * radius), radius);
-            var minx = cx * new Matrix2(vx.X,  vx.Y, -vx.Y, vx.X);
-            var maxx = cx * new Matrix2(vx.X, -vx.Y,  vx.Y, vx.X);
-
-            var cy = center.Yz;
-            var vy = new Vector2((float)Math.Sqrt(Vector2.Dot(cy, cy) - radius * radius), radius);
-            var miny = cy * new Matrix2(vy.X,  vy.Y, -vy.Y, vy.X);
-            var maxy = cy * new Matrix2(vy.X, -vy.Y,  vy.Y, vy.X);
-
-            var p00 = ProjectionMatrix.M11;
-            var p11 = ProjectionMatrix.M22;
-            var box = new Vector4(
-                minx.X / minx.Y * p00,
-                miny.X / miny.Y * p11,
-                maxx.X / maxx.Y * p00,
-                maxy.X / maxy.Y * p11
-            );
-            box = box.Xwzy * new Vector4(.5f, -.5f, .5f, .5f) + new Vector4(0.5f);
-            aabb = new Box2(box.Xy, box.Zw - box.Xy);
-            return true;
-        }
-
         [Pure]
-        public static Vector4 transform(Matrix4 left, float x, float y, float z)
-        {
-            var dest = new Vector4
-            {
-                // Note: Removed " * W" from end as W was always 1 and this is performant code
-                X = left.M11 * x + left.M21 * y + left.M31 * z + left.M41,
-                Y = left.M12 * x + left.M22 * y + left.M32 * z + left.M42,
-                Z = left.M13 * x + left.M23 * y + left.M23 * z + left.M43,
-                W = left.M14 * x + left.M24 * y + left.M34 * z + left.M44
-            };
-            return dest;
-        }
-
-        [Pure]
-        public bool IsInsideFrustum(ref Vector4[] frustumPlanes, Box3 boundingBox, Transform modelTransform)
+        public bool IsInsideFrustum(ref Vector4[] frustumPlanes, in Box3 boundingBox, in Transform modelTransform)
         {
             var position = boundingBox.Center + modelTransform.Position;
             var size = boundingBox.Size * modelTransform.Scale;
@@ -248,7 +145,7 @@ namespace GLOOP
         [Pure]
         public Vector4[] GetFrustumPlanes()
         {
-            Matrix4 pvMatrix = new Matrix4();
+            var pvMatrix = new Matrix4();
             MatrixExtensions.Multiply(ProjectionMatrix, ViewMatrix, ref pvMatrix);
             var frustumPlanes = new[]
             {
@@ -260,6 +157,97 @@ namespace GLOOP
                 new Vector4(pvMatrix.M14 - pvMatrix.M13, pvMatrix.M24 - pvMatrix.M23, pvMatrix.M34 - pvMatrix.M33, pvMatrix.M44 - pvMatrix.M43).Normalized(),
             };
             return frustumPlanes;
+        }
+
+        //https://iquilezles.org/articles/frustumcorrect/
+        [Pure]
+        public bool IntersectsFrustumFast(in Box3 worldspaceAABB, ref Vector4[] frustumPlanes)
+        {
+            // check box outside/inside of frustum
+            foreach (var plane in frustumPlanes)
+            {
+                //if (worldspaceAABB.GetVertcies().All(v => Vector4.Dot(plane, new Vector4(v.X, v.Y, v.Z, 1)) < 0))
+                //    return false;
+
+                // Optimized -
+                var passed =
+                    Vector4.Dot(plane, new Vector4(worldspaceAABB.Min.X, worldspaceAABB.Min.Y, worldspaceAABB.Min.Z, 1)) < 0
+                 && Vector4.Dot(plane, new Vector4(worldspaceAABB.Max.X, worldspaceAABB.Min.Y, worldspaceAABB.Min.Z, 1)) < 0
+                 && Vector4.Dot(plane, new Vector4(worldspaceAABB.Min.X, worldspaceAABB.Max.Y, worldspaceAABB.Min.Z, 1)) < 0
+                 && Vector4.Dot(plane, new Vector4(worldspaceAABB.Max.X, worldspaceAABB.Max.Y, worldspaceAABB.Min.Z, 1)) < 0
+                 && Vector4.Dot(plane, new Vector4(worldspaceAABB.Min.X, worldspaceAABB.Min.Y, worldspaceAABB.Max.Z, 1)) < 0
+                 && Vector4.Dot(plane, new Vector4(worldspaceAABB.Max.X, worldspaceAABB.Min.Y, worldspaceAABB.Max.Z, 1)) < 0
+                 && Vector4.Dot(plane, new Vector4(worldspaceAABB.Min.X, worldspaceAABB.Max.Y, worldspaceAABB.Max.Z, 1)) < 0
+                 && Vector4.Dot(plane, new Vector4(worldspaceAABB.Max.X, worldspaceAABB.Max.Y, worldspaceAABB.Max.Z, 1)) < 0;
+                if (passed)
+                    return false;
+            }
+
+            return true;
+        }
+
+        [Pure]
+        public bool IntersectsFrustum(in Box3 worldspaceAABB, ref Vector4[] frustumPlanes)
+        {
+            if (!IntersectsFrustumFast(worldspaceAABB, ref frustumPlanes))
+                return false;
+
+            // check frustum outside/inside box
+            //int out;
+            //out= 0; for (int i = 0; i < 8; i++) out += ((fru.mPoints[i].x > box.mMaxX) ? 1 : 0); if ( out== 8 ) return false;
+            //out= 0; for (int i = 0; i < 8; i++) out += ((fru.mPoints[i].x < box.mMinX) ? 1 : 0); if ( out== 8 ) return false;
+            //out= 0; for (int i = 0; i < 8; i++) out += ((fru.mPoints[i].y > box.mMaxY) ? 1 : 0); if ( out== 8 ) return false;
+            //out= 0; for (int i = 0; i < 8; i++) out += ((fru.mPoints[i].y < box.mMinY) ? 1 : 0); if ( out== 8 ) return false;
+            //out= 0; for (int i = 0; i < 8; i++) out += ((fru.mPoints[i].z > box.mMaxZ) ? 1 : 0); if ( out== 8 ) return false;
+            //out= 0; for (int i = 0; i < 8; i++) out += ((fru.mPoints[i].z < box.mMinZ) ? 1 : 0); if ( out== 8 ) return false;
+
+            return true;
+        }
+
+        [Pure]
+        public static Vector4 transform(Matrix4 left, float x, float y, float z)
+        {
+            var dest = new Vector4
+            {
+                // Note: Removed " * W" from end as W was always 1 and this is performant code
+                X = left.M11 * x + left.M21 * y + left.M31 * z + left.M41,
+                Y = left.M12 * x + left.M22 * y + left.M32 * z + left.M42,
+                Z = left.M13 * x + left.M23 * y + left.M23 * z + left.M43,
+                W = left.M14 * x + left.M24 * y + left.M34 * z + left.M44
+            };
+            return dest;
+        }
+
+        // Untested
+        public bool ProjectSphere(Vector3 center, float radius, out Box2 aabb)
+        {
+            if (center.Z < ZNear + radius)
+            {
+                aabb = default;
+                return false;
+            }
+
+            var cx = -center.Xz;
+            var vx = new Vector2((float)Math.Sqrt(Vector2.Dot(cx, cx) - radius * radius), radius);
+            var minx = cx * new Matrix2(vx.X, vx.Y, -vx.Y, vx.X);
+            var maxx = cx * new Matrix2(vx.X, -vx.Y, vx.Y, vx.X);
+
+            var cy = center.Yz;
+            var vy = new Vector2((float)Math.Sqrt(Vector2.Dot(cy, cy) - radius * radius), radius);
+            var miny = cy * new Matrix2(vy.X, vy.Y, -vy.Y, vy.X);
+            var maxy = cy * new Matrix2(vy.X, -vy.Y, vy.Y, vy.X);
+
+            var p00 = ProjectionMatrix.M11;
+            var p11 = ProjectionMatrix.M22;
+            var box = new Vector4(
+                minx.X / minx.Y * p00,
+                miny.X / miny.Y * p11,
+                maxx.X / maxx.Y * p00,
+                maxy.X / maxy.Y * p11
+            );
+            box = box.Xwzy * new Vector4(.5f, -.5f, .5f, .5f) + new Vector4(0.5f);
+            aabb = new Box2(box.Xy, box.Zw - box.Xy);
+            return true;
         }
     }
 }
