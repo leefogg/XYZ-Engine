@@ -5,6 +5,7 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -152,7 +153,7 @@ namespace GLOOP.Rendering
 
         public void Prepare()
         {
-            OccluderBatches = GetOccluderBatches();
+            OccluderBatches = BatchModels(Models.Where(o => o.IsOccluder));
             if (OccluderBatches.Count > 0)
             {
                 var numModelsApprox = OccluderBatches.Sum(b => b.Models.Count + 3);
@@ -177,7 +178,7 @@ namespace GLOOP.Rendering
                 PrepareModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
             }
 
-            NonOccluderBatches = GetNonOcculuderBatches();
+            NonOccluderBatches = BatchModels(Models.Where(o => !o.IsOccluder));
             if (NonOccluderBatches.Count > 0)
             {
                 var numModelsApprox = NonOccluderBatches.Sum(b => b.Models.Count + 3);
@@ -201,25 +202,19 @@ namespace GLOOP.Rendering
                 );
                 PrepareModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
             }
+
             SetupLightUBOs();
             FillPointLightsUBO();
             FillSpotLightsUBO();
         }
 
-        private List<RenderBatch> GetOccluderBatches()
+        private List<RenderBatch> BatchModels(IEnumerable<Model> models)
         {
-            var occluders = Models.Where(o => o.IsOccluder);
-            var occluderbatches = GroupBy(occluders, SameRenderBatch)
-               .OrderBy(AverageDistanceToCamera);
-            return occluderbatches.ToList();
-        }
+            var batches = GroupBy(models, SameRenderBatch);
+            batches.ForEach(batch => batch.Models = batch.Models.OrderBy(model => (model.Transform.Position - Camera.Current.Position).LengthSquared).ToList());
 
-        private List<RenderBatch> GetNonOcculuderBatches()
-        {
-            var notOccluders = Models.Where(o => !o.IsOccluder);
-            var nonOccluderbatches = GroupBy(notOccluders, SameRenderBatch)
-                .OrderBy(AverageDistanceToCamera);
-            return nonOccluderbatches.ToList();
+            var result = batches.ToList();
+            return result;
         }
 
         private void SetupLightUBOs()
