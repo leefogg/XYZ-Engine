@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP
+namespace GLOOP.Util
 {
     public enum PowerOfTwo : int
     {

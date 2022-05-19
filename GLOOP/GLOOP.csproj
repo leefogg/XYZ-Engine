@@ -57,31 +57,31 @@
     <None Update="assets\models\barrel.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\beaker.DAE">
+    <None Update="Assets\models\beaker.DAE">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\cube.obj">
+    <None Update="Assets\models\cube.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\cylinder.dae">
+    <None Update="Assets\models\cylinder.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="assets\models\dodecahedron.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\duck.dae">
+    <None Update="Assets\models\duck.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\icosphere.obj">
+    <None Update="Assets\models\icosphere.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\plane.dae">
+    <None Update="Assets\models\plane.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="assets\models\plane.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\pyramid.dae">
+    <None Update="Assets\models\pyramid.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="assets\models\pyramid.obj">
@@ -96,7 +96,7 @@
     <None Update="assets\models\sarcastic_fringehead.ent">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\sphere.obj">
+    <None Update="Assets\models\sphere.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="assets\models\wau_fish_01.bmp">
@@ -123,64 +123,64 @@
     <None Update="assets\shaders\basic.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Bloom\Combine\fragment.frag">
+    <None Update="Assets\shaders\Bloom\Combine\fragment.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Bloom\Combine\vertex.vert">
+    <None Update="Assets\shaders\Bloom\Combine\vertex.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Bloom\Extract\fragment.frag">
+    <None Update="Assets\shaders\Bloom\Extract\fragment.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Bloom\Extract\vertex.vert">
+    <None Update="Assets\shaders\Bloom\Extract\vertex.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Blur\FragmentShader.frag">
+    <None Update="Assets\shaders\Blur\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Blur\VertexShader.vert">
+    <None Update="Assets\shaders\Blur\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\ColorCorrection\fragment.frag">
+    <None Update="Assets\shaders\ColorCorrection\fragment.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\ColorCorrection\vertex.vert">
+    <None Update="Assets\shaders\ColorCorrection\vertex.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Deferred\GeoPass\FragmentShader.frag">
+    <None Update="Assets\shaders\Deferred\GeoPass\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Deferred\GeoPass\Terrain.frag">
+    <None Update="Assets\shaders\Deferred\GeoPass\Terrain.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Deferred\GeoPass\Terrain.vert">
+    <None Update="Assets\shaders\Deferred\GeoPass\Terrain.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Deferred\GeoPass\VertexShader.vert">
+    <None Update="Assets\shaders\Deferred\GeoPass\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Deferred\LightPass\FragmentShader.frag">
+    <None Update="Assets\shaders\Deferred\LightPass\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Deferred\LightPass\VertexShader.vert">
+    <None Update="Assets\shaders\Deferred\LightPass\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\FinalCombine\fragment.frag">
+    <None Update="Assets\shaders\FinalCombine\fragment.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\FinalCombine\vertex.vert">
+    <None Update="Assets\shaders\FinalCombine\vertex.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\FullBright\2D\FragmentShader.frag">
+    <None Update="Assets\shaders\FullBright\2D\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\FullBright\2D\VertexShader.vert">
+    <None Update="Assets\shaders\FullBright\2D\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\FullBright\3D\FragmentShader.frag">
+    <None Update="Assets\shaders\FullBright\3D\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\FullBright\3D\VertexShader.vert">
+    <None Update="Assets\shaders\FullBright\3D\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="assets\shaders\FullBright\FragmentShader.frag">
@@ -189,28 +189,28 @@
     <None Update="assets\shaders\FullBright\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\FXAA\FragmentShader.frag">
+    <None Update="Assets\shaders\FXAA\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\FXAA\VertexShader.vert">
+    <None Update="Assets\shaders\FXAA\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Multiply\fragment.frag">
+    <None Update="Assets\shaders\Multiply\fragment.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Multiply\vertex.vert">
+    <None Update="Assets\shaders\Multiply\vertex.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\SingleColor\2D\FragmentShader.frag">
+    <None Update="Assets\shaders\SingleColor\2D\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\SingleColor\2D\VertexShader.vert">
+    <None Update="Assets\shaders\SingleColor\2D\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\SingleColor\3D\FragmentShader.frag">
+    <None Update="Assets\shaders\SingleColor\3D\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\SingleColor\3D\VertexShader.vert">
+    <None Update="Assets\shaders\SingleColor\3D\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="assets\shaders\SingleColor\basic.frag">
@@ -219,37 +219,37 @@
     <None Update="assets\shaders\SingleColor\basic.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\SSAO\FragmentShader.frag">
+    <None Update="Assets\shaders\SSAO\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\SSAO\VertexShader.vert">
+    <None Update="Assets\shaders\SSAO\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\TextureArrayTest\FragmentShader.frag">
+    <None Update="Assets\shaders\TextureArrayTest\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\TextureArrayTest\VertexShader.vert">
+    <None Update="Assets\shaders\TextureArrayTest\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\black.png">
+    <None Update="Assets\textures\black.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\duck.bmp">
+    <None Update="Assets\textures\duck.bmp">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\error.png">
+    <None Update="Assets\textures\error.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\gray.png">
+    <None Update="Assets\textures\gray.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\white.png">
+    <None Update="Assets\textures\white.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Frustum\frustum.frag">
+    <None Update="Assets\shaders\Frustum\frustum.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Frustum\frustum.vert">
+    <None Update="Assets\shaders\Frustum\frustum.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

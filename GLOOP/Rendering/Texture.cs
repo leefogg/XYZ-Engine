@@ -1,12 +1,11 @@
-﻿using OpenTK.Graphics.OpenGL4;
-using System;
-using System.Linq;
+﻿using GLOOP.Util.Structures;
+using OpenTK.Graphics.OpenGL4;
 using static OpenTK.Graphics.OpenGL4.GL;
 using static OpenTK.Graphics.OpenGL4.GL.Arb;
 
 namespace GLOOP.Rendering
 {
-    public abstract class Texture : IDisposable
+    public abstract class Texture : System.IDisposable
     {
         private static readonly int[] BoundTextures = new int[Globals.MaxTextureUnits];
         private static readonly int[] TexturesToBind = new int[BoundTextures.Length];

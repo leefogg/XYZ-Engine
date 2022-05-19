@@ -1,4 +1,6 @@
-﻿using ImGuiNET;
+﻿using GLOOP.Util;
+using GLOOP.Util.Structures;
+using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

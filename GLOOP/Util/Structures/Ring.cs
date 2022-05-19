@@ -1,16 +1,17 @@
-﻿using System;
+﻿using GLOOP.Util;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP
+namespace GLOOP.Util.Structures
 {
     public class Ring<T> : IEnumerable<T>
     {
         private readonly T[] Items;
         private int CurrentIndex;
 
-        private int NextIndex => (CurrentIndex + 1) & (Items.Length - 1);
+        private int NextIndex => CurrentIndex + 1 & Items.Length - 1;
 
         public int Count => Items.Length;
 

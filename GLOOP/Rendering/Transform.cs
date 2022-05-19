@@ -1,4 +1,5 @@
-﻿using OpenTK.Mathematics;
+﻿using GLOOP.Util;
+using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Text;

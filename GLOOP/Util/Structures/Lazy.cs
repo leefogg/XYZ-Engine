@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP
+namespace GLOOP.Util.Structures
 {
     public class Lazy<T> where T : struct
     {

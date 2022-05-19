@@ -1,5 +1,7 @@
 ﻿using GLOOP.Extensions;
 using GLOOP.Rendering;
+using GLOOP.Util;
+using GLOOP.Util.Structures;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System;
@@ -69,15 +71,15 @@ namespace GLOOP
         }
 
         public Matrix4 ViewMatrix => lazyViewMatrix.Value;
-        protected Lazy<Matrix4> lazyViewMatrix;
+        protected Util.Structures.Lazy<Matrix4> lazyViewMatrix;
 
         public Matrix4 ProjectionMatrix => lazyProjectionMatrix.Value;
-        protected Lazy<Matrix4> lazyProjectionMatrix;
+        protected Util.Structures.Lazy<Matrix4> lazyProjectionMatrix;
 
         public Camera(Vector3 pos, Vector3 rot, float fov)
         {
-            lazyViewMatrix = new Lazy<Matrix4>(() => MathFunctions.CreateViewMatrix(Position, Rotation));
-            lazyProjectionMatrix = new Lazy<Matrix4>(() => MathFunctions.CreateProjectionMatrix(Width, Height, FOV, ZNear, ZFar));
+            lazyViewMatrix = new Util.Structures.Lazy<Matrix4>(() => MathFunctions.CreateViewMatrix(Position, Rotation));
+            lazyProjectionMatrix = new Util.Structures.Lazy<Matrix4>(() => MathFunctions.CreateProjectionMatrix(Width, Height, FOV, ZNear, ZFar));
 
             Position = pos;
             Rotation = rot;

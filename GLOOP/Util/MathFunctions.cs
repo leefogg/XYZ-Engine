@@ -7,20 +7,20 @@ using static GLOOP.Extensions.Vector3Extensions;
 using static GLOOP.Extensions.QuaternionExtensions;
 using OpenTK.Mathematics;
 
-namespace GLOOP
+namespace GLOOP.Util
 {
     public static class MathFunctions
     {
         private static readonly Vector3
-            RIGHT   = new Vector3(1, 0, 0),
-		    UP      = new Vector3(0, 1, 0),
-		    IN      = new Vector3(0, 0, 1);
+            RIGHT = new Vector3(1, 0, 0),
+            UP = new Vector3(0, 1, 0),
+            IN = new Vector3(0, 0, 1);
 
         public static Matrix4 CreateProjectionMatrix(int width, int height, float fov, float znear, float zfar)
         {
             var output = new Matrix4();
 
-            var aspectRatio = (float)width / (float)height;
+            var aspectRatio = width / (float)height;
             return CreateProjectionMatrix(aspectRatio, fov, znear, zfar, ref output);
         }
 
@@ -56,7 +56,8 @@ namespace GLOOP
             return output;
         }
 
-        public static Matrix4 CreateModelMatrix(Vector3 position, Quaternion rotation, Vector3 scale) {
+        public static Matrix4 CreateModelMatrix(Vector3 position, Quaternion rotation, Vector3 scale)
+        {
             var output = new Matrix4();
             ToIdentity(ref output);
 
