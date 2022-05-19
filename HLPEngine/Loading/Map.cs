@@ -94,7 +94,7 @@ namespace GLOOP.HPL.Loading
 
             VAOManager.VAOContainer vaoContainer = null;
             var chunk = Rendering.Primitives.CreatePlane(chunkResolution.X - 1, chunkResolution.Y - 1);
-            chunk.Move(new Vector3(0.5f, 0f, 0.5f)); // Center origin in the middle
+            chunk.Move(new Vector3(-0.5f, 0f, -0.5f)); // Center origin in the middle
             var defaultUVs = chunk.UVs.ToArray();
             for (int z = 0; z < numChunks.Y; z++)
             {

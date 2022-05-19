@@ -198,9 +198,9 @@ namespace GLOOP.Extensions
             => Transform(self, transform.Position, transform.Scale);
         public static Box3 Transform(this Box3 self, Vector3 position, Vector3 scale)
         {
-            position += self.Min;
-            scale *= self.Size;
-            scale *= 2;
+            scale *= self.Size * 2f;
+            position += self.Min * scale;
+            
             return new Box3(position, position + scale);
         }
     }
