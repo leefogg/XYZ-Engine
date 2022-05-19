@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP.Tests
+namespace TextureArrayTest
 {
     public class TextureArrayShader : StaticPixelShader
     {
@@ -28,7 +28,7 @@ namespace GLOOP.Tests
             set => slice.Set(value);
         }
 
-        public TextureArrayShader(IDictionary<string, string> defines = null) 
+        public TextureArrayShader(IDictionary<string, string> defines = null)
             : base("assets/shaders/texturearraytest/vertexshader.vert", "assets/shaders/texturearraytest/fragmentshader.frag", defines)
         {
             modelMatrix = new Uniform16f(this, "ModelMatrix");

@@ -1,14 +1,13 @@
-﻿using GLOOP.Rendering;
+﻿using GLOOP;
+using GLOOP.Rendering;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Text;
 
-namespace GLOOP.Tests
+namespace TextureArrayTest
 {
     public class TextureArrayTest : Window
     {
@@ -30,7 +29,7 @@ namespace GLOOP.Tests
             var colours = new Vector4[dimention * dimention];
             void randomizeColours()
             {
-                for (var i=0; i<colours.Length; i++)
+                for (var i = 0; i < colours.Length; i++)
                 {
                     colours[i].X = (float)random.NextDouble();
                     colours[i].Y = (float)random.NextDouble();
@@ -40,7 +39,7 @@ namespace GLOOP.Tests
             }
             var textureArray = new TextureArray(
                 new TextureShape(
-                    dimention, 
+                    dimention,
                     dimention,
                     false,
                     PixelInternalFormat.Rgb,
@@ -58,11 +57,12 @@ namespace GLOOP.Tests
 
             var assimp = new Assimp.AssimpContext();
             var shader = new TextureArrayShader();
-            Plane1 = new Entity("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader) { 
-                TextureArray = textureArray, 
-                Slice = 0 
+            Plane1 = new Entity("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
+            {
+                TextureArray = textureArray,
+                Slice = 0
             });
-            Plane1.Models[0].Transform.Scale *= 10000f;
+            Plane1.Models[0].Transform.Scale *= 100f;
             Plane1.Models[0].Transform.Position.X = -1.5f;
 
             Plane2 = new Entity("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
@@ -70,7 +70,7 @@ namespace GLOOP.Tests
                 TextureArray = textureArray,
                 Slice = 1
             });
-            Plane2.Models[0].Transform.Scale *= 10000f;
+            Plane2.Models[0].Transform.Scale *= 100f;
 
             Plane3 = new Entity("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
             {
@@ -78,7 +78,7 @@ namespace GLOOP.Tests
                 Slice = 2
             });
             Plane3.Models[0].Transform.Position.X = 1.5f;
-            Plane3.Models[0].Transform.Scale *= 10000f;
+            Plane3.Models[0].Transform.Scale *= 100f;
 
             base.OnLoad();
         }
@@ -104,6 +104,29 @@ namespace GLOOP.Tests
             Mouse.Grabbed = false;
 
             base.OnClosing(e);
+        }
+
+        public static void Main(string[] _)
+        {
+            const int screenSizeX = 2560;
+            const int screenSizeY = 1440;
+            const uint width = 1920;
+            const uint height = 1080;
+
+            var gameWindowSettings = new GameWindowSettings();
+            var nativeWindowSettings = new NativeWindowSettings
+            {
+                API = ContextAPI.OpenGL,
+                APIVersion = new Version(4, 3),
+                Profile = ContextProfile.Core,
+                Size = new Vector2i((int)width, (int)height),
+            };
+            nativeWindowSettings.Location = new Vector2i(
+                screenSizeX / 2 - nativeWindowSettings.Size.X / 2,
+                screenSizeY / 2 - nativeWindowSettings.Size.Y / 2
+            );
+            using var window = new TextureArrayTest(gameWindowSettings, nativeWindowSettings);
+            window.Run();
         }
     }
 }

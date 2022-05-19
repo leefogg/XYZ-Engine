@@ -28,9 +28,7 @@ namespace GLOOP
 
             var frustumPlanes = Camera.Current.GetFrustumPlanes();
             var visibleTiles = Terrain.Where(terrain => Camera.Current.IntersectsFrustum(terrain.BoundingBox.ToSphereBounds()))
-                .OrderBy(terrain => (terrain.Transform.Position - Camera.Current.Position).LengthSquared)
-                .ToList();
-            Console.WriteLine(visibleTiles.Count);
+                .OrderBy(terrain => (terrain.Transform.Position - Camera.Current.Position).LengthSquared);
 
             using var deugGroup = new DebugGroup("Terrain");
             foreach (var terrainPatch in visibleTiles)

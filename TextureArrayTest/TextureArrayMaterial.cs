@@ -5,11 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GLOOP.Tests
+namespace TextureArrayTest
 {
     public class TextureArrayMaterial : Material
     {
-        public Rendering.TextureArray TextureArray;
+        public TextureArray TextureArray;
         public uint Slice;
         private TextureArrayShader shader;
 
@@ -22,7 +22,7 @@ namespace GLOOP.Tests
 
         public override void Commit()
         {
-            var shader = (TextureArrayShader)this.Shader;
+            var shader = (TextureArrayShader)Shader;
             shader.Use();
             TextureArray.Use(TextureUnit.Texture0);
             shader.Texture = TextureUnit.Texture0;

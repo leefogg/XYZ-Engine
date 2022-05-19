@@ -1,5 +1,4 @@
-﻿using GLOOP.Tests;
-using HLPEngine;
+﻿using HLPEngine;
 using OpenTK;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;

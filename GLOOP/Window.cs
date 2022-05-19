@@ -36,7 +36,8 @@ namespace GLOOP
 
         private Buffer<Matrix4> cameraBuffer;
 
-        protected Window(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings)
+        protected Window(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) 
+            : base(gameWindowSettings, nativeWindowSettings)
         {
         }
 
