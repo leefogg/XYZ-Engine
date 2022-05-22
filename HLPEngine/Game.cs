@@ -399,7 +399,6 @@ namespace GLOOP.HPL
         private void UpdateVisibility()
         {
             using var timer = CurrentFrame[FrameProfiler.Event.Visbility];
-            Metrics.ModelsDrawn = 0;
             scene.UpdateModelBatches();
             foreach (var room in VisibleAreas)
                 room.UpdateModelBatches();
@@ -465,6 +464,14 @@ namespace GLOOP.HPL
 
                 ImGui.NewLine();
                 ImGui.Text($"Models drawn: {Metrics.ModelsDrawn}");
+                ImGui.Text($"Lights drawn: {Metrics.LightsDrawn}");
+                ImGui.Text($"Render batches: {Metrics.RenderBatches}");
+                ImGui.Text($"Queries dispatched: {Metrics.QueriesPerformed}");
+                ImGui.Text($"Shader binds: {Metrics.ShaderBinds}");
+                ImGui.Text($"Texture set binds: {Metrics.TextureSetBinds}");
+                ImGui.Text($"Buffer Binds: {Metrics.BufferBinds}");
+                ImGui.Text($"FrameBuffer binds: {Metrics.FrameBufferBinds}");
+                Metrics.ResetFrameCounters();
             }
             ImGui.End();
         }

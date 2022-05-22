@@ -45,6 +45,7 @@ namespace GLOOP.Rendering
                 BindTexture(type, handle);
 
                 BoundTextures[unit - TextureUnit.Texture0] = handle;
+                Metrics.TextureSetBinds++;
             }
         }
 
@@ -68,6 +69,8 @@ namespace GLOOP.Rendering
 
             for (i = 0; i < textures.Length; i++)
                 BoundTextures[i + first] = TexturesToBind[i];
+
+            Metrics.TextureSetBinds++;
         }
 
         private ulong makeTexureResident()

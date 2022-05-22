@@ -374,8 +374,6 @@ namespace GLOOP.Rendering
                         batchIdx++
                     );
                     i++;
-
-                    Metrics.ModelsDrawn++;
                 }
             }
 
@@ -437,6 +435,7 @@ namespace GLOOP.Rendering
 
                 //Console.WriteLine(((float)culledPointLights.Count / (float)scene.PointLights.Count) * 100 + "% of point lights");
                 Primitives.Sphere.Draw(numInstances: PointLights.Count);
+                Metrics.LightsDrawn += PointLights.Count;
 
                 // Debug light spheres
                 if (debugLights)
@@ -467,6 +466,7 @@ namespace GLOOP.Rendering
 
                 //Console.WriteLine(((float)culledSpotLights.Count / (float)scene.SpotLights.Count) * 100 + "% of spot lights");
                 Primitives.Frustum.Draw(numInstances: SpotLights.Count);
+                Metrics.LightsDrawn += SpotLights.Count;
 
                 if (debugLights)
                 {
@@ -500,9 +500,7 @@ namespace GLOOP.Rendering
             {
                 var batchSize = batch.Models.Count;
 
-                var oldShader = Shader.Current;
                 batch.BindState();
-
                 matriciesBuffer.BindRange(modelMatrixPtr, 1, batchSize * matrixSize);
                 materialsBuffer.BindRange(materialPtr, 2, batchSize * materialSize);
                 GL.MultiDrawElementsIndirect(
@@ -516,6 +514,9 @@ namespace GLOOP.Rendering
                 drawCommandPtr += batchSize * commandSize;
                 modelMatrixPtr += batchSize * matrixSize;
                 materialPtr += batchSize * materialSize;
+
+                Metrics.ModelsDrawn += batchSize;
+                Metrics.RenderBatches++;
             }
         }
 

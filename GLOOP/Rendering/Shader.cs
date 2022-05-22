@@ -99,6 +99,7 @@ namespace GLOOP.Rendering
             {
                 GL.UseProgram(shader.Handle);
                 Current = shader;
+                Metrics.ShaderBinds++;
             }
         }
 

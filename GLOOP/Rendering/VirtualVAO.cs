@@ -31,6 +31,7 @@ namespace GLOOP.Rendering
                 (int)description.BaseVertex,
                 (int)description.BaseInstance
             );
+            Metrics.ModelsDrawn++;
         }
     }
 }

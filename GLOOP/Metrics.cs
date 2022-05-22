@@ -4,7 +4,7 @@ using System.Text;
 
 namespace GLOOP
 {
-    public class Metrics
+    public static class Metrics
     {
         // Loading stuff
         public static ulong TexturesBytesUsed = 0;
@@ -14,7 +14,26 @@ namespace GLOOP
         public static TimeSpan TimeLoadingTextures, TimeLoadingModels;
 
         // Per-frame stuff
-        public static int ModelsDrawn = 0;
-        public static int LightsDrawn = 0;
+        public static int 
+            ModelsDrawn,
+            LightsDrawn,
+            RenderBatches,
+            QueriesPerformed,
+            ShaderBinds,
+            TextureSetBinds,
+            BufferBinds,
+            FrameBufferBinds;
+
+        public static void ResetFrameCounters()
+        {
+            ModelsDrawn = 0;
+            LightsDrawn = 0;
+            RenderBatches = 0;
+            QueriesPerformed = 0;
+            ShaderBinds = 0;
+            TextureSetBinds = 0;
+            BufferBinds = 0;
+            FrameBufferBinds = 0;
+        }
     }
 }

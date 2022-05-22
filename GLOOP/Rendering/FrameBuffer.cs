@@ -94,6 +94,7 @@ namespace GLOOP.Rendering
         private static void Use(int handle) { 
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, handle);
             Current = handle;
+            Metrics.FrameBufferBinds++;
         }
 
         public void BlitTo(FrameBuffer destination, ClearBufferMask mask)

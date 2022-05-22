@@ -23,6 +23,7 @@ namespace GLOOP.Rendering
                 return;
 
             GL.BeginQuery(Type, Handle);
+            Metrics.QueriesPerformed++;
             Running = true;
         }
 
