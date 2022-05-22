@@ -19,8 +19,10 @@ namespace GLOOP.Rendering
             Position = pos;
             Scale = scale;
             Rotation = rotation;
+            lazyMatrix = null;
         }
 
-        public Matrix4 Matrix => MathFunctions.CreateModelMatrix(Position, Rotation, Scale);
+        public Matrix4 Matrix => lazyMatrix ??= MathFunctions.CreateModelMatrix(Position, Rotation, Scale);
+        public Matrix4? lazyMatrix; // TODO: Need to set this to null when transform changes
     }
 }

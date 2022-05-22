@@ -21,7 +21,6 @@ namespace GLOOP.Rendering
             => Matrix4.CreateScale(VAO.BoundingBox.Size) * Matrix4.CreateTranslation(VAO.BoundingBox.Center) * Transform.Matrix;
         public Box3 BoundingBox => new Box3(new Vector3(-1f), new Vector3(1f)).Transform(BoundingBoxMatrix);
 
-        private Matrix4? ModelMatrix;
 
         public Model(
             VirtualVAO vao,
@@ -35,9 +34,7 @@ namespace GLOOP.Rendering
 
         public void Render(PrimitiveType renderMode = PrimitiveType.Triangles)
         {
-            //if (!ModelMatrix.HasValue)
-                ModelMatrix = Transform.Matrix;
-            Material.SetModelMatrix(ModelMatrix.Value);
+            Material.SetModelMatrix(Transform.Matrix);
             Material.Commit();
            
             VAO.Draw(renderMode);
