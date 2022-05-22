@@ -14,17 +14,14 @@ namespace GLOOP.Rendering
         public static readonly Texture2D Gray = TextureCache.Get("assets/textures/gray.png");
         public static readonly Texture2D Black = TextureCache.Get("assets/textures/black.png");
 
-
-        private Lazy<ulong> bindlessHandle;
+        private ulong? bindlessHandle;
         public readonly int Handle = GenTexture();
-        public ulong BindlessHandle => bindlessHandle.Value;
+        public ulong BindlessHandle => bindlessHandle ??= makeTexureResident();
         public readonly TextureTarget Type;
 
         public Texture(TextureTarget type)
         {
             Type = type;
-
-            bindlessHandle = new Lazy<ulong>(makeTexureResident);
         }
 
         public void Dispose()

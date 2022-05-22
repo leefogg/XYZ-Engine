@@ -266,8 +266,6 @@ namespace GLOOP.Rendering
             if (!PointLights.Any())
                 return;
 
-            var planes = Camera.Current.GetFrustumPlanes();
-
             var lights = new GPUPointLight[Math.Min(maxLights, PointLights.Count)];
 
             var numCulledLights = 0;
@@ -296,8 +294,6 @@ namespace GLOOP.Rendering
         {
             if (!SpotLights.Any())
                 return;
-
-            var planes = Camera.Current.GetFrustumPlanes();
 
             var culledNumSpotLights = 0;
             var lights = new GPUSpotLight[Math.Min(maxLights, SpotLights.Count)];

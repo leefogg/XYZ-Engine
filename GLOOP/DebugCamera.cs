@@ -27,9 +27,6 @@ namespace GLOOP {
                 var mousedirection = Mouse.CurrentState.Delta;
                 mousedirection.Y *= invertY ? -1 : 1;
 
-                if (mousedirection.LengthFast > 1)
-                    lazyViewMatrix.Expire();
-
                 Multiply(ref mousedirection, MouseSpeed);
 
                 if (Rotation.Y + mousedirection.X >= 360) {
@@ -144,8 +141,8 @@ namespace GLOOP {
                 velocity.Z += additionalvelcity.Z;
             }
 
-            lazyViewMatrix.Expire();
-            lazyFrustumPlanes.Expire();
+            lazyViewMatrix = null;
+            lazyFrustumPlanes = null;
 
             Position.X += velocity.X;
             Position.Y += velocity.Y;

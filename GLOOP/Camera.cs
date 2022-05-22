@@ -26,7 +26,7 @@ namespace GLOOP
             get => znear;
             set
             {
-                lazyProjectionMatrix.Expire();
+                lazyProjectionMatrix = null;
                 znear = value;
             }
         }
@@ -35,7 +35,7 @@ namespace GLOOP
             get => zfar;
             set
             {
-                lazyProjectionMatrix.Expire();
+                lazyProjectionMatrix = null;
                 zfar = value;
             }
         }
@@ -45,7 +45,7 @@ namespace GLOOP
             get => fov;
             set
             {
-                lazyProjectionMatrix.Expire();
+                lazyProjectionMatrix = null;
                 fov = value;
             }
         }
@@ -56,7 +56,7 @@ namespace GLOOP
             set
             {
                 shape.X = value;
-                lazyProjectionMatrix.Expire();
+                lazyProjectionMatrix = null;
             }
         }
 
@@ -66,25 +66,21 @@ namespace GLOOP
             set
             {
                 shape.Y = value;
-                lazyProjectionMatrix.Expire();
+                lazyProjectionMatrix = null;
             }
         }
 
-        public Matrix4 ViewMatrix => lazyViewMatrix.Value;
-        protected Util.Structures.Lazy<Matrix4> lazyViewMatrix;
+        public Matrix4 ViewMatrix => lazyViewMatrix ??= MathFunctions.CreateViewMatrix(Position, Rotation);
+        protected Matrix4? lazyViewMatrix;
 
-        public Matrix4 ProjectionMatrix => lazyProjectionMatrix.Value;
-        protected Util.Structures.Lazy<Matrix4> lazyProjectionMatrix;
+        public Matrix4 ProjectionMatrix => lazyProjectionMatrix ??= MathFunctions.CreateProjectionMatrix(Width, Height, FOV, ZNear, ZFar);
+        protected Matrix4? lazyProjectionMatrix;
 
-        public Vector4[] FrustumPlanes => lazyFrustumPlanes.Value;
-        protected Util.Structures.Lazy<Vector4[]> lazyFrustumPlanes;
+        public Vector4[] FrustumPlanes => lazyFrustumPlanes ??= GetFrustumPlanes();
+        protected Vector4[] lazyFrustumPlanes;
 
         public Camera(Vector3 pos, Vector3 rot, float fov)
         {
-            lazyViewMatrix = new Util.Structures.Lazy<Matrix4>(() => MathFunctions.CreateViewMatrix(Position, Rotation));
-            lazyProjectionMatrix = new Util.Structures.Lazy<Matrix4>(() => MathFunctions.CreateProjectionMatrix(Width, Height, FOV, ZNear, ZFar));
-            lazyFrustumPlanes = new Util.Structures.Lazy<Vector4[]>(GetFrustumPlanes);
-
             Position = pos;
             Rotation = rot;
             FOV = fov;
@@ -148,7 +144,7 @@ namespace GLOOP
         }
 
         [Pure]
-        public Vector4[] GetFrustumPlanes()
+        private Vector4[] GetFrustumPlanes()
         {
             var pvMatrix = new Matrix4();
             MatrixExtensions.Multiply(ProjectionMatrix, ViewMatrix, ref pvMatrix);

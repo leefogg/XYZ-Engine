@@ -26,7 +26,7 @@ namespace GLOOP
             if (Terrain.Count == 0)
                 return;
 
-            var frustumPlanes = Camera.Current.GetFrustumPlanes();
+            var frustumPlanes = Camera.Current.FrustumPlanes;
             var visibleTiles = Terrain.Where(terrain => Camera.Current.IntersectsFrustum(terrain.BoundingBox.ToSphereBounds()))
                 .OrderBy(terrain => (terrain.Transform.Position - Camera.Current.Position).LengthSquared);
 

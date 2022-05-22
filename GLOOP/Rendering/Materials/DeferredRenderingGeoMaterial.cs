@@ -40,7 +40,7 @@ namespace GLOOP.Rendering.Materials
             set
             {
                 Textures[1] = value;
-                LazyShader?.Expire();
+                LazyShader = null;
             }
         }
         public Texture2D SpecularTexture
@@ -48,7 +48,7 @@ namespace GLOOP.Rendering.Materials
             get => Textures[2];
             set {
                 Textures[2] = value;
-                LazyShader?.Expire();
+                LazyShader = null;
             }
         }
         public Texture2D IlluminationTexture
@@ -57,16 +57,15 @@ namespace GLOOP.Rendering.Materials
             set
             {
                 Textures[3] = value;
-                LazyShader?.Expire();
+                LazyShader = null;
             }
         }
 
-        private Lazy<Shader> LazyShader;
-        public override Shader Shader => LazyShader;
+        public override Shader Shader => LazyShader ??= GetShaderVarient();
+        public Shader LazyShader;
 
         public DeferredRenderingGeoMaterial()
         {
-            LazyShader = new Lazy<Shader>(GetShaderVarient);
         }
 
         public override void Commit()
