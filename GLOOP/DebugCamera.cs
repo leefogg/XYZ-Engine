@@ -144,8 +144,8 @@ namespace GLOOP {
                 velocity.Z += additionalvelcity.Z;
             }
 
-            if (velocity.LengthFast > 0.001)
             lazyViewMatrix.Expire();
+            lazyFrustumPlanes.Expire();
 
             Position.X += velocity.X;
             Position.Y += velocity.Y;

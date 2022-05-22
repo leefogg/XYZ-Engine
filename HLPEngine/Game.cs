@@ -400,9 +400,9 @@ namespace GLOOP.HPL
         {
             using var timer = CurrentFrame[FrameProfiler.Event.Visbility];
             Metrics.ModelsDrawn = 0;
-            scene.UpdateModelBatches(true);
+            scene.UpdateModelBatches();
             foreach (var room in VisibleAreas)
-                room.UpdateModelBatches(true);
+                room.UpdateModelBatches();
         }
 
         private void UpdateBuffers()

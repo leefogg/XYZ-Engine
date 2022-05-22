@@ -62,10 +62,11 @@ namespace GLOOP.Rendering.Materials
         }
 
         private Lazy<Shader> LazyShader;
-        public override Shader Shader => (LazyShader ??= new Lazy<Shader>(GetShaderVarient)).Value;
+        public override Shader Shader => LazyShader;
 
         public DeferredRenderingGeoMaterial()
         {
+            LazyShader = new Lazy<Shader>(GetShaderVarient);
         }
 
         public override void Commit()

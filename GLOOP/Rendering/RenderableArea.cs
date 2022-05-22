@@ -162,11 +162,12 @@ namespace GLOOP.Rendering
 
         private void PrepareModels()
         {
-            UpdateModelBatches(false);
+            UpdateModelBatches();
 
+            var numOccluders = Models.Count(m => m.IsOccluder);
             CreateModelUBOs(
-                OccluderBatches.Sum(b => b.Models.Count),
-                NonOccluderBatches.Sum(b => b.Models.Count)
+                numOccluders,
+                Models.Count - numOccluders
             );
 
             UpdateDrawBuffers();
@@ -175,23 +176,16 @@ namespace GLOOP.Rendering
 
         public void UpdateDrawBuffers()
         {
-            FillModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
-            FillModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
+            if (OccluderBatches.Count > 0)
+                FillModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
+            if (NonOccluderBatches.Count > 0)
+                FillModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
         }
 
-        public void UpdateModelBatches(bool filterVisible)
+        public void UpdateModelBatches()
         {
-            if (filterVisible)
-            {
-                var frustum = Camera.Current.GetFrustumPlanes();
-                OccluderBatches     = BatchModels(Models.Where(o =>  o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox, ref frustum)));
-                NonOccluderBatches  = BatchModels(Models.Where(o => !o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox, ref frustum)));
-            } 
-            else
-            {
-                OccluderBatches = BatchModels(Models.Where(o => o.IsOccluder));
-                NonOccluderBatches = BatchModels(Models.Where(o => !o.IsOccluder));
-            }
+            OccluderBatches     = BatchModels(Models.Where(o =>  o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox)));
+            NonOccluderBatches  = BatchModels(Models.Where(o => !o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox)));
         }
 
         private void CreateModelUBOs(int numOccluders, int numNonOccluders)
@@ -356,9 +350,6 @@ namespace GLOOP.Rendering
             Buffer<Matrix4> matriciesBuffer,
             Buffer<GPUDeferredGeoMaterial> materialsBuffer)
         {
-            if (drawIndirectBuffer == null || materialsBuffer == null || materialsBuffer == null)
-                return;
-
             var numModels = batches.Sum(batch => batch.Models.Count);
             var modelMatricies = new Matrix4[numModels];
             var drawCommands = new DrawElementsIndirectData[numModels];

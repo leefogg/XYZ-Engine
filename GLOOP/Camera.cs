@@ -76,10 +76,14 @@ namespace GLOOP
         public Matrix4 ProjectionMatrix => lazyProjectionMatrix.Value;
         protected Util.Structures.Lazy<Matrix4> lazyProjectionMatrix;
 
+        public Vector4[] FrustumPlanes => lazyFrustumPlanes.Value;
+        protected Util.Structures.Lazy<Vector4[]> lazyFrustumPlanes;
+
         public Camera(Vector3 pos, Vector3 rot, float fov)
         {
             lazyViewMatrix = new Util.Structures.Lazy<Matrix4>(() => MathFunctions.CreateViewMatrix(Position, Rotation));
             lazyProjectionMatrix = new Util.Structures.Lazy<Matrix4>(() => MathFunctions.CreateProjectionMatrix(Width, Height, FOV, ZNear, ZFar));
+            lazyFrustumPlanes = new Util.Structures.Lazy<Vector4[]>(GetFrustumPlanes);
 
             Position = pos;
             Rotation = rot;
@@ -123,20 +127,19 @@ namespace GLOOP
         }
 
         [Pure]
-        public bool IsInsideFrustum(ref Vector4[] frustumPlanes, in Box3 boundingBox, in Transform modelTransform)
+        public bool IsInsideFrustum(in Box3 boundingBox, in Transform modelTransform)
         {
             var position = boundingBox.Center + modelTransform.Position;
             var size = boundingBox.Size * modelTransform.Scale;
             var radius = Math.Max(Math.Max(size.X, size.Y), size.Z) / 2f;
-            return IsInsideFrustum(ref frustumPlanes, position, radius);
+            return IsInsideFrustum(position, radius);
         }
 
-        [Pure]
-        public static bool IsInsideFrustum(ref Vector4[] frustumPlanes, Vector3 position, float radius)
+        public bool IsInsideFrustum(Vector3 position, float radius)
         {
             for (int i = 0; i < 6; i++)
             {
-                var planeEquation = frustumPlanes[i];
+                var planeEquation = FrustumPlanes[i];
                 if (planeEquation.X * position.X + planeEquation.Y * position.Y + planeEquation.Z * position.Z + planeEquation.W <= -radius)
                     return false;
             }
@@ -162,11 +165,10 @@ namespace GLOOP
         }
 
         //https://iquilezles.org/articles/frustumcorrect/
-        [Pure]
-        public bool IntersectsFrustumFast(in Box3 worldspaceAABB, ref Vector4[] frustumPlanes)
+        public bool IntersectsFrustumFast(in Box3 worldspaceAABB)
         {
             // check box outside/inside of frustum
-            foreach (var plane in frustumPlanes)
+            foreach (var plane in FrustumPlanes)
             {
                 //if (worldspaceAABB.GetVertcies().All(v => Vector4.Dot(plane, new Vector4(v.X, v.Y, v.Z, 1)) < 0))
                 //    return false;
@@ -188,10 +190,9 @@ namespace GLOOP
             return true;
         }
 
-        [Pure]
-        public bool IntersectsFrustum(in Box3 worldspaceAABB, ref Vector4[] frustumPlanes)
+        public bool IntersectsFrustum(in Box3 worldspaceAABB)
         {
-            if (!IntersectsFrustumFast(worldspaceAABB, ref frustumPlanes))
+            if (!IntersectsFrustumFast(worldspaceAABB))
                 return false;
 
             // check frustum outside/inside box
