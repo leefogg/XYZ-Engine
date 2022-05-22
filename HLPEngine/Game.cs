@@ -398,6 +398,11 @@ namespace GLOOP.HPL
         {
             using var timer = CurrentFrame[FrameProfiler.Event.UpdateBuffers];
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+
+            Metrics.ModelsDrawn = 0;
+            //scene.UpdateModels();
+            //foreach (var room in VisibleAreas)
+            //    room.UpdateModels();
         }
 
         private void DrawImGui()
@@ -447,6 +452,9 @@ namespace GLOOP.HPL
                 average = values.Average();
                 ImGui.PlotHistogram("CPU", ref values[0], values.Length, 0, null, 0, 1000f / TargetFPS, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
                 ImGui.Text($"Average: {average:0.000}ms ({1000f / average:00.00} fps)");
+
+                ImGui.NewLine();
+                ImGui.Text($"Models drawn: {Metrics.ModelsDrawn}");
             }
             ImGui.End();
         }

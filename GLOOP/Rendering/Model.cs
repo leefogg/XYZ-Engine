@@ -17,9 +17,9 @@ namespace GLOOP.Rendering
         public bool IsStatic = false;
         public bool IsOccluder = false;
 
-        public Matrix4 BoundingBoxMatrix 
+        public Matrix4 BoundingBoxMatrix
             => Matrix4.CreateScale(VAO.BoundingBox.Size) * Matrix4.CreateTranslation(VAO.BoundingBox.Center) * Transform.Matrix;
-        public Box3 BoundingBox => VAO.BoundingBox.Transform(Transform);
+        public Box3 BoundingBox => new Box3(new Vector3(-1f), new Vector3(1f)).Transform(BoundingBoxMatrix);
 
         private Matrix4? ModelMatrix;
 

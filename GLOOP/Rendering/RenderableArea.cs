@@ -154,59 +154,92 @@ namespace GLOOP.Rendering
 
         public void Prepare()
         {
-            OccluderBatches = BatchModels(Models.Where(o => o.IsOccluder));
-            if (OccluderBatches.Count > 0)
+            PrepareModels();
+            SetupLightUBOs();
+            FillPointLightsUBO();
+            FillSpotLightsUBO();
+        }
+
+        private void PrepareModels()
+        {
+            UpdateModelBatches(false);
+
+            CreateModelUBOs(
+                OccluderBatches.Sum(b => b.Models.Count),
+                NonOccluderBatches.Sum(b => b.Models.Count)
+            );
+
+            FillModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
+            FillModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
+        }
+
+        public void UpdateModels()
+        {
+            UpdateModelBatches(true);
+
+            FillModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
+            FillModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
+        }
+
+        private void UpdateModelBatches(bool filterVisible)
+        {
+            if (filterVisible)
             {
-                var numModelsApprox = OccluderBatches.Sum(b => b.Models.Count + 3);
+                var frustum = Camera.Current.GetFrustumPlanes();
+                OccluderBatches     = BatchModels(Models.Where(o =>  o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox.ToSphereBounds())));
+                NonOccluderBatches  = BatchModels(Models.Where(o => !o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox.ToSphereBounds())));
+            } 
+            else
+            {
+                OccluderBatches = BatchModels(Models.Where(o => o.IsOccluder));
+                NonOccluderBatches = BatchModels(Models.Where(o => !o.IsOccluder));
+            }
+        }
+
+        private void CreateModelUBOs(int numOccluders, int numNonOccluders)
+        {
+            if (numOccluders > 0)
+            {
                 OccluderDrawIndirectBuffer = new Buffer<DrawElementsIndirectData>(
-                    numModelsApprox,
+                    numOccluders,
                     BufferTarget.DrawIndirectBuffer,
                     BufferUsageHint.StaticDraw,
                     Name + " Occluder DrawCommands"
                 );
                 OccluderMatriciesBuffer = new Buffer<Matrix4>(
-                    numModelsApprox,
+                    numOccluders,
                     BufferTarget.ShaderStorageBuffer,
                     BufferUsageHint.StreamDraw,
                     Name + " Occluder ModelMatricies"
                 );
                 OccluderMaterialsBuffer = new Buffer<GPUDeferredGeoMaterial>(
-                    numModelsApprox,
+                    numOccluders,
                     BufferTarget.ShaderStorageBuffer,
                     BufferUsageHint.StaticDraw,
                     Name + " Occluder MaterialData"
                 );
-                PrepareModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
             }
-
-            NonOccluderBatches = BatchModels(Models.Where(o => !o.IsOccluder));
-            if (NonOccluderBatches.Count > 0)
+            if (numNonOccluders > 0)
             {
-                var numModelsApprox = NonOccluderBatches.Sum(b => b.Models.Count + 3);
                 NonOccluderDrawIndirectBuffer = new Buffer<DrawElementsIndirectData>(
-                    numModelsApprox,
+                    numNonOccluders,
                     BufferTarget.DrawIndirectBuffer,
                     BufferUsageHint.StaticDraw,
                     Name + " Non-Occluder DrawCommands"
                 );
                 NonOccluderMatriciesBuffer = new Buffer<Matrix4>(
-                    numModelsApprox,
+                    numNonOccluders,
                     BufferTarget.ShaderStorageBuffer,
                     BufferUsageHint.StreamDraw,
                     Name + " Non-Occluder ModelMatricies"
                 );
                 NonOccluderMaterialsBuffer = new Buffer<GPUDeferredGeoMaterial>(
-                    numModelsApprox,
+                    numNonOccluders,
                     BufferTarget.ShaderStorageBuffer,
                     BufferUsageHint.StaticDraw,
                     Name + " Non-Occluder MaterialData"
                 );
-                PrepareModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
             }
-
-            SetupLightUBOs();
-            FillPointLightsUBO();
-            FillSpotLightsUBO();
         }
 
         private List<RenderBatch> BatchModels(IEnumerable<Model> models)
@@ -221,23 +254,20 @@ namespace GLOOP.Rendering
         private void SetupLightUBOs()
         {
             if (PointLights.Any())
-            {
                 PointLightsBuffer = new Buffer<GPUPointLight>(
                     Math.Min(maxLights, PointLights.Count),
                     BufferTarget.UniformBuffer,
                     BufferUsageHint.StaticDraw,
                     Name + " PointLights"
                 );
-            }
+
             if (SpotLights.Any())
-            {
                 SpotLightsBuffer = new Buffer<GPUSpotLight>(
                     Math.Min(maxLights, SpotLights.Count),
                     BufferTarget.UniformBuffer,
                     BufferUsageHint.StaticDraw,
                     Name + " SpotLights"
                 );
-            }
         }
 
         private void FillPointLightsUBO()
@@ -323,42 +353,47 @@ namespace GLOOP.Rendering
             SpotLightsBuffer.Update(lights);
         }
 
-        private void PrepareModelUBOs(
+        private void FillModelUBOs(
             IEnumerable<RenderBatch> batches,
             Buffer<DrawElementsIndirectData> drawIndirectBuffer,
             Buffer<Matrix4> matriciesBuffer,
             Buffer<GPUDeferredGeoMaterial> materialsBuffer)
         {
-            if (!Models.Any())
+            if (drawIndirectBuffer == null || materialsBuffer == null || materialsBuffer == null)
                 return;
 
-            var modelMatricies = new List<Matrix4>();
-            var drawCommands = new List<DrawElementsIndirectData>();
-            var materials = new List<GPUDeferredGeoMaterial>();
+            var numModels = batches.Sum(batch => batch.Models.Count);
+            var modelMatricies = new Matrix4[numModels];
+            var drawCommands = new DrawElementsIndirectData[numModels];
+            var materials = new GPUDeferredGeoMaterial[numModels];
+            int i = 0;
             foreach (var batch in batches)
             {
-                uint i = 0;
+                uint batchIdx = 0;
                 foreach (var model in batch.Models)
                 {
-                    modelMatricies.Add(model.Transform.Matrix);
+                    modelMatricies[i] = model.Transform.Matrix;
 
                     var mat = (DeferredRenderingGeoMaterial)model.Material;
-                    materials.Add(new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs));
+                    materials[i] = new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs);
 
                     var command = model.VAO.description;
-                    drawCommands.Add(new DrawElementsIndirectData(
+                    drawCommands[i] = new DrawElementsIndirectData(
                         command.NumIndexes,
                         command.FirstIndex / sizeof(ushort),
                         command.BaseVertex,
                         command.NumInstances,
-                        i++
-                    ));
+                        batchIdx++
+                    );
+                    i++;
+
+                    Metrics.ModelsDrawn++;
                 }
             }
 
-            drawIndirectBuffer.Update(drawCommands.ToArray());
-            matriciesBuffer.Update(modelMatricies.ToArray());
-            materialsBuffer.Update(materials.ToArray());
+            drawIndirectBuffer.Update(drawCommands);
+            matriciesBuffer.Update(modelMatricies);
+            materialsBuffer.Update(materials);
         }
 
         public virtual void RenderOccluderGeometry()
