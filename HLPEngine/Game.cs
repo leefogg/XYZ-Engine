@@ -123,6 +123,7 @@ namespace GLOOP.HPL
         private bool showBoundingBoxes = false;
         private bool enablePortalCulling = true;
         private bool enableImGui = false;
+        private bool shouldUpdateVisibility = true;
 
         private Buffer<float> bloomBuffer;
         private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
@@ -398,6 +399,9 @@ namespace GLOOP.HPL
 
         private void UpdateVisibility()
         {
+            if (!shouldUpdateVisibility)
+                return;
+
             using var timer = CurrentFrame[FrameProfiler.Event.Visbility];
             scene.UpdateModelBatches();
             foreach (var room in VisibleAreas)
@@ -435,6 +439,7 @@ namespace GLOOP.HPL
                 ImGui.Checkbox("FXAA", ref enableFXAA);
                 ImGui.Checkbox("SSAO", ref enableSSAO);
                 ImGui.Checkbox("Bloom", ref enableBloom);
+                ImGui.Checkbox("Update Visibility", ref shouldUpdateVisibility);
             }
             ImGui.End();
         }
