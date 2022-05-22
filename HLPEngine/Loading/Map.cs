@@ -14,7 +14,6 @@ using System.Xml.Serialization;
 namespace GLOOP.HPL.Loading
 {
     public class Map {
-        private const string SOMARoot = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
         public List<HPLEntity> Entities = new List<HPLEntity>();
         public List<Model> Terrain = new List<Model>();
         public List<Rendering.PointLight> PointLights = new List<Rendering.PointLight>();
@@ -187,7 +186,7 @@ namespace GLOOP.HPL.Loading
                 foreach (var entFile in section.Files) {
                     try {
                         attempted++;
-                        var fullPath = Path.Combine(SOMARoot, entFile.Path);
+                        var fullPath = Path.Combine(Constants.SOMARoot, entFile.Path);
                         Console.Write(".");
 
                         //if (entFile.Path.Contains("Generator_Habitat.ent")) { 
@@ -195,7 +194,7 @@ namespace GLOOP.HPL.Loading
                             var entity = Deserialize<Entity>(fullPath);
                             entities[entFile.Id] = entity;
 
-                            var daePath = Path.Combine(SOMARoot, entity.Model.Mesh.FileName);
+                            var daePath = Path.Combine(Constants.SOMARoot, entity.Model.Mesh.FileName);
                             //if (!File.Exists(daePath))
                             //    daePath = Path.Combine(SOMARoot, Path.ChangeExtension(entFile.Path, "dae"));
                             //if (!File.Exists(daePath))
@@ -282,7 +281,7 @@ namespace GLOOP.HPL.Loading
                 foreach (var entFile in section.Files) {
                     try {
                         attempted++;
-                        var fullPath = Path.Combine(SOMARoot, entFile.Path);
+                        var fullPath = Path.Combine(Constants.SOMARoot, entFile.Path);
                         Console.Write(".");
 
                        //if (fullPath.Contains("05_01_adon_support.DAE") || fullPath.Contains("05_01_adon_box_small.DAE") || fullPath.Contains("phi_tunnel_straight.DAE")) { 
@@ -355,7 +354,7 @@ namespace GLOOP.HPL.Loading
                 foreach (var prim in section.Planes) {
                     try {
                         attempted++;
-                        var mat = Deserialize<Material>(Path.Combine(SOMARoot, prim.MaterialPath));
+                        var mat = Deserialize<Material>(Path.Combine(Constants.SOMARoot, prim.MaterialPath));
 
                         var endCorner = prim.Scale.ParseVector3();
                         var scale = new Vector2(endCorner.X, endCorner.Z);
@@ -426,7 +425,7 @@ namespace GLOOP.HPL.Loading
                 foreach (var detailMesh in section.DetailMeshes) {
                     try {
                         attempted++;
-                        var fullPath = Path.Combine(SOMARoot, detailMesh.FilePath);
+                        var fullPath = Path.Combine(Constants.SOMARoot, detailMesh.FilePath);
 
                         if (true) {
                             var model = new HPLEntity(fullPath, assimp, material);
