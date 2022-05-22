@@ -169,25 +169,23 @@ namespace GLOOP.Rendering
                 NonOccluderBatches.Sum(b => b.Models.Count)
             );
 
-            FillModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
-            FillModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
+            UpdateDrawBuffers();
         }
 
-        public void UpdateModels()
+
+        public void UpdateDrawBuffers()
         {
-            UpdateModelBatches(true);
-
             FillModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
             FillModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
         }
 
-        private void UpdateModelBatches(bool filterVisible)
+        public void UpdateModelBatches(bool filterVisible)
         {
             if (filterVisible)
             {
                 var frustum = Camera.Current.GetFrustumPlanes();
-                OccluderBatches     = BatchModels(Models.Where(o =>  o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox.ToSphereBounds())));
-                NonOccluderBatches  = BatchModels(Models.Where(o => !o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox.ToSphereBounds())));
+                OccluderBatches     = BatchModels(Models.Where(o =>  o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox, ref frustum)));
+                NonOccluderBatches  = BatchModels(Models.Where(o => !o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox, ref frustum)));
             } 
             else
             {
@@ -247,8 +245,7 @@ namespace GLOOP.Rendering
             var batches = GroupBy(models, SameRenderBatch);
             batches.ForEach(batch => batch.Models = batch.Models.OrderBy(model => (model.Transform.Position - Camera.Current.Position).LengthSquared).ToList());
 
-            var result = batches.ToList();
-            return result;
+            return batches;
         }
 
         private void SetupLightUBOs()

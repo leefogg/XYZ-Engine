@@ -19,6 +19,7 @@ namespace GLOOP.Rendering.Debugging
 
         public enum Event
         {
+            Visbility,
             UpdateBuffers,
             Geomertry,
             PortalCulling,
@@ -31,14 +32,15 @@ namespace GLOOP.Rendering.Debugging
         }
         private static uint[] Colors = new uint[(int)Event.Count]
         {
-            0xFF74DD81,
+            0xFF808080, // Visiblity
+            0xFF74DD81, // Update Buffers
             0xFF0000FF, // Geo
             0xFFFF8080, // Portal culling
             0xFFA0A0A0, // Lighting
             0xFF00FF00, // ImGui
             0xFF0050A0, // Post effets
             0xFF505050, // Graph
-            0xFF808080
+            0xFF000000  // Count
         };
 
         public class Frame : DummyDisposable

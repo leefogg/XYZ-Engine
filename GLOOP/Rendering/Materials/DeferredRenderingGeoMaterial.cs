@@ -1,9 +1,7 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using GLOOP.Util.Structures;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace GLOOP.Rendering.Materials
 {
@@ -39,24 +37,32 @@ namespace GLOOP.Rendering.Materials
         public Texture2D NormalTexture
         {
             get => Textures[1];
-            set => Textures[1] = value;
+            set
+            {
+                Textures[1] = value;
+                LazyShader?.Expire();
+            }
         }
         public Texture2D SpecularTexture
         {
             get => Textures[2];
-            set => Textures[2] = value;
+            set {
+                Textures[2] = value;
+                LazyShader?.Expire();
+            }
         }
         public Texture2D IlluminationTexture
         {
             get => Textures[3];
-            set => Textures[3] = value;
+            set
+            {
+                Textures[3] = value;
+                LazyShader?.Expire();
+            }
         }
 
-        public override Shader Shader => factory.GetVarient(
-            NormalTexture != DefaultNormalTexture, 
-            SpecularTexture != DefaultSpecularTexture, 
-            IlluminationTexture != DefaultImmuminationTexture
-        ); // TODO: Make this lazy to cache
+        private Lazy<Shader> LazyShader;
+        public override Shader Shader => (LazyShader ??= new Lazy<Shader>(GetShaderVarient)).Value;
 
         public DeferredRenderingGeoMaterial()
         {
@@ -100,5 +106,14 @@ namespace GLOOP.Rendering.Materials
                 TextureRepeat = TextureRepeat
             };
         public bool SameTextures(DeferredRenderingGeoMaterial other) => Textures.SequenceEqual(other.Textures);
+
+        private Shader GetShaderVarient()
+        {
+            return factory.GetVarient(
+                NormalTexture != DefaultNormalTexture,
+                SpecularTexture != DefaultSpecularTexture,
+                IlluminationTexture != DefaultImmuminationTexture
+            );
+        }
     }
 }

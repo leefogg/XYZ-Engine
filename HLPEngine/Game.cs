@@ -341,6 +341,8 @@ namespace GLOOP.HPL
 
                 ImGuiController?.Update(this, (float)args.Time);
 
+                UpdateVisibility();
+
 #if VR
                 VRSystem.UpdateEyes();
                 VRSystem.UpdatePoses();
@@ -394,15 +396,23 @@ namespace GLOOP.HPL
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
         }
 
+        private void UpdateVisibility()
+        {
+            using var timer = CurrentFrame[FrameProfiler.Event.Visbility];
+            Metrics.ModelsDrawn = 0;
+            scene.UpdateModelBatches(true);
+            foreach (var room in VisibleAreas)
+                room.UpdateModelBatches(true);
+        }
+
         private void UpdateBuffers()
         {
             using var timer = CurrentFrame[FrameProfiler.Event.UpdateBuffers];
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
 
-            Metrics.ModelsDrawn = 0;
-            //scene.UpdateModels();
-            //foreach (var room in VisibleAreas)
-            //    room.UpdateModels();
+            scene.UpdateDrawBuffers();
+            foreach (var room in VisibleAreas)
+                room.UpdateDrawBuffers();
         }
 
         private void DrawImGui()
