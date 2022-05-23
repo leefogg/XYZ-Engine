@@ -155,24 +155,17 @@ namespace GLOOP.Rendering
         public void Prepare()
         {
             PrepareModels();
-            SetupLightUBOs();
-            FillPointLightsUBO();
-            FillSpotLightsUBO();
+            PrepareLightBuffers();
         }
 
         private void PrepareModels()
         {
-            UpdateModelBatches();
-
             var numOccluders = Models.Count(m => m.IsOccluder);
             CreateModelUBOs(
                 numOccluders,
                 Models.Count - numOccluders
             );
-
-            UpdateDrawBuffers();
         }
-
 
         public void UpdateDrawBuffers()
         {
@@ -182,10 +175,16 @@ namespace GLOOP.Rendering
                 FillModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
         }
 
+        public void UpdateLightBuffers()
+        {
+            FillPointLightsUBO();
+            FillSpotLightsUBO();
+        }
+
         public void UpdateModelBatches()
         {
-            OccluderBatches     = BatchModels(Models.Where(o =>  o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox)));
-            NonOccluderBatches  = BatchModels(Models.Where(o => !o.IsOccluder && Camera.Current.IntersectsFrustum(o.BoundingBox)));
+            OccluderBatches     = BatchModels(Models.Where(o =>  o.IsOccluder && Camera.Current.IntersectsFrustumFast(o.BoundingBox)));
+            NonOccluderBatches  = BatchModels(Models.Where(o => !o.IsOccluder && Camera.Current.IntersectsFrustumFast(o.BoundingBox)));
         }
 
         private void CreateModelUBOs(int numOccluders, int numNonOccluders)
@@ -228,7 +227,7 @@ namespace GLOOP.Rendering
                 NonOccluderMaterialsBuffer = new Buffer<GPUDeferredGeoMaterial>(
                     numNonOccluders,
                     BufferTarget.ShaderStorageBuffer,
-                    BufferUsageHint.StaticDraw,
+                    BufferUsageHint.StreamDraw,
                     Name + " Non-Occluder MaterialData"
                 );
             }
@@ -242,13 +241,13 @@ namespace GLOOP.Rendering
             return batches;
         }
 
-        private void SetupLightUBOs()
+        private void PrepareLightBuffers()
         {
             if (PointLights.Any())
                 PointLightsBuffer = new Buffer<GPUPointLight>(
                     Math.Min(maxLights, PointLights.Count),
                     BufferTarget.UniformBuffer,
-                    BufferUsageHint.StaticDraw,
+                    BufferUsageHint.StreamDraw,
                     Name + " PointLights"
                 );
 
@@ -256,7 +255,7 @@ namespace GLOOP.Rendering
                 SpotLightsBuffer = new Buffer<GPUSpotLight>(
                     Math.Min(maxLights, SpotLights.Count),
                     BufferTarget.UniformBuffer,
-                    BufferUsageHint.StaticDraw,
+                    BufferUsageHint.StreamDraw,
                     Name + " SpotLights"
                 );
         }
@@ -273,7 +272,7 @@ namespace GLOOP.Rendering
             {
                 var light = PointLights[i];
 
-                //if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
+                if (Camera.Current.IsInsideFrustum(light.Position, light.Radius))
                 {
                     light.GetLightingScalars(out var diffuseScalar, out var specularScalar);
                     lights[numCulledLights++] = new GPUPointLight(
@@ -285,6 +284,8 @@ namespace GLOOP.Rendering
                         diffuseScalar,
                         specularScalar
                     );
+
+                    Metrics.LightsDrawn++;
                 }
             }
             PointLightsBuffer.Update(lights);
@@ -300,7 +301,7 @@ namespace GLOOP.Rendering
             for (var i = 0; i < lights.Length; i++)
             {
                 var light = SpotLights[i];
-                //if (Camera.IsInsideFrustum(ref planes, light.Position, light.Radius))
+                if (Camera.Current.IsInsideFrustum(light.Position, light.Radius))
                 {
                     light.GetLightingScalars(out var diffuseScalar, out var specularScalar);
                     var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
@@ -334,6 +335,8 @@ namespace GLOOP.Rendering
                         specularScalar,
                         viewProjection
                     );
+
+                    Metrics.LightsDrawn++;
                 }
             }
 
@@ -431,7 +434,6 @@ namespace GLOOP.Rendering
 
                 //Console.WriteLine(((float)culledPointLights.Count / (float)scene.PointLights.Count) * 100 + "% of point lights");
                 Primitives.Sphere.Draw(numInstances: PointLights.Count);
-                Metrics.LightsDrawn += PointLights.Count;
 
                 // Debug light spheres
                 if (debugLights)
@@ -462,7 +464,6 @@ namespace GLOOP.Rendering
 
                 //Console.WriteLine(((float)culledSpotLights.Count / (float)scene.SpotLights.Count) * 100 + "% of spot lights");
                 Primitives.Frustum.Draw(numInstances: SpotLights.Count);
-                Metrics.LightsDrawn += SpotLights.Count;
 
                 if (debugLights)
                 {

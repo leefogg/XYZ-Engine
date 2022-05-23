@@ -404,18 +404,19 @@ namespace GLOOP.HPL
 
             using var timer = CurrentFrame[FrameProfiler.Event.Visbility];
             scene.UpdateModelBatches();
+            scene.UpdateDrawBuffers();
             foreach (var room in VisibleAreas)
+            {
                 room.UpdateModelBatches();
+                room.UpdateDrawBuffers();
+                room.UpdateLightBuffers();
+            }
         }
 
         private void UpdateBuffers()
         {
             using var timer = CurrentFrame[FrameProfiler.Event.UpdateBuffers];
-            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
-
-            scene.UpdateDrawBuffers();
-            foreach (var room in VisibleAreas)
-                room.UpdateDrawBuffers();
+            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);                
         }
 
         private void DrawImGui()
