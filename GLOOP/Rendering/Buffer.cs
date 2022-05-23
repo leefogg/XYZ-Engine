@@ -80,15 +80,10 @@ namespace GLOOP.Rendering
             Metrics.BufferBinds++;
         }
 
-        public void BindRange(int start, int slot)
+        public void BindRange(int slot, int start) => BindRange(slot, Length, start);
+        public void BindRange(int slot, int length, int start = 0)
         {
             System.Diagnostics.Debug.Assert(Enum.GetName(typeof(BufferRangeTarget), Type) != null, $"Cannot bind range for type {Type}");
-            GL.BindBufferRange((BufferRangeTarget)Type, slot, Handle, (IntPtr)start, Length);
-            Metrics.BufferBinds++;
-        }
-
-        public void BindRange(int start, int slot, int length)
-        {
             GL.BindBufferRange((BufferRangeTarget)Type, slot, Handle, (IntPtr)start, length);
             Metrics.BufferBinds++;
         }

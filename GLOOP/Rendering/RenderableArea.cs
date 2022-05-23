@@ -388,8 +388,6 @@ namespace GLOOP.Rendering
 
             using var debugGroup = new DebugGroup(Name);
             OccluderDrawIndirectBuffer.Bind();
-            OccluderMatriciesBuffer.BindRange(0, 1);
-            OccluderMaterialsBuffer.BindRange(0, 2);
 
             MultiDrawIndirect(OccluderBatches, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
         }
@@ -401,8 +399,6 @@ namespace GLOOP.Rendering
 
             using var debugGroup = new DebugGroup(Name);
             NonOccluderDrawIndirectBuffer.Bind();
-            NonOccluderMatriciesBuffer.BindRange(0, 1);
-            NonOccluderMaterialsBuffer.BindRange(0, 2);
 
             MultiDrawIndirect(NonOccluderBatches, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
         }
@@ -420,7 +416,7 @@ namespace GLOOP.Rendering
             if (PointLights.Any())
             {
                 using var lightsDebugGroup = new DebugGroup("Point Lights");
-                PointLightsBuffer.BindRange(0, 1);
+                PointLightsBuffer.BindRange(1, 0);
 
                 var shader = PointLightShader;
                 shader.Use();
@@ -451,7 +447,7 @@ namespace GLOOP.Rendering
             if (SpotLights.Any())
             {
                 using var lightsDebugGroup = new DebugGroup("Spot Lights");
-                SpotLightsBuffer.BindRange(0, 1);
+                SpotLightsBuffer.BindRange(1, 0);
 
                 Shader shader = SpotLightShader;
                 shader.Use();
@@ -498,8 +494,9 @@ namespace GLOOP.Rendering
                 var batchSize = batch.Models.Count;
 
                 batch.BindState();
-                matriciesBuffer.BindRange(modelMatrixPtr, 1, batchSize * matrixSize);
-                materialsBuffer.BindRange(materialPtr, 2, batchSize * materialSize);
+                // TODO: Replace BindRange with a start index uniform
+                matriciesBuffer.BindRange(1, batchSize * matrixSize, modelMatrixPtr);
+                materialsBuffer.BindRange(2, batchSize * materialSize, materialPtr);
                 GL.MultiDrawElementsIndirect(
                     PrimitiveType.Triangles,
                     DrawElementsType.UnsignedShort,
