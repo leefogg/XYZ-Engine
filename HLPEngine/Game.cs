@@ -283,7 +283,7 @@ namespace GLOOP.HPL
 #endregion
             
             frustumMaterial = new FrustumMaterial(new FrustumShader());
-            queryPool = new QueryPool(15);
+            queryPool = new QueryPool(8);
 
             var assimp = new AssimpContext();
             var beforeMapLoad = DateTime.Now;
@@ -385,6 +385,7 @@ namespace GLOOP.HPL
 
                 DrawImGuiOptionsWindow();
                 DrawImGuiMetricsWindow();
+                queryPool.DrawWindow(nameof(queryPool));
                 FrameProfiler.Render(CurrentFrame);
                 DrawImGui();
 
