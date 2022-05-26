@@ -14,7 +14,7 @@ namespace GLOOP
         public static TimeSpan TimeLoadingTextures, TimeLoadingModels;
 
         // Per-frame stuff
-        public static int 
+        public static int
             ModelsDrawn,
             LightsDrawn,
             RenderBatches,
@@ -23,6 +23,7 @@ namespace GLOOP
             TextureSetBinds,
             BufferBinds,
             FrameBufferBinds;
+        public static ulong BufferReads, BufferWrites;
 
         public static void ResetFrameCounters()
         {
@@ -34,6 +35,8 @@ namespace GLOOP
             TextureSetBinds = 0;
             BufferBinds = 0;
             FrameBufferBinds = 0;
+            BufferReads = 0;
+            BufferWrites = 0;
         }
     }
 }

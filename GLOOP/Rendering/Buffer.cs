@@ -33,39 +33,51 @@ namespace GLOOP.Rendering
             : this(type, usage, Marshal.SizeOf<T>(), name)
         {
             GL.NamedBufferData(Handle, Length, ref data, usage);
+            Metrics.BufferWrites += (ulong)Length; 
         }
 
         public Buffer(T[] data, BufferTarget type, BufferUsageHint usage, string name)
             : this(type, usage, Marshal.SizeOf<T>() * data.Length, name)
         {
             GL.NamedBufferData(Handle, Length, data, usage);
+            Metrics.BufferWrites += (ulong)Length; 
         }
 
         public Buffer(int count, BufferTarget type, BufferUsageHint usage, string name)
             : this(type, usage, Marshal.SizeOf<T>() * count, name)
         {
             GL.NamedBufferData(Handle, Length, (IntPtr)0, usage);
+            Metrics.BufferWrites += (ulong)Length; 
         }
 
         public void Update(T data, uint start = 0)
         {
-            GL.NamedBufferSubData(Handle, (IntPtr)start, Marshal.SizeOf<T>(), ref data);
+            var length = Marshal.SizeOf<T>();
+            GL.NamedBufferSubData(Handle, (IntPtr)start, length, ref data);
+            Metrics.BufferWrites += (ulong)length;
         }
 
         public void Update(T[] data, int start = 0)
         {
-            var endByte = Marshal.SizeOf<T>() * data.Length + start;
+            var length = Marshal.SizeOf<T>() * data.Length;
+            var endByte = length + start;
             System.Diagnostics.Debug.Assert(endByte <= Length, $"Wrote {endByte - Length} bytes to unmanaged memory");
             GL.NamedBufferSubData(Handle, (IntPtr)start, Marshal.SizeOf<T>() * data.Length - start, data);
+            Metrics.BufferWrites += (ulong)length;
         }
 
-        public void Read(ref T data, uint start = 0) {
-            GL.GetNamedBufferSubData(Handle, (IntPtr)start, Marshal.SizeOf<T>(), ref data);
+        public void Read(ref T data, uint start = 0) 
+        {
+            var length = Marshal.SizeOf<T>();
+            GL.GetNamedBufferSubData(Handle, (IntPtr)start, length, ref data);
+            Metrics.BufferReads += (ulong)length;
         }
 
         public void Read(ref T[] data, uint start = 0)
         {
-            GL.GetNamedBufferSubData(Handle, (IntPtr)start, Marshal.SizeOf<T>() * data.Length, data);
+            var length = Marshal.SizeOf<T>() * data.Length;
+            GL.GetNamedBufferSubData(Handle, (IntPtr)start, length, data);
+            Metrics.BufferReads += (ulong)length;
         }
 
         public void Bind()

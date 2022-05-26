@@ -146,6 +146,8 @@ namespace GLOOP.Rendering
 
         private Buffer<GPUPointLight> PointLightsBuffer;
         private Buffer<GPUSpotLight> SpotLightsBuffer;
+        private List<int> culledSpotLights = new List<int>();
+        private List<int> culledPointLights = new List<int>();
 
         protected RenderableArea(string name)
         {
@@ -265,17 +267,18 @@ namespace GLOOP.Rendering
             if (!PointLights.Any())
                 return;
 
-            var lights = new GPUPointLight[Math.Min(maxLights, PointLights.Count)];
+            culledPointLights.Clear();
 
-            var numCulledLights = 0;
+            var numCulledPointLights = 0;
+            var lights = new GPUPointLight[Math.Min(maxLights, PointLights.Count)];
             for (var i = 0; i < lights.Length; i++)
             {
                 var light = PointLights[i];
-
                 if (Camera.Current.IsInsideFrustum(light.Position, light.Radius))
                 {
                     light.GetLightingScalars(out var diffuseScalar, out var specularScalar);
-                    lights[numCulledLights++] = new GPUPointLight(
+                    culledPointLights.Add(i);
+                    lights[numCulledPointLights++] = new GPUPointLight(
                         light.Position,
                         light.Color,
                         light.Brightness,
@@ -284,8 +287,6 @@ namespace GLOOP.Rendering
                         diffuseScalar,
                         specularScalar
                     );
-
-                    Metrics.LightsDrawn++;
                 }
             }
             PointLightsBuffer.Update(lights);
@@ -296,7 +297,9 @@ namespace GLOOP.Rendering
             if (!SpotLights.Any())
                 return;
 
-            var culledNumSpotLights = 0;
+            culledSpotLights.Clear();
+
+            var numCulledSpotLights = 0;
             var lights = new GPUSpotLight[Math.Min(maxLights, SpotLights.Count)];
             for (var i = 0; i < lights.Length; i++)
             {
@@ -319,7 +322,8 @@ namespace GLOOP.Rendering
                     var viewProjection = new Matrix4();
                     MatrixExtensions.Multiply(projectionMatrix, viewMatrix, ref viewProjection);
 
-                    lights[culledNumSpotLights++] = new GPUSpotLight(
+                    culledSpotLights.Add(i);
+                    lights[numCulledSpotLights++] = new GPUSpotLight(
                         modelMatrix,
                         light.Position,
                         light.Color,
@@ -335,8 +339,6 @@ namespace GLOOP.Rendering
                         specularScalar,
                         viewProjection
                     );
-
-                    Metrics.LightsDrawn++;
                 }
             }
 
@@ -413,7 +415,8 @@ namespace GLOOP.Rendering
         {
             using var debugGroup = new DebugGroup(Name);
 
-            if (PointLights.Any())
+            var numCulledPointLights = culledPointLights.Count;
+            if (numCulledPointLights > 0)
             {
                 using var lightsDebugGroup = new DebugGroup("Point Lights");
                 PointLightsBuffer.BindRange(1, 0);
@@ -429,13 +432,15 @@ namespace GLOOP.Rendering
                 //TODO: Could render a 2D circle in screenspace instead of a sphere
 
                 //Console.WriteLine(((float)culledPointLights.Count / (float)scene.PointLights.Count) * 100 + "% of point lights");
-                Primitives.Sphere.Draw(numInstances: PointLights.Count);
+                Primitives.Sphere.Draw(numInstances: numCulledPointLights);
+                Metrics.LightsDrawn += numCulledPointLights;
 
                 // Debug light spheres
                 if (debugLights)
                 {
-                    foreach (var light in PointLights)
+                    foreach (var lightIdx in culledPointLights)
                     {
+                        var light = PointLights[lightIdx];
                         var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, Quaternion.Identity, new Vector3(light.Radius * 2));
                         singleColorMaterial.ModelMatrix = modelMatrix;
                         singleColorMaterial.Commit();
@@ -444,12 +449,13 @@ namespace GLOOP.Rendering
                 }
             }
 
-            if (SpotLights.Any())
+            var numCulledSpotLights = culledSpotLights.Count;
+            if (numCulledSpotLights > 0)
             {
                 using var lightsDebugGroup = new DebugGroup("Spot Lights");
                 SpotLightsBuffer.BindRange(1, 0);
 
-                Shader shader = SpotLightShader;
+                var shader = SpotLightShader;
                 shader.Use();
                 Texture.Use(gbuffer, TextureUnit.Texture0);
                 shader.Set("diffuseTex", TextureUnit.Texture0);
@@ -459,13 +465,15 @@ namespace GLOOP.Rendering
                 shader.Set("camPos", Camera.Current.Position);
 
                 //Console.WriteLine(((float)culledSpotLights.Count / (float)scene.SpotLights.Count) * 100 + "% of spot lights");
-                Primitives.Frustum.Draw(numInstances: SpotLights.Count);
+                Primitives.Frustum.Draw(numInstances: numCulledSpotLights);
+                Metrics.LightsDrawn += numCulledSpotLights;
 
                 if (debugLights)
                 {
                     var material = frustumMaterial;
-                    foreach (var light in SpotLights)
+                    foreach (var lightIdx in culledSpotLights)
                     {
+                        var light = SpotLights[lightIdx];
                         var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
                         GetLightVars(light, out var aspect, out var scale);
                         material.AspectRatio = aspect;

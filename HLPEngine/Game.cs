@@ -314,6 +314,8 @@ namespace GLOOP.HPL
             var allModels = scene.Models.Count() + scene.VisibilityAreas.Values.SelectMany(area => area.Models).Count();
             Console.WriteLine($"Scene: {numStatic} Static, {numStaticOccluders} of which occlude. {numDynamic} Dynamic. {allModels} Total.");
 
+            VisibleAreas.AddRange(scene.VisibilityAreas.Values); 
+
             setupBuffers();
 
             /*
@@ -405,6 +407,7 @@ namespace GLOOP.HPL
             using var timer = CurrentFrame[FrameProfiler.Event.Visbility];
             scene.UpdateModelBatches();
             scene.UpdateDrawBuffers();
+            scene.UpdateLightBuffers();
             foreach (var room in VisibleAreas)
             {
                 room.UpdateModelBatches();
@@ -475,8 +478,10 @@ namespace GLOOP.HPL
                 ImGui.Text($"Queries dispatched: {Metrics.QueriesPerformed}");
                 ImGui.Text($"Shader binds: {Metrics.ShaderBinds}");
                 ImGui.Text($"Texture set binds: {Metrics.TextureSetBinds}");
-                ImGui.Text($"Buffer Binds: {Metrics.BufferBinds}");
+                ImGui.Text($"Buffer binds: {Metrics.BufferBinds}");
                 ImGui.Text($"FrameBuffer binds: {Metrics.FrameBufferBinds}");
+                ImGui.Text($"Buffer reads: {Metrics.BufferReads.ToString("###,##0")} bytes");
+                ImGui.Text($"Buffer writes: {Metrics.BufferWrites.ToString("###,##0")} bytes");
                 Metrics.ResetFrameCounters();
             }
             ImGui.End();
@@ -487,6 +492,9 @@ namespace GLOOP.HPL
             using var timer = CurrentFrame[FrameProfiler.Event.PortalCulling];
 
             DrawImGuiPortalWindow();
+
+            if (!shouldUpdateVisibility)
+                return;
 
             if (!enablePortalCulling)
             {
