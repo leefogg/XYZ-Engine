@@ -338,7 +338,11 @@ namespace GLOOP.HPL
 
             using (var query = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
-                TaskMaster.AddTask(query.IsResultAvailable, () => { GPUFrameTimings.Set(1000f / (query.GetResult() / 1000000f)); GPUFrameTimings.MoveNext(); });
+                TaskMaster.AddTask(
+                    query.IsResultAvailable,
+                    () => { GPUFrameTimings.Set(1000f / (query.GetResult() / 1000000f)); GPUFrameTimings.MoveNext(); },
+                    "Frame timing query"
+                );
 
                 var frameStart = DateTime.Now;
 
@@ -387,6 +391,7 @@ namespace GLOOP.HPL
                 DrawImGuiMetricsWindow();
                 queryPool.DrawWindow(nameof(queryPool));
                 FrameProfiler.Render(CurrentFrame);
+                TaskMaster.DrawImGuiWindow();
                 DrawImGui();
 
                 var frameElapsedMs = (float)(DateTime.Now - frameStart).TotalMilliseconds;

@@ -4,6 +4,7 @@ using System.Text;
 
 namespace GLOOP
 {
+    //TODO: Make this compile out
     public static class Metrics
     {
         // Loading stuff
