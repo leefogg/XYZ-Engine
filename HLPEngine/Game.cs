@@ -130,7 +130,7 @@ namespace GLOOP.HPL
 
         private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
-        private FrameProfiler.Frame CurrentFrame = FrameProfiler.CurrentFrame;
+        private FrameProfiler.Frame CurrentFrame = FrameProfiler.NextFrame;
         private readonly DateTime startTime = DateTime.Now;
         private readonly FrameBuffer backBuffer;
         private readonly int frameBufferWidth, frameBufferHeight;
@@ -332,12 +332,10 @@ namespace GLOOP.HPL
         {
             FrameStart();
 
-            CurrentFrame.Dispose();
-            var frame = FrameProfiler.CurrentFrame;
-            CurrentFrame = frame;
-
             using (var query = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
+                using var frame = FrameProfiler.NextFrame;
+                CurrentFrame = frame;
                 TaskMaster.AddTask(
                     query.IsResultAvailable,
                     () => { GPUFrameTimings.Set(1000f / (query.GetResult() / 1000000f)); GPUFrameTimings.MoveNext(); },
@@ -391,11 +389,13 @@ namespace GLOOP.HPL
                 DrawImGuiMetricsWindow();
                 queryPool.DrawWindow(nameof(queryPool));
                 FrameProfiler.Render(CurrentFrame);
+                EventProfiler.DrawImGuiWindow();
                 TaskMaster.DrawImGuiWindow();
                 DrawImGui();
 
                 var frameElapsedMs = (float)(DateTime.Now - frameStart).TotalMilliseconds;
                 CPUFrameTimings.SetAndMove(frameElapsedMs);
+                EventProfiler.NewFrame();
             }
 
             SwapBuffers();
@@ -410,7 +410,7 @@ namespace GLOOP.HPL
             if (!shouldUpdateVisibility)
                 return;
 
-            using var timer = CurrentFrame[FrameProfiler.Event.Visbility];
+            using var visibilityTimer = CurrentFrame[FrameProfiler.Event.Visbility];
             scene.UpdateModelBatches();
             scene.UpdateDrawBuffers();
             scene.UpdateLightBuffers();
@@ -424,6 +424,7 @@ namespace GLOOP.HPL
 
         private void UpdateBuffers()
         {
+            using var profiler = EventProfiler.Profile();
             using var timer = CurrentFrame[FrameProfiler.Event.UpdateBuffers];
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);                
         }
@@ -495,6 +496,7 @@ namespace GLOOP.HPL
 
         private void DetermineVisibleAreas()
         {
+            using var profiler = EventProfiler.Profile();
             using var timer = CurrentFrame[FrameProfiler.Event.PortalCulling];
 
             DrawImGuiPortalWindow();
@@ -681,6 +683,7 @@ namespace GLOOP.HPL
 
         private void GBufferPass(FrameBuffer finalBuffer)
         {
+            using var profiler = EventProfiler.Profile();
             Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
 
             {
@@ -996,6 +999,7 @@ namespace GLOOP.HPL
 
         private void RenderLights()
         {
+            using var profiler = EventProfiler.Profile();
             using var timer = CurrentFrame[FrameProfiler.Event.Lighting];
 
             DrawImGuiMaterialWindow();

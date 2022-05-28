@@ -80,7 +80,6 @@ namespace GLOOP.Rendering.Debugging
                     evnt.Zero();
 #endif
             }
-
         }
 
         public class EventTiming : DummyDisposable
@@ -107,7 +106,7 @@ namespace GLOOP.Rendering.Debugging
             i => new Frame()
         );
 
-        public static Frame CurrentFrame
+        public static Frame NextFrame
         {
             get
             {
@@ -121,9 +120,9 @@ namespace GLOOP.Rendering.Debugging
         [Conditional("BETA")]
         public static void Render(Frame currentFrame)
         {
-#if !RELEASE
+            using var profiler = EventProfiler.Profile("Render Graph");
             using var timer = currentFrame[Event.Graph];
-            if (!ImGui.Begin("Profiler"))
+            if (!ImGui.Begin("Frame Profiler"))
                 return;
 
             var drawList = ImGui.GetWindowDrawList();
@@ -193,7 +192,6 @@ namespace GLOOP.Rendering.Debugging
             }
 
             ImGui.End();
-#endif
         }
     }
 }
