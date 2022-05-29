@@ -398,6 +398,9 @@ namespace GLOOP.HPL
                 RenderPass(backBuffer);
 #endif
 
+                if (FrameNumber == 1)
+                    Metrics.StartRecording($"{DateTime.Now.ToString("ddMMyyyy HHmm")}.csv");
+
                 DrawImGuiOptionsWindow();
                 DrawImGuiMetricsWindow();
                 queryPool.DrawWindow(nameof(queryPool));
@@ -405,6 +408,8 @@ namespace GLOOP.HPL
                 EventProfiler.DrawImGuiWindow();
                 TaskMaster.DrawImGuiWindow();
                 DrawImGui();
+
+                Metrics.ResetFrameCounters();
 
                 var frameElapsedMs = (float)(DateTime.Now - frameStart).TotalMilliseconds;
                 CPUFrameTimings.SetAndMove(frameElapsedMs);
@@ -502,7 +507,6 @@ namespace GLOOP.HPL
                 ImGui.Text($"FrameBuffer binds: {Metrics.FrameBufferBinds}");
                 ImGui.Text($"Buffer reads: {Metrics.BufferReads.ToString("###,##0")} bytes");
                 ImGui.Text($"Buffer writes: {Metrics.BufferWrites.ToString("###,##0")} bytes");
-                Metrics.ResetFrameCounters();
             }
             ImGui.End();
         }
@@ -1160,6 +1164,8 @@ namespace GLOOP.HPL
             Mouse.Grabbed = false;
 
             //File.WriteAllText("Recording.csv", CSV.ToString());
+
+            Metrics.StopRecording();
 
             base.OnClosing(e);
         }
