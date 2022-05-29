@@ -11,7 +11,7 @@ namespace TextureArrayTest
 {
     public class TextureArrayTest : Window
     {
-        private DebugCamera Camera;
+        private Camera Camera;
         private Entity Plane1;
         private Entity Plane2;
         private Entity Plane3;
@@ -19,7 +19,10 @@ namespace TextureArrayTest
         public TextureArrayTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
         {
-            Camera = new DebugCamera(new Vector3(0, 1, 3), new Vector3(), 90);
+            Camera = new Camera(new Vector3(0, 1, 3), new Vector3(), 90)
+            {
+                CameraController = new PCCameraController()
+            };
         }
 
         protected override void OnLoad()

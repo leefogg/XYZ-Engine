@@ -11,13 +11,16 @@ namespace HelloTest
 {
     public class HelloTest : Window
     {
-        private DebugCamera Camera;
+        private Camera Camera;
         private Entity duck;
 
         public HelloTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
         {
-            Camera = new DebugCamera(new Vector3(0, 1, 3), new Vector3(), 90);
+            Camera = new Camera(new Vector3(0, 1, 3), new Vector3(), 90)
+            {
+                CameraController = new PCCameraController()
+            };
         }
 
         protected override void OnLoad()

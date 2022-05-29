@@ -21,6 +21,8 @@ using ImGuiNET;
 using Primitives = GLOOP.Rendering.Primitives;
 using GLOOP.Util;
 using GLOOP.Util.Structures;
+using System.Text;
+using System.IO;
 
 namespace GLOOP.HPL
 {
@@ -44,7 +46,7 @@ namespace GLOOP.HPL
         private const string terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
         private const string Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
         private static readonly MapSetup Custom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm", new Vector3(6.3353596f, 1.6000088f, 8.1601305f));
-        private static readonly MapSetup Phi = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm", new Vector3(-17.039896f, 14.750014f, 64.48185f));
+        private static readonly MapSetup Phi = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm", new Vector3(1.9314673f, 12.1000185f, 18.140785f));
         private static readonly MapSetup Delta = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_03_delta\02_03_delta.hpm", new Vector3(0, 145, -10));
         private static readonly MapSetup Lights = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm", new Vector3(-0.5143715f, 4.3500123f, 11.639848f));
         private static readonly MapSetup Portals = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm", new Vector3(4.5954947f, 1.85f, 16.95526f));
@@ -137,14 +139,20 @@ namespace GLOOP.HPL
         private readonly ImGuiController ImGuiController;
         private readonly Ring<float> CPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         private readonly Ring<float> GPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
+        private StringBuilder CSV = new StringBuilder(10000);
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
-            : base(gameWindowSettings, nativeWindowSettings) {
-            Camera = new DebugCamera(MapToUse.CameraPos, new Vector3(), 90)
+            : base(gameWindowSettings, nativeWindowSettings) 
+        {
+            var controller = new PlaybackCameraController("Phi.csv");
+            controller.OnRecordingComplete = OnBenchmarkComplete;
+            Camera = new Camera(MapToUse.CameraPos, new Vector3(), 90)
             {
                 Width = width,
-                Height = height
+                Height = height,
+                CameraController = controller,
             };
+
             Camera.Current = Camera;
 
             backBuffer = new FrameBuffer(0, Size.X, Size.Y);
@@ -160,6 +168,11 @@ namespace GLOOP.HPL
 #if DEBUG || BETA
             ImGuiController = new ImGuiController(ClientSize.X, ClientSize.Y);
 #endif
+        }
+
+        private void OnBenchmarkComplete()
+        {
+            Close();
         }
 
         protected override void OnLoad() {
@@ -1084,6 +1097,9 @@ namespace GLOOP.HPL
 
             Camera.Update(KeyboardState);
 
+            //CSV.Append(Camera.Position.X + "," + Camera.Position.Y + "," + Camera.Position.Z + ",");
+            //CSV.AppendLine(Camera.Rotation.X + "," + Camera.Rotation.Y);
+
             if (IsFocused) {
                 var input = KeyboardState;
 
@@ -1142,6 +1158,8 @@ namespace GLOOP.HPL
 
         protected override void OnClosing(CancelEventArgs e) {
             Mouse.Grabbed = false;
+
+            //File.WriteAllText("Recording.csv", CSV.ToString());
 
             base.OnClosing(e);
         }

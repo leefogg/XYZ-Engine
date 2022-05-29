@@ -106,5 +106,17 @@ namespace GLOOP.Util
         {
             return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
         }
+
+        public static float Tween(float start, float end, float percent)
+        {
+            return (start * (1-percent)) + (end * percent);
+        }
+
+        public static Vector3 Tween(Vector3 start, Vector3 end, float percent)
+            => Tween(start, end, new Vector3(percent));
+        public static Vector3 Tween(Vector3 start, Vector3 end, Vector3 percent)
+        {
+            return (start * (Vector3.One - percent)) + (end * percent);
+        }
     }
 }

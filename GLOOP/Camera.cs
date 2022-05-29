@@ -9,7 +9,7 @@ using System.Diagnostics.Contracts;
 
 namespace GLOOP
 {
-    public abstract class Camera
+    public class Camera
     {
         public static Camera Current;
 
@@ -20,6 +20,8 @@ namespace GLOOP
         private float zfar = 1000;
         private float fov = 90;
         private Vector2i shape = new Vector2i();
+
+        public ICameraController CameraController;
 
         public float ZNear
         {
@@ -84,9 +86,20 @@ namespace GLOOP
             Position = pos;
             Rotation = rot;
             FOV = fov;
-            // Resize is triggered on first frame
 
+            // Resize is triggered on first frame
             Window.OnResized += OnWidnowResized;
+        }
+
+        public void MarkViewDirty()
+        {
+            lazyViewMatrix = null;
+            lazyFrustumPlanes = null;
+        }
+        public void MarkProjectionDirty()
+        {
+            lazyProjectionMatrix = null;
+            lazyFrustumPlanes = null;
         }
 
         private void OnWidnowResized(object sender, Vector2i size)
@@ -95,10 +108,9 @@ namespace GLOOP
             Height = size.Y;
         }
 
-        public abstract void Update(KeyboardState keyboardState);
+        public void Update(KeyboardState keyboardState) => CameraController?.Update(this, keyboardState);
 
         public bool IntersectsFrustum(SphereBounds sphere) => IntersectsFrustum(sphere.Position, sphere.Radius);
-        [Pure]
         public bool IntersectsFrustum(Vector3 center, float radius)
         {
             //return true;
@@ -122,7 +134,6 @@ namespace GLOOP
             return visible;
         }
 
-        [Pure]
         public bool IsInsideFrustum(in Box3 boundingBox, in Transform modelTransform)
         {
             var position = boundingBox.Center + modelTransform.Position;
@@ -143,7 +154,6 @@ namespace GLOOP
             return true;
         }
 
-        [Pure]
         private Vector4[] GetFrustumPlanes()
         {
             var pvMatrix = new Matrix4();
@@ -218,6 +228,7 @@ namespace GLOOP
         }
 
         // Untested
+        [Pure]
         public bool ProjectSphere(Vector3 center, float radius, out Box2 aabb)
         {
             if (center.Z < ZNear + radius)
