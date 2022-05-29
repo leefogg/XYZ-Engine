@@ -46,7 +46,7 @@ namespace GLOOP.HPL
         private const string terrain = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Terrain\Terrain.hpm";
         private const string Box3Contains = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Box3Contains\Box3Contains.hpm";
         private static readonly MapSetup Custom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\custom\custom.hpm", new Vector3(6.3353596f, 1.6000088f, 8.1601305f));
-        private static readonly MapSetup Phi = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm", new Vector3(1.9314673f, 12.1000185f, 18.140785f));
+        private static readonly MapSetup Phi = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter05\05_01_phi_inside\05_01_phi_inside.hpm", new Vector3(-17.039896f, 14.750014f, 64.48185f));
         private static readonly MapSetup Delta = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_03_delta\02_03_delta.hpm", new Vector3(0, 145, -10));
         private static readonly MapSetup Lights = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Lights\Lights.hpm", new Vector3(-0.5143715f, 4.3500123f, 11.639848f));
         private static readonly MapSetup Portals = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\Testing\Portals\Portals.hpm", new Vector3(4.5954947f, 1.85f, 16.95526f));
@@ -144,8 +144,9 @@ namespace GLOOP.HPL
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) 
         {
-            var controller = new PlaybackCameraController("Phi.csv");
-            controller.OnRecordingComplete = OnBenchmarkComplete;
+            //var controller = new PlaybackCameraController("Phi.csv");
+            //controller.OnRecordingComplete = OnBenchmarkComplete;
+            var controller = new PCCameraController();
             Camera = new Camera(MapToUse.CameraPos, new Vector3(), 90)
             {
                 Width = width,
@@ -530,8 +531,10 @@ namespace GLOOP.HPL
 
             // Dont need to check every frame
             // Also must only run every odd frame for VR support
+#if VR
             if ((FrameNumber & 1) != 0)
                 return;
+#endif
 
             VisibleAreas.Clear();
             // Get touching areas
@@ -561,7 +564,7 @@ namespace GLOOP.HPL
                     GL.Disable(EnableCap.CullFace);
                     GL.DepthMask(false);
                     // Dispatch queries for rooms visible from previous queries and current areas
-                    foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Except(PortalQueries.Select(x => x.Item1)).Distinct())
+                    foreach (var portal in VisibleAreas.SelectMany(area => area.ConnectingPortals).Distinct())
                     {
                         using var query = queryPool.BeginScope(QueryTarget.AnySamplesPassed);
                         Draw.Box(portal.ModelMatrix, new Vector4(1, 1, 0, 0));
