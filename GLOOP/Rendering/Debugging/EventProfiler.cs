@@ -3,6 +3,7 @@ using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 
 namespace GLOOP.Rendering.Debugging
@@ -68,19 +69,34 @@ namespace GLOOP.Rendering.Debugging
             var pos = ImGui.GetWindowPos();
             var windowSize = ImGui.GetWindowContentRegionMax() - ImGui.GetWindowContentRegionMin();
             pos += ImGui.GetWindowContentRegionMin();
-            pos.Y += windowSize.Y;
-            pos.Y -= 20;
+            //pos.Y += windowSize.Y;
+            //pos.Y -= 20;
 
             var padding = 6;
-            var barWidth = windowSize.X / EventTimings.Values.Count;
-            //barWidth -= padding * (EventTimings.Values.Count-1);
-            //drawList.AddRectFilled(pos, pos + new System.Numerics.Vector2(barWidth, -100), 0xFFFFFFFF);
+            var barHeight = windowSize.Y / EventTimings.Values.Count;
 
+            var labels = EventTimings.Keys.Select(key => (Key: key, WidthPx: ImGui.CalcTextSize(key).X));
+
+            var startPos = pos;
+
+            pos.Y += padding;
+            foreach (var (functionName, _) in labels)
+            {
+                drawList.AddText(pos, 0xFFFFFFFF, functionName);
+                pos.Y += barHeight;
+            }
+
+            pos = startPos;
+            var longestLabel = labels.Max(l => l.WidthPx);
+            pos.X += longestLabel + padding;
             foreach (var (functionName, timing) in EventTimings)
             {
-                drawList.AddRectFilled(pos, pos + new System.Numerics.Vector2(barWidth - padding, (int)Math.Ceiling(-timing * 100f)), 0xFFFFFFFF);
-                drawList.AddText(pos + new System.Numerics.Vector2(0, 10), 0xFFFFFFFF, functionName);
-                pos.X += barWidth;
+                drawList.AddRectFilled(
+                    pos,
+                    pos + new System.Numerics.Vector2((int)Math.Ceiling(timing * 100f), barHeight - padding),
+                    0xFFFFFFFF
+                );
+                pos.Y += barHeight;
             }
 
             ImGui.End();
