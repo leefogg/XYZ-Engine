@@ -140,7 +140,7 @@ namespace GLOOP.HPL
         private readonly ImGuiController ImGuiController;
         private readonly Ring<float> CPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         private readonly Ring<float> GPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
-        private StringBuilder CSV = new StringBuilder(10000);
+        private readonly StringBuilder CSV = new StringBuilder(10000);
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) 
@@ -433,6 +433,8 @@ namespace GLOOP.HPL
 
             DrawImGuiOptionsWindow();
             DrawImGuiMetricsWindow();
+            DrawImGuiMaterialWindow();
+            DrawImGuiPortalWindow();
             queryPool.DrawWindow(nameof(queryPool));
             CPUProfiler.Render(CPUFrame);
             GPUProfiler.Render();
@@ -484,13 +486,14 @@ namespace GLOOP.HPL
         [Conditional("DEBUG")]
         private void DrawImGuiOptionsWindow()
         {
-            if (ImGui.Begin("Options"))
-            {
-                ImGui.Checkbox("FXAA", ref enableFXAA);
-                ImGui.Checkbox("SSAO", ref enableSSAO);
-                ImGui.Checkbox("Bloom", ref enableBloom);
-                ImGui.Checkbox("Update Visibility", ref shouldUpdateVisibility);
-            }
+            if (!ImGui.Begin("Options"))
+                return;
+
+            ImGui.Checkbox("FXAA", ref enableFXAA);
+            ImGui.Checkbox("SSAO", ref enableSSAO);
+            ImGui.Checkbox("Bloom", ref enableBloom);
+            ImGui.Checkbox("Update Visibility", ref shouldUpdateVisibility);
+
             ImGui.End();
         }
 
@@ -498,37 +501,35 @@ namespace GLOOP.HPL
         [Conditional("BETA")]
         private void DrawImGuiMetricsWindow()
         {
-            if (!enableImGui)
+            if (!ImGui.Begin("Metrics"))
                 return;
 
-            if (ImGui.Begin("Metrics"))
-            {
-                const int TargetFPS = 144;
-                var values = GPUFrameTimings.ToArray();
-                float average = values.Average();
-                var red = (float)MathFunctions.Map(average, 144, 120, 0, 1);
-                ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(red, 1 - red, 0, 1));
-                ImGui.PlotHistogram("GPU", ref values[0], values.Length, 0, null, 60, 144, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
-                ImGui.Text($"Average: {1000f / average:0.00}ms ({average:0.000} fps)");
-                ImGui.PopStyleColor();
+            const int TargetFPS = 144;
+            var values = GPUFrameTimings.ToArray();
+            float average = values.Average();
+            var red = (float)MathFunctions.Map(average, 144, 120, 0, 1);
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(red, 1 - red, 0, 1));
+            ImGui.PlotHistogram("GPU", ref values[0], values.Length, 0, null, 60, 144, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
+            ImGui.Text($"Average: {1000f / average:0.00}ms ({average:0.000} fps)");
+            ImGui.PopStyleColor();
 
-                values = CPUFrameTimings.ToArray();
-                average = values.Average();
-                ImGui.PlotHistogram("CPU", ref values[0], values.Length, 0, null, 0, 1000f / TargetFPS, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
-                ImGui.Text($"Average: {average:0.000}ms ({1000f / average:00.00} fps)");
+            values = CPUFrameTimings.ToArray();
+            average = values.Average();
+            ImGui.PlotHistogram("CPU", ref values[0], values.Length, 0, null, 0, 1000f / TargetFPS, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
+            ImGui.Text($"Average: {average:0.000}ms ({1000f / average:00.00} fps)");
 
-                ImGui.NewLine();
-                ImGui.Text($"Models drawn: {Metrics.ModelsDrawn}");
-                ImGui.Text($"Lights drawn: {Metrics.LightsDrawn}");
-                ImGui.Text($"Render batches: {Metrics.RenderBatches}");
-                ImGui.Text($"Queries dispatched: {Metrics.QueriesPerformed}");
-                ImGui.Text($"Shader binds: {Metrics.ShaderBinds}");
-                ImGui.Text($"Texture set binds: {Metrics.TextureSetBinds}");
-                ImGui.Text($"Buffer binds: {Metrics.BufferBinds}");
-                ImGui.Text($"FrameBuffer binds: {Metrics.FrameBufferBinds}");
-                ImGui.Text($"Buffer reads: {Metrics.BufferReads.ToString("###,##0")} bytes");
-                ImGui.Text($"Buffer writes: {Metrics.BufferWrites.ToString("###,##0")} bytes");
-            }
+            ImGui.NewLine();
+            ImGui.Text($"Models drawn: {Metrics.ModelsDrawn}");
+            ImGui.Text($"Lights drawn: {Metrics.LightsDrawn}");
+            ImGui.Text($"Render batches: {Metrics.RenderBatches}");
+            ImGui.Text($"Queries dispatched: {Metrics.QueriesPerformed}");
+            ImGui.Text($"Shader binds: {Metrics.ShaderBinds}");
+            ImGui.Text($"Texture set binds: {Metrics.TextureSetBinds}");
+            ImGui.Text($"Buffer binds: {Metrics.BufferBinds}");
+            ImGui.Text($"FrameBuffer binds: {Metrics.FrameBufferBinds}");
+            ImGui.Text($"Buffer reads: {Metrics.BufferReads.ToString("###,##0")} bytes");
+            ImGui.Text($"Buffer writes: {Metrics.BufferWrites.ToString("###,##0")} bytes");
+
             ImGui.End();
         }
 
@@ -536,8 +537,6 @@ namespace GLOOP.HPL
         {
             using var profiler = EventProfiler.Profile();
             using var timer = CPUFrame[CPUProfiler.Event.PortalCulling];
-
-            DrawImGuiPortalWindow();
 
             if (!shouldUpdateVisibility)
                 return;
@@ -605,17 +604,18 @@ namespace GLOOP.HPL
         [Conditional("DEBUG")]
         private void DrawImGuiPortalWindow()
         {
-            if (ImGui.Begin("Portals"))
-            {
-                ImGui.Checkbox("Enable", ref enablePortalCulling);
-                ImGui.Text("Visible Areas");
-                foreach (var area in VisibleAreas)
-                    ImGui.Text(area.Name);
-                ImGui.Separator();
-                ImGui.Text("Active Portal Queries");
-                foreach (var portal in PortalQueries)
-                    ImGui.Text(portal.Item1.Name);
-            }
+            if (!ImGui.Begin("Portals"))
+                return;
+
+            ImGui.Checkbox("Enable", ref enablePortalCulling);
+            ImGui.Text("Visible Areas");
+            foreach (var area in VisibleAreas)
+                ImGui.Text(area.Name);
+            ImGui.Separator();
+            ImGui.Text("Active Portal Queries");
+            foreach (var portal in PortalQueries)
+                ImGui.Text(portal.Item1.Name);
+
             ImGui.End();
         }
 
@@ -709,16 +709,14 @@ namespace GLOOP.HPL
         [Conditional("DEBUG")]
         private void DrawImGUIColourCorrectionWindow()
         {
-            if (!enableImGui)
+            if (!ImGui.Begin("Colour Correction"))
                 return;
 
-            if (ImGui.Begin("Colour Correction"))
-            {
-                ImGui.DragFloat("Key", ref Key, 0.01f, 0.0f, 2.0f);
-                ImGui.DragFloat("Exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
-                ImGui.DragFloat("Gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
-                ImGui.DragFloat("White cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
-            }
+            ImGui.DragFloat("Key", ref Key, 0.01f, 0.0f, 2.0f);
+            ImGui.DragFloat("Exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
+            ImGui.DragFloat("Gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
+            ImGui.DragFloat("White cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
+
             ImGui.End();
         }
 
@@ -944,16 +942,14 @@ namespace GLOOP.HPL
         [Conditional("DEBUG")]
         private void DrawImGuiBloomWindow()
         {
-            if (!enableImGui)
+            if (!ImGui.Begin("Bloom"))
                 return;
 
-            if (ImGui.Begin("Bloom"))
-            {
-                ImGui.DragFloat("Bright pass", ref BrightPass, 0.1f, 1f, 100f);
-                ImGui.Separator();
-                ImGui.SliderFloat3("Size Weight", ref SizeWeight, 0f, 1f);
-                ImGui.DragFloat("Weight Scalar", ref WeightScalar, 0.01f, 0, 10f);
-            }
+            ImGui.DragFloat("Bright pass", ref BrightPass, 0.1f, 1f, 100f);
+            ImGui.Separator();
+            ImGui.SliderFloat3("Size Weight", ref SizeWeight, 0f, 1f);
+            ImGui.DragFloat("Weight Scalar", ref WeightScalar, 0.01f, 0, 10f);
+
             ImGui.End();
         }
 
@@ -1003,6 +999,7 @@ namespace GLOOP.HPL
         private void SSAOPostEffect()
         {
             using var debugGroup = new DebugGroup("SSAO");
+
             var shader = SSAOShader;
             shader.Use();
             GBuffers.ColorBuffers[(int)GBufferTexture.Position].Use(TextureUnit.Texture0);
@@ -1027,16 +1024,17 @@ namespace GLOOP.HPL
         [Conditional("DEBUG")]
         private void DrawImGuiSSAOWindow()
         {
-            if (ImGui.Begin("SSAO"))
-            {
-                ImGui.DragInt("Min Samples", ref MinSamples, 1, 1, MaxSamples);
-                ImGui.DragInt("Max Samples", ref MaxSamples, 1, MinSamples, 64);
-                ImGui.DragFloat("Max Samples Distance", ref MaxSamplesDistance, 0.1f, 0, Camera.ZFar);
-                ImGui.DragFloat("Intensity", ref Intensity, 0.01f, 0.01f, 8f * 8);
-                ImGui.DragFloat("Bias", ref Bias, 0.01f, 0.01f, 0.5f);
-                ImGui.DragFloat("Sample Radius", ref SampleRadius, 0.001f, 0.001f, 0.2f);
-                ImGui.DragFloat("Sample Disatance", ref MaxDistance, 0.0f, 0.1f, 1);
-            }
+            if (!ImGui.Begin("SSAO"))
+                return;
+
+            ImGui.DragInt("Min Samples", ref MinSamples, 1, 1, MaxSamples);
+            ImGui.DragInt("Max Samples", ref MaxSamples, 1, MinSamples, 64);
+            ImGui.DragFloat("Max Samples Distance", ref MaxSamplesDistance, 0.1f, 0, Camera.ZFar);
+            ImGui.DragFloat("Intensity", ref Intensity, 0.01f, 0.01f, 8f * 8);
+            ImGui.DragFloat("Bias", ref Bias, 0.01f, 0.01f, 0.5f);
+            ImGui.DragFloat("Sample Radius", ref SampleRadius, 0.001f, 0.001f, 0.2f);
+            ImGui.DragFloat("Sample Disatance", ref MaxDistance, 0.0f, 0.1f, 1);
+
             ImGui.End();
         }
 
@@ -1044,8 +1042,6 @@ namespace GLOOP.HPL
         {
             using var profiler = EventProfiler.Profile();
             using var timer = CPUFrame[CPUProfiler.Event.Lighting];
-
-            DrawImGuiMaterialWindow();
 
             var shaders = new[] { SpotLightShader, PointLightShader };
             foreach (var shader in shaders)
@@ -1092,25 +1088,23 @@ namespace GLOOP.HPL
         [Conditional("DEBUG")]
         private void DrawImGuiMaterialWindow()
         {
-            if (!enableImGui)
+            if (!ImGui.Begin("Deferred Rendering Material"))
                 return;
 
-            if (ImGui.Begin("Deferred Rendering Material"))
-            {
-                ImGui.SliderFloat(nameof(DiffuseScalar), ref DiffuseScalar, 0.0f, 2.0f);
-                ImGui.SliderFloat(nameof(LightBrightnessMultiplier), ref LightBrightnessMultiplier, 0.0f, 128.0f);
-                ImGui.Checkbox(nameof(UseLightDiffuse), ref UseLightDiffuse);
-                ImGui.Separator();
-                ImGui.SliderFloat(nameof(SpecularScalar), ref SpecularScalar, 0.0f, 2.0f);
-                ImGui.SliderFloat(nameof(SpecularPowerScalar), ref SpecularPowerScalar, 0.0f, 32.0f);
-                ImGui.SliderFloat(nameof(OffsetByNormalScalar), ref OffsetByNormalScalar, 0.0f, 0.5f);
-                ImGui.Checkbox(nameof(UseLightSpecular), ref UseLightSpecular);
-                ImGui.Separator();
-                ImGui.SliderFloat(nameof(LightScatterScalar), ref LightScatterScalar, 0.0f, 2.0f);
-                ImGui.NewLine();
-                ImGui.NewLine();
-                ImGui.SliderFloat(nameof(LightingScalar), ref LightingScalar, 1.0f, 16.0f);
-            }
+            ImGui.SliderFloat(nameof(DiffuseScalar), ref DiffuseScalar, 0.0f, 2.0f);
+            ImGui.SliderFloat(nameof(LightBrightnessMultiplier), ref LightBrightnessMultiplier, 0.0f, 128.0f);
+            ImGui.Checkbox(nameof(UseLightDiffuse), ref UseLightDiffuse);
+            ImGui.Separator();
+            ImGui.SliderFloat(nameof(SpecularScalar), ref SpecularScalar, 0.0f, 2.0f);
+            ImGui.SliderFloat(nameof(SpecularPowerScalar), ref SpecularPowerScalar, 0.0f, 32.0f);
+            ImGui.SliderFloat(nameof(OffsetByNormalScalar), ref OffsetByNormalScalar, 0.0f, 0.5f);
+            ImGui.Checkbox(nameof(UseLightSpecular), ref UseLightSpecular);
+            ImGui.Separator();
+            ImGui.SliderFloat(nameof(LightScatterScalar), ref LightScatterScalar, 0.0f, 2.0f);
+            ImGui.NewLine();
+            ImGui.NewLine();
+            ImGui.SliderFloat(nameof(LightingScalar), ref LightingScalar, 1.0f, 16.0f);
+
             ImGui.End();
         }
 
