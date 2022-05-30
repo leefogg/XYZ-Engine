@@ -414,7 +414,7 @@ namespace GLOOP.HPL
                 CPUFrameTimings.SetAndMove(frameElapsedMs);
                 EventProfiler.NewFrame();
             }
-            Metrics.WriteLog(frameElapsedMs, CPUFrame, GPUFrame);
+            Metrics.WriteLog(CPUFrame, GPUFrame);
 
             SwapBuffers();
 
