@@ -47,6 +47,8 @@ namespace GLOOP.Rendering.Debugging
             return timer;
         }
 
+        [Conditional("DEBUG")]
+        [Conditional("BETA")]
         public static void NewFrame()
         {
             var keys = new string[EventTimings.Keys.Count];

@@ -37,6 +37,7 @@ namespace GLOOP.Rendering.Debugging
 
         public class GPUEventTiming : DummyDisposable
         {
+#if !RELEASE
             internal long StartNs, EndNs;
 
             internal void Start() => StartNs = GetTimestamp();
@@ -46,6 +47,7 @@ namespace GLOOP.Rendering.Debugging
             internal void Zero() => StartNs = EndNs = 0;
 
             public override string ToString() => $"{StartNs}-{EndNs}";
+#endif
         }
 
         public class Frame : GPUEventTiming
@@ -54,8 +56,10 @@ namespace GLOOP.Rendering.Debugging
 
             public Frame()
             {
+#if !RELEASE
                 for (int i = 0; i < EventTimings.Length; i++)
                     EventTimings[i] = new GPUEventTiming();
+#endif
             }
 
             public IDisposable this[Event index]
@@ -71,6 +75,8 @@ namespace GLOOP.Rendering.Debugging
 #endif
                 }
             }
+
+            public IDisposable PeekEvent(Event index) => EventTimings[(int)index];
         }
 
         private static Ring<Frame> TimingsRingbuffer = new Ring<Frame>(
@@ -83,8 +89,10 @@ namespace GLOOP.Rendering.Debugging
             get
             {
                 var frame = TimingsRingbuffer.Next;
+#if !RELEASE
                 frame.Zero();
                 frame.Start();
+#endif
                 return frame;
             }
         }
@@ -93,6 +101,7 @@ namespace GLOOP.Rendering.Debugging
         [Conditional("BETA")]
         public static void Render()
         {
+#if !RELEASE
             using var profiler = EventProfiler.Profile("Render Graph");
             if (!ImGui.Begin("GPU Frame Profiler"))
                 return;
@@ -164,6 +173,7 @@ namespace GLOOP.Rendering.Debugging
             }
 
             ImGui.End();
+#endif
         }
 
         private static long GetTimestamp()

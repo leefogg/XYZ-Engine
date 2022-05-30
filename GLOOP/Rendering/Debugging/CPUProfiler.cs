@@ -73,6 +73,7 @@ namespace GLOOP.Rendering.Debugging
                 }
             }
 
+            public IDisposable PeekEvent(Event index) => EventTimings[(int)index];
 
             internal void Zero()
             {
@@ -86,7 +87,8 @@ namespace GLOOP.Rendering.Debugging
         public class CPUEventTiming : DummyDisposable
         {
 #if !RELEASE
-            internal float StartMs, EndMs;
+            public float StartMs { get; internal set; }
+            public float EndMs { get; internal set; }
 
             internal void Start() => StartMs = Window.FrameMillisecondsElapsed;
 
@@ -117,6 +119,7 @@ namespace GLOOP.Rendering.Debugging
         [Conditional("BETA")]
         public static void Render(Frame currentFrame)
         {
+#if !RELEASE
             using var profiler = EventProfiler.Profile("Render Graph");
             using var timer = currentFrame[Event.Graph];
             if (!ImGui.Begin("CPU Frame Profiler"))
@@ -189,6 +192,7 @@ namespace GLOOP.Rendering.Debugging
             }
 
             ImGui.End();
+#endif
         }
     }
 }

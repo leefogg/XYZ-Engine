@@ -346,7 +346,9 @@ namespace GLOOP.HPL
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             FrameStart();
+            Metrics.ResetFrameCounters();
 
+            float frameElapsedMs = 0;
             using (var query = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
                 using var cpuFrame = CPUProfiler.NextFrame;
@@ -404,16 +406,15 @@ namespace GLOOP.HPL
 #endif
 
                 if (FrameNumber == 1)
-                    Metrics.StartRecording($"{DateTime.Now.ToString("ddMMyyyy HHmm")}.csv");
+                    Metrics.StartRecording($"{DateTime.Now:ddMMyyyy HHmm}.csv");
 
                 DrawImGUIWindows();
 
-                Metrics.ResetFrameCounters();
-
-                var frameElapsedMs = (float)(DateTime.Now - frameStart).TotalMilliseconds;
+                frameElapsedMs = (float)(DateTime.Now - frameStart).TotalMilliseconds;
                 CPUFrameTimings.SetAndMove(frameElapsedMs);
                 EventProfiler.NewFrame();
             }
+            Metrics.WriteLog(frameElapsedMs, CPUFrame, GPUFrame);
 
             SwapBuffers();
 

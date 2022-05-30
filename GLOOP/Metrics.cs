@@ -1,5 +1,7 @@
-﻿using System;
+﻿using GLOOP.Rendering.Debugging;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 
@@ -29,26 +31,10 @@ namespace GLOOP
 
         private static StreamWriter RecordingStream;
 
+        [Conditional("DEBUG")]
+        [Conditional("BETA")]
         public static void ResetFrameCounters()
         {
-            RecordingStream?.WriteLine(
-                string.Format(
-                    "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11}",
-                    Window.FrameNumber,
-                    Window.FrameMillisecondsElapsed,
-                    ModelsDrawn,
-                    LightsDrawn,
-                    RenderBatches,
-                    QueriesPerformed,
-                    ShaderBinds,
-                    TextureSetBinds,
-                    BufferBinds,
-                    FrameBufferBinds,
-                    BufferReads,
-                    BufferWrites
-                )
-            );
-
             ModelsDrawn = 0;
             LightsDrawn = 0;
             RenderBatches = 0;
@@ -61,14 +47,85 @@ namespace GLOOP
             BufferWrites = 0;
         }
 
+        [Conditional("DEBUG")]
+        [Conditional("BETA")]
+        public static void WriteLog(float frameElapsedMs, CPUProfiler.Frame cpuFrame, GPUProfiler.Frame gpuFrame)
+        {
+            float CPUEventLength(CPUProfiler.Event index)
+            {
+                var e = (CPUProfiler.CPUEventTiming)cpuFrame.PeekEvent(index);
+                return (e.EndMs - e.StartMs) * 1000; // To Nanoseconds
+            }
+            long GPUEventLength(GPUProfiler.Event index)
+            {
+                var e = (GPUProfiler.GPUEventTiming)gpuFrame.PeekEvent(index);
+                return e.EndNs - e.StartNs;
+            }
+
+            RecordingStream?.WriteLine(
+                "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22}",
+                Window.FrameNumber,
+                frameElapsedMs,
+                ModelsDrawn,
+                LightsDrawn,
+                RenderBatches,
+                QueriesPerformed,
+                ShaderBinds,
+                TextureSetBinds,
+                BufferBinds,
+                FrameBufferBinds,
+                BufferReads,
+                BufferWrites,
+                CPUEventLength(CPUProfiler.Event.Visbility),
+                CPUEventLength(CPUProfiler.Event.UpdateBuffers),
+                CPUEventLength(CPUProfiler.Event.Geomertry),
+                CPUEventLength(CPUProfiler.Event.PortalCulling),
+                CPUEventLength(CPUProfiler.Event.Lighting),
+                CPUEventLength(CPUProfiler.Event.Bloom),
+                CPUEventLength(CPUProfiler.Event.PostEffects),
+                GPUEventLength(GPUProfiler.Event.UpdateBuffers),
+                GPUEventLength(GPUProfiler.Event.Geometry),
+                GPUEventLength(GPUProfiler.Event.Lighting),
+                GPUEventLength(GPUProfiler.Event.Post)
+            );
+        }
+
+        [Conditional("DEBUG")]
+        [Conditional("BETA")]
         public static void StartRecording(string filename)
         {
             RecordingStream = File.CreateText(filename);
             RecordingStream.WriteLine(
-                "Frame,Frame Milliseconds,Models Drawn,Lights Drawn,Render Batches,Queries Performed,Shader Binds,Texture Set Binds,Buffer Binds,FrameBuffer Binds,Buffer Reads,Buffer Writes"
+                string.Join(',', new[] {
+                    "Frame",
+                    "Frame Milliseconds",
+                    "Models Drawn",
+                    "Lights Drawn",
+                    "Render Batches",
+                    "Queries Performed",
+                    "Shader Binds",
+                    "Texture Set Binds",
+                    "Buffer Binds",
+                    "FrameBuffer Binds",
+                    "Buffer Reads",
+                    "Buffer Writes",
+                    "CPU Visibility",
+                    "CPU Update Buffers",
+                    "CPU Geometry",
+                    "CPU Portal Culling",
+                    "CPU Lighting",
+                    "CPU Bloom",
+                    "CPU Post Effects",
+                    "GPU Update Buffers",
+                    "GPU Geometry",
+                    "GPU Lighting",
+                    "GPU Post",
+                })
             );
         }
 
+        [Conditional("DEBUG")]
+        [Conditional("BETA")]
         public static void StopRecording()
         {
             RecordingStream.Flush();
