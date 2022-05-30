@@ -27,7 +27,7 @@ namespace GLOOP.Rendering
             Running = true;
         }
 
-        public void EndScope()
+        private void EndScope()
         {
             if (Running)
                 GL.EndQuery(Type);
@@ -45,9 +45,9 @@ namespace GLOOP.Rendering
             return !Running;
         }
 
-        public int GetResult()
+        public long GetResult()
         {
-            GL.GetQueryObject(Handle, GetQueryObjectParam.QueryResult, out int result);
+            GL.GetQueryObject(Handle, GetQueryObjectParam.QueryResult, out long result);
             Running = false;
             return result;
         }

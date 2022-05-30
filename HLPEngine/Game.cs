@@ -132,7 +132,8 @@ namespace GLOOP.HPL
 
         private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
-        private FrameProfiler.Frame CurrentFrame = FrameProfiler.NextFrame;
+        private CPUProfiler.Frame CPUFrame;
+        private GPUProfiler.Frame GPUFrame;
         private readonly DateTime startTime = DateTime.Now;
         private readonly FrameBuffer backBuffer;
         private readonly int frameBufferWidth, frameBufferHeight;
@@ -348,8 +349,11 @@ namespace GLOOP.HPL
 
             using (var query = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
-                using var frame = FrameProfiler.NextFrame;
-                CurrentFrame = frame;
+                using var cpuFrame = CPUProfiler.NextFrame;
+                CPUFrame = cpuFrame;
+                using var gpuFrame = GPUProfiler.NextFrame;
+                GPUFrame = gpuFrame;
+
                 TaskMaster.AddTask(
                     query.IsResultAvailable,
                     () => { GPUFrameTimings.Set(1000f / (query.GetResult() / 1000000f)); GPUFrameTimings.MoveNext(); },
@@ -402,13 +406,7 @@ namespace GLOOP.HPL
                 if (FrameNumber == 1)
                     Metrics.StartRecording($"{DateTime.Now.ToString("ddMMyyyy HHmm")}.csv");
 
-                DrawImGuiOptionsWindow();
-                DrawImGuiMetricsWindow();
-                queryPool.DrawWindow(nameof(queryPool));
-                FrameProfiler.Render(CurrentFrame);
-                EventProfiler.DrawImGuiWindow();
-                TaskMaster.DrawImGuiWindow();
-                DrawImGui();
+                DrawImGUIWindows();
 
                 Metrics.ResetFrameCounters();
 
@@ -424,37 +422,58 @@ namespace GLOOP.HPL
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
         }
 
+        private void DrawImGUIWindows()
+        {
+            using var gpuTimer = GPUFrame[GPUProfiler.Event.ImGUI];
+            using var cpuTimer = CPUFrame[CPUProfiler.Event.ImGUI];
+
+            if (!enableImGui)
+                return;
+
+            DrawImGuiOptionsWindow();
+            DrawImGuiMetricsWindow();
+            queryPool.DrawWindow(nameof(queryPool));
+            CPUProfiler.Render(CPUFrame);
+            GPUProfiler.Render();
+            EventProfiler.DrawImGuiWindow();
+            TaskMaster.DrawImGuiWindow();
+
+            DrawImGui();
+        }
+
         private void UpdateVisibility()
         {
             if (!shouldUpdateVisibility)
                 return;
 
-            using var visibilityTimer = CurrentFrame[FrameProfiler.Event.Visbility];
+            using var visibilityTimer = CPUFrame[CPUProfiler.Event.Visbility];
             scene.UpdateModelBatches();
-            scene.UpdateDrawBuffers();
-            scene.UpdateLightBuffers();
             foreach (var room in VisibleAreas)
-            {
                 room.UpdateModelBatches();
-                room.UpdateDrawBuffers();
-                room.UpdateLightBuffers();
-            }
         }
 
         private void UpdateBuffers()
         {
             using var profiler = EventProfiler.Profile();
-            using var timer = CurrentFrame[FrameProfiler.Event.UpdateBuffers];
-            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);                
+            using var cpuTimer = CPUFrame[CPUProfiler.Event.UpdateBuffers];
+            using var gpuTimer = GPUFrame[GPUProfiler.Event.UpdateBuffers];
+
+            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+
+            if (shouldUpdateVisibility)
+            {
+                scene.UpdateDrawBuffers();
+                scene.UpdateLightBuffers();
+                foreach (var room in VisibleAreas)
+                {
+                    room.UpdateDrawBuffers();
+                    room.UpdateLightBuffers();
+                }
+            }
         }
 
         private void DrawImGui()
         {
-            using var timer = CurrentFrame[FrameProfiler.Event.ImGui];
-
-            if (!enableImGui)
-                return;
-
             backBuffer.Use();
             GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
             GL.Viewport(0, 0, Size.X, Size.Y);
@@ -515,7 +534,7 @@ namespace GLOOP.HPL
         private void DetermineVisibleAreas()
         {
             using var profiler = EventProfiler.Profile();
-            using var timer = CurrentFrame[FrameProfiler.Event.PortalCulling];
+            using var timer = CPUFrame[CPUProfiler.Event.PortalCulling];
 
             DrawImGuiPortalWindow();
 
@@ -613,8 +632,9 @@ namespace GLOOP.HPL
             GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
 
             var currentBuffer = PostMan.NextFramebuffer;
-            GBufferPass(currentBuffer);
+            GeometryPass(currentBuffer);
 
+            using var gpuTimer = GPUFrame[GPUProfiler.Event.Post];
             if (debugGBufferTexture > -1)
             {
                 DisplayGBuffer(currentBuffer = PostMan.NextFramebuffer, debugGBufferTexture);
@@ -647,7 +667,7 @@ namespace GLOOP.HPL
                     DrawImGUIColourCorrectionWindow();
 
                     using var group = new DebugGroup("Colour Correction");
-                    using var timer = CurrentFrame[FrameProfiler.Event.PostEffects];
+                    using var timer = CPUFrame[CPUProfiler.Event.PostEffects];
 
                     var newBuffer = PostMan.NextFramebuffer;
                     newBuffer.Use();
@@ -701,14 +721,15 @@ namespace GLOOP.HPL
             ImGui.End();
         }
 
-        private void GBufferPass(FrameBuffer finalBuffer)
+        private void GeometryPass(FrameBuffer finalBuffer)
         {
             using var profiler = EventProfiler.Profile();
             Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
 
             {
-                using var timer = CurrentFrame[FrameProfiler.Event.Geomertry];
-                using var debugGroup = new DebugGroup(nameof(GBufferPass));
+                using var cpuTimer = CPUFrame[CPUProfiler.Event.Geomertry];
+                using var gpuTimer = GPUFrame[GPUProfiler.Event.Geometry];
+                using var debugGroup = new DebugGroup(nameof(GeometryPass));
 
                 GL.Enable(EnableCap.FramebufferSrgb);
                 using (new DebugGroup("Occluders"))
@@ -840,7 +861,7 @@ namespace GLOOP.HPL
 
         private FrameBuffer DoBloomPass(Texture diffuse)
         {
-            using var timer = CurrentFrame[FrameProfiler.Event.Bloom];
+            using var timer = CPUFrame[CPUProfiler.Event.Bloom];
 
             using (new DebugGroup("Bloom"))
             {
@@ -956,6 +977,7 @@ namespace GLOOP.HPL
         public void DoLightPass(Vector3 ambientColor)
         {
             using var debugGroup = new DebugGroup("Lighting");
+            using var gpuTimer = GPUFrame[GPUProfiler.Event.Lighting];
 
             LightingBuffer.Use();
             GL.ClearColor(ambientColor.X, ambientColor.Y, ambientColor.Z, 0);
@@ -1020,7 +1042,7 @@ namespace GLOOP.HPL
         private void RenderLights()
         {
             using var profiler = EventProfiler.Profile();
-            using var timer = CurrentFrame[FrameProfiler.Event.Lighting];
+            using var timer = CPUFrame[CPUProfiler.Event.Lighting];
 
             DrawImGuiMaterialWindow();
 
