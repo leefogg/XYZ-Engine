@@ -355,10 +355,9 @@ namespace GLOOP.Rendering
             var modelMatricies = new Matrix4[numModels];
             var drawCommands = new DrawElementsIndirectData[numModels];
             var materials = new GPUDeferredGeoMaterial[numModels];
-            int i = 0;
+            uint i = 0;
             foreach (var batch in batches)
             {
-                uint batchIdx = 0;
                 foreach (var model in batch.Models)
                 {
                     modelMatricies[i] = model.Transform.Matrix;
@@ -372,7 +371,7 @@ namespace GLOOP.Rendering
                         command.FirstIndex / sizeof(ushort),
                         command.BaseVertex,
                         command.NumInstances,
-                        batchIdx++
+                        i
                     );
                     i++;
                 }
@@ -492,19 +491,17 @@ namespace GLOOP.Rendering
             Buffer<GPUDeferredGeoMaterial> materialsBuffer)
         {
             var drawCommandPtr = (IntPtr)0;
-            var modelMatrixPtr = 0;
-            var materialPtr = 0;
             var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
-            var matrixSize = Marshal.SizeOf<Matrix4>();
-            var materialSize = Marshal.SizeOf<GPUDeferredGeoMaterial>();
+
+            matriciesBuffer.Bind(1);
+            materialsBuffer.Bind(2);
+
             foreach (var batch in batches)
             {
                 var batchSize = batch.Models.Count;
 
                 batch.BindState();
-                // TODO: Replace BindRange with a start index uniform
-                matriciesBuffer.BindRange(1, batchSize * matrixSize, modelMatrixPtr);
-                materialsBuffer.BindRange(2, batchSize * materialSize, materialPtr);
+
                 GL.MultiDrawElementsIndirect(
                     PrimitiveType.Triangles,
                     DrawElementsType.UnsignedShort,
@@ -514,8 +511,6 @@ namespace GLOOP.Rendering
                 );
 
                 drawCommandPtr += batchSize * commandSize;
-                modelMatrixPtr += batchSize * matrixSize;
-                materialPtr += batchSize * materialSize;
 
                 Metrics.ModelsDrawn += batchSize;
                 Metrics.RenderBatches++;
