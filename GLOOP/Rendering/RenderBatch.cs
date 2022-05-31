@@ -16,7 +16,7 @@ namespace GLOOP.Rendering
         public virtual void BindState()
         {
             Models[0].Material.Commit();
-            Models[0].VAO.container.Bind();
+            Models[0].VAO.Container.Bind();
         }
     }
 }

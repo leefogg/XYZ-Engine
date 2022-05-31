@@ -366,7 +366,7 @@ namespace GLOOP.Rendering
                         new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs)
                     );
 
-                    ref var command = ref model.VAO.description;
+                    var command = model.VAO.Description;
                     drawCommands[i] = new DrawElementsIndirectData(
                         command.NumIndexes,
                         command.FirstIndex / sizeof(ushort),
@@ -538,7 +538,7 @@ namespace GLOOP.Rendering
         {
             var mat1 = (DeferredRenderingGeoMaterial)a.Material;
             var mat2 = (DeferredRenderingGeoMaterial)b.Material;
-            return a.VAO.container.Handle == b.VAO.container.Handle
+            return a.VAO.Container.Handle == b.VAO.Container.Handle
                 && a.Material.Shader.Handle == b.Material.Shader.Handle
                 && mat1.SameTextures(mat2);
         }

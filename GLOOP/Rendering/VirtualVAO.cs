@@ -8,28 +8,28 @@ namespace GLOOP.Rendering
 {
     public class VirtualVAO
     {
-        public DrawElementsIndirectData description;
-        public readonly VAO container;
-        public Box3 BoundingBox = new Box3();
+        public readonly DrawElementsIndirectData Description;
+        public readonly VAO Container;
+        public Box3 BoundingBox;
 
         public VirtualVAO(DrawElementsIndirectData description, VAO container)
         {
-            this.description = description;
-            this.container = container;
+            Description = description;
+            Container = container;
         }
 
         public void Draw(PrimitiveType renderMode = PrimitiveType.Triangles)
         {
-            container.Bind();
+            Container.Bind();
 
             GL.DrawElementsInstancedBaseVertexBaseInstance(
                 renderMode,
-                (int)description.NumIndexes,
+                (int)Description.NumIndexes,
                 DrawElementsType.UnsignedShort,
-                (IntPtr)description.FirstIndex,
-                (int)description.NumInstances,
-                (int)description.BaseVertex,
-                (int)description.BaseInstance
+                (IntPtr)Description.FirstIndex,
+                (int)Description.NumInstances,
+                (int)Description.BaseVertex,
+                (int)Description.BaseInstance
             );
             Metrics.ModelsDrawn++;
         }
