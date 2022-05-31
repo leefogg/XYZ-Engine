@@ -141,13 +141,27 @@ namespace GLOOP.HPL
         private readonly Ring<float> CPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         private readonly Ring<float> GPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         private readonly StringBuilder CSV = new StringBuilder(10000);
+        private const bool BenchmarkMode = false;
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) 
         {
-            //var controller = new PlaybackCameraController("Phi.csv");
-            //controller.OnRecordingComplete = OnBenchmarkComplete;
-            var controller = new PCCameraController();
+            ICameraController controller;
+            if (BenchmarkMode)
+            {
+                var c = new PlaybackCameraController("Phi.csv");
+                c.OnRecordingComplete = OnBenchmarkComplete;
+                controller = c;
+
+                enableImGui = true;
+                enableFXAA = true;
+                enableBloom = true;
+                enableSSAO = true;
+            }
+            else
+            {
+               controller = new PCCameraController();
+            }
             Camera = new Camera(MapToUse.CameraPos, new Vector3(), 90)
             {
                 Width = width,
@@ -405,7 +419,7 @@ namespace GLOOP.HPL
                 RenderPass(backBuffer);
 #endif
 
-                if (FrameNumber == 1)
+                if (BenchmarkMode && FrameNumber == 1)
                     Metrics.StartRecording($"{DateTime.Now:ddMMyyyy HHmm}.csv");
 
                 DrawImGUIWindows();

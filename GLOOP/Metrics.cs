@@ -130,10 +130,13 @@ namespace GLOOP
         [Conditional("BETA")]
         public static void StopRecording()
         {
-            RecordingStream.Flush();
-            RecordingStream.Close();
-            RecordingStream.Dispose();
-            RecordingStream = null;
+            if (RecordingStream != null)
+            {
+                RecordingStream.Flush();
+                RecordingStream.Close();
+                RecordingStream.Dispose();
+                RecordingStream = null;
+            }
         }
     }
 }
