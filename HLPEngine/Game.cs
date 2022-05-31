@@ -915,7 +915,7 @@ namespace GLOOP.HPL
                             shader.Use();
                             BloomBuffers[i].Use();
 
-                            bloomBuffer.BindRange(3, bloomDataStride * i);
+                            bloomBuffer.Bind(3, bloomDataStride * i);
 
                             DoPostEffect(shader, previousTexture);
 

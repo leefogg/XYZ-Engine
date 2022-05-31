@@ -418,7 +418,7 @@ namespace GLOOP.Rendering
             if (numCulledPointLights > 0)
             {
                 using var lightsDebugGroup = new DebugGroup("Point Lights");
-                PointLightsBuffer.BindRange(1, 0);
+                PointLightsBuffer.Bind(1, 0);
 
                 var shader = PointLightShader;
                 shader.Use();
@@ -452,7 +452,7 @@ namespace GLOOP.Rendering
             if (numCulledSpotLights > 0)
             {
                 using var lightsDebugGroup = new DebugGroup("Spot Lights");
-                SpotLightsBuffer.BindRange(1, 0);
+                SpotLightsBuffer.Bind(1, 0);
 
                 var shader = SpotLightShader;
                 shader.Use();
