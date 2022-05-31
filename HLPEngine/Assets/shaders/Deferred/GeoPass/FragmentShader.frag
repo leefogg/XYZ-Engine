@@ -40,8 +40,13 @@ struct Material {
 	bool IsWorldSpaceUVs;
 };
 
-layout (shared, binding = 2) buffer MaterialsBuffer {
-	Material[] Materials;
+struct Model {
+	mat4 ModelMatrix;
+	Material ModelMaterial;
+};
+
+layout (shared, binding = 1) buffer ModelBuffer {
+	Model Models[];
 };
 
 vec3 UnpackNormalmapYW(in vec4 avNormalValue, float normalStrength)
@@ -54,7 +59,7 @@ vec3 UnpackNormalmapYW(in vec4 avNormalValue, float normalStrength)
 
 void main()
 {
-	Material mat = Materials[DrawID];
+	Material mat = Models[DrawID].ModelMaterial;
 	vec2 textureCoord;
 	if (mat.IsWorldSpaceUVs) {
 		textureCoord = fragPos.xz;

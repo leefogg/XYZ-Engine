@@ -18,14 +18,33 @@ layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 InverseProjection;
 };
 
-layout (shared, binding = 1) buffer ModelMatricies {
-	mat4 Matricies[1024];
+struct Material {
+	//mat4 ModelMatrix;
+	//uint DiffuseMapSlice;
+	//uint NormalMapSlice;
+	//uint SpecularMapSlice;
+	//uint IlluminationMapSlice;
+	vec3 IlluminationColor;
+	vec3 AlbedoColourTint;
+	vec2 TextureRepeat;
+	vec2 TextureOffset;
+	float NormalStrength;
+	bool IsWorldSpaceUVs;
+};
+
+struct Model {
+	mat4 ModelMatrix;
+	Material ModelMaterial;
+};
+
+layout (shared, binding = 1) buffer ModelBuffer {
+	Model Models[];
 };
 
 
 void main(void) {
 	DrawID = gl_BaseInstance;
-    mat4 ModelMatrix = Matricies[DrawID];
+    mat4 ModelMatrix = Models[DrawID].ModelMatrix;
 	vec4 worldspacePos = ModelMatrix * vec4(Position, 1.0);
 	gl_Position =  ViewProjectionMatrix * worldspacePos;
 

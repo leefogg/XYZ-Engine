@@ -121,6 +121,20 @@ namespace GLOOP.Rendering
             }
         }
 
+        [StructLayout(LayoutKind.Explicit, Size = 128)]
+        public readonly struct GPUModel
+        {
+            [FieldOffset(00)] public readonly Matrix4 Matrix;
+            [FieldOffset(64)] public readonly GPUDeferredGeoMaterial Material;
+
+            public GPUModel(Matrix4 matrix, GPUDeferredGeoMaterial material)
+            {
+                Matrix = matrix;
+                Material = material;
+            }
+        }
+
+
         private readonly struct QueryPair
         {
             public readonly Query Query;
@@ -140,9 +154,8 @@ namespace GLOOP.Rendering
         public List<SpotLight> SpotLights = new List<SpotLight>();
         public List<RenderBatch> OccluderBatches, NonOccluderBatches;
 
-        private Buffer<Matrix4> OccluderMatriciesBuffer, NonOccluderMatriciesBuffer;
         private Buffer<DrawElementsIndirectData> OccluderDrawIndirectBuffer, NonOccluderDrawIndirectBuffer;
-        private Buffer<GPUDeferredGeoMaterial> OccluderMaterialsBuffer, NonOccluderMaterialsBuffer;
+        private Buffer<GPUModel> OccluderModelsBuffer, NonOccluderModelsBuffer;
 
         private Buffer<GPUPointLight> PointLightsBuffer;
         private Buffer<GPUSpotLight> SpotLightsBuffer;
@@ -172,9 +185,9 @@ namespace GLOOP.Rendering
         public void UpdateDrawBuffers()
         {
             if (OccluderBatches.Count > 0)
-                FillModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
+                FillModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer,OccluderModelsBuffer);
             if (NonOccluderBatches.Count > 0)
-                FillModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
+                FillModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderModelsBuffer);
         }
 
         public void UpdateLightBuffers()
@@ -199,17 +212,11 @@ namespace GLOOP.Rendering
                     BufferUsageHint.StaticDraw,
                     Name + " Occluder DrawCommands"
                 );
-                OccluderMatriciesBuffer = new Buffer<Matrix4>(
-                    numOccluders,
-                    BufferTarget.ShaderStorageBuffer,
-                    BufferUsageHint.StreamDraw,
-                    Name + " Occluder ModelMatricies"
-                );
-                OccluderMaterialsBuffer = new Buffer<GPUDeferredGeoMaterial>(
+                OccluderModelsBuffer = new Buffer<GPUModel>(
                     numOccluders,
                     BufferTarget.ShaderStorageBuffer,
                     BufferUsageHint.StaticDraw,
-                    Name + " Occluder MaterialData"
+                    Name + " Occluder Models"
                 );
             }
             if (numNonOccluders > 0)
@@ -220,17 +227,11 @@ namespace GLOOP.Rendering
                     BufferUsageHint.StaticDraw,
                     Name + " Non-Occluder DrawCommands"
                 );
-                NonOccluderMatriciesBuffer = new Buffer<Matrix4>(
+                NonOccluderModelsBuffer = new Buffer<GPUModel>(
                     numNonOccluders,
                     BufferTarget.ShaderStorageBuffer,
-                    BufferUsageHint.StreamDraw,
-                    Name + " Non-Occluder ModelMatricies"
-                );
-                NonOccluderMaterialsBuffer = new Buffer<GPUDeferredGeoMaterial>(
-                    numNonOccluders,
-                    BufferTarget.ShaderStorageBuffer,
-                    BufferUsageHint.StreamDraw,
-                    Name + " Non-Occluder MaterialData"
+                    BufferUsageHint.StaticDraw,
+                    Name + " Non-Occluder Models"
                 );
             }
         }
@@ -348,24 +349,24 @@ namespace GLOOP.Rendering
         private void FillModelUBOs(
             IEnumerable<RenderBatch> batches,
             Buffer<DrawElementsIndirectData> drawIndirectBuffer,
-            Buffer<Matrix4> matriciesBuffer,
-            Buffer<GPUDeferredGeoMaterial> materialsBuffer)
+            Buffer<GPUModel> modelsBuffer)
         {
             var numModels = batches.Sum(batch => batch.Models.Count);
-            var modelMatricies = new Matrix4[numModels];
             var drawCommands = new DrawElementsIndirectData[numModels];
-            var materials = new GPUDeferredGeoMaterial[numModels];
+            var models = new GPUModel[numModels];
             uint i = 0;
             foreach (var batch in batches)
             {
                 foreach (var model in batch.Models)
                 {
-                    modelMatricies[i] = model.Transform.Matrix;
-
                     var mat = (DeferredRenderingGeoMaterial)model.Material;
-                    materials[i] = new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs);
 
-                    var command = model.VAO.description;
+                    models[i] = new GPUModel(
+                        model.Transform.Matrix,
+                        new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs)
+                    );
+
+                    ref var command = ref model.VAO.description;
                     drawCommands[i] = new DrawElementsIndirectData(
                         command.NumIndexes,
                         command.FirstIndex / sizeof(ushort),
@@ -378,8 +379,7 @@ namespace GLOOP.Rendering
             }
 
             drawIndirectBuffer.Update(drawCommands);
-            matriciesBuffer.Update(modelMatricies);
-            materialsBuffer.Update(materials);
+            modelsBuffer.Update(models);
         }
 
         public virtual void RenderOccluderGeometry()
@@ -390,7 +390,7 @@ namespace GLOOP.Rendering
             using var debugGroup = new DebugGroup(Name);
             OccluderDrawIndirectBuffer.Bind();
 
-            MultiDrawIndirect(OccluderBatches, OccluderMatriciesBuffer, OccluderMaterialsBuffer);
+            MultiDrawIndirect(OccluderBatches, OccluderModelsBuffer);
         }
 
         public virtual void RenderNonOccluderGeometry()
@@ -401,7 +401,7 @@ namespace GLOOP.Rendering
             using var debugGroup = new DebugGroup(Name);
             NonOccluderDrawIndirectBuffer.Bind();
 
-            MultiDrawIndirect(NonOccluderBatches, NonOccluderMatriciesBuffer, NonOccluderMaterialsBuffer);
+            MultiDrawIndirect(NonOccluderBatches, NonOccluderModelsBuffer);
         }
 
         public void RenderLights(
@@ -487,14 +487,14 @@ namespace GLOOP.Rendering
 
         private void MultiDrawIndirect(
             IEnumerable<RenderBatch> batches,
-            Buffer<Matrix4> matriciesBuffer,
-            Buffer<GPUDeferredGeoMaterial> materialsBuffer)
+            Buffer<GPUModel> modelsBuffer)
         {
             var drawCommandPtr = (IntPtr)0;
             var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
 
-            matriciesBuffer.Bind(1);
-            materialsBuffer.Bind(2);
+            modelsBuffer.Bind(1);
+            //matriciesBuffer.Bind(1);
+            //materialsBuffer.Bind(2);
 
             foreach (var batch in batches)
             {
