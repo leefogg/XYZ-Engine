@@ -15,7 +15,7 @@ namespace GLOOP.Rendering
 {
     public abstract class RenderableArea
     {
-        private const int maxLights = 200;
+        private const int MaxLights = 200;
 
         [StructLayout(LayoutKind.Explicit, Size = 48)]
         private readonly struct GPUPointLight
@@ -134,7 +134,6 @@ namespace GLOOP.Rendering
             }
         }
 
-
         private readonly struct QueryPair
         {
             public readonly Query Query;
@@ -154,13 +153,14 @@ namespace GLOOP.Rendering
         public List<SpotLight> SpotLights = new List<SpotLight>();
         public List<RenderBatch> OccluderBatches, NonOccluderBatches;
 
-        private Buffer<DrawElementsIndirectData> OccluderDrawIndirectBuffer, NonOccluderDrawIndirectBuffer;
-        private Buffer<GPUModel> OccluderModelsBuffer, NonOccluderModelsBuffer;
+        private Buffer<DrawElementsIndirectData> DrawIndirectBuffer;
+        private Buffer<GPUModel> ModelsBuffer;
+        private uint NonOccludersStartIndex; // The index in the above buffers that seperates occluders and non-occluders
 
         private Buffer<GPUPointLight> PointLightsBuffer;
         private Buffer<GPUSpotLight> SpotLightsBuffer;
-        private List<int> culledSpotLights = new List<int>();
-        private List<int> culledPointLights = new List<int>();
+        private List<int> CulledSpotLights = new List<int>();
+        private List<int> CulledPointLights = new List<int>();
 
         protected RenderableArea(string name)
         {
@@ -175,19 +175,23 @@ namespace GLOOP.Rendering
 
         private void PrepareModels()
         {
-            var numOccluders = Models.Count(m => m.IsOccluder);
-            CreateModelUBOs(
-                numOccluders,
-                Models.Count - numOccluders
-            );
+            CreateModelUBOs();
         }
 
         public void UpdateDrawBuffers()
         {
+            var drawCommands = new DrawElementsIndirectData[Models.Count];
+            var models = new GPUModel[Models.Count];
+
+            uint index = 0;
             if (OccluderBatches.Count > 0)
-                FillModelUBOs(OccluderBatches, OccluderDrawIndirectBuffer,OccluderModelsBuffer);
+                FillModelUBOs(ref index, OccluderBatches, drawCommands, models);
+            NonOccludersStartIndex = index;
             if (NonOccluderBatches.Count > 0)
-                FillModelUBOs(NonOccluderBatches, NonOccluderDrawIndirectBuffer, NonOccluderModelsBuffer);
+                FillModelUBOs(ref index, NonOccluderBatches, drawCommands, models);
+
+            DrawIndirectBuffer.Update(drawCommands);
+            ModelsBuffer.Update(models);
         }
 
         public void UpdateLightBuffers()
@@ -202,38 +206,20 @@ namespace GLOOP.Rendering
             NonOccluderBatches  = BatchModels(Models.Where(o => !o.IsOccluder && Camera.Current.IntersectsFrustumFast(o.BoundingBox)));
         }
 
-        private void CreateModelUBOs(int numOccluders, int numNonOccluders)
+        private void CreateModelUBOs()
         {
-            if (numOccluders > 0)
-            {
-                OccluderDrawIndirectBuffer = new Buffer<DrawElementsIndirectData>(
-                    numOccluders,
-                    BufferTarget.DrawIndirectBuffer,
-                    BufferUsageHint.StaticDraw,
-                    Name + " Occluder DrawCommands"
-                );
-                OccluderModelsBuffer = new Buffer<GPUModel>(
-                    numOccluders,
-                    BufferTarget.ShaderStorageBuffer,
-                    BufferUsageHint.StaticDraw,
-                    Name + " Occluder Models"
-                );
-            }
-            if (numNonOccluders > 0)
-            {
-                NonOccluderDrawIndirectBuffer = new Buffer<DrawElementsIndirectData>(
-                    numNonOccluders,
-                    BufferTarget.DrawIndirectBuffer,
-                    BufferUsageHint.StaticDraw,
-                    Name + " Non-Occluder DrawCommands"
-                );
-                NonOccluderModelsBuffer = new Buffer<GPUModel>(
-                    numNonOccluders,
-                    BufferTarget.ShaderStorageBuffer,
-                    BufferUsageHint.StaticDraw,
-                    Name + " Non-Occluder Models"
-                );
-            }
+            DrawIndirectBuffer = new Buffer<DrawElementsIndirectData>(
+                Models.Count,
+                BufferTarget.DrawIndirectBuffer,
+                BufferUsageHint.StreamDraw,
+                Name + " DrawCommands"
+            );
+            ModelsBuffer = new Buffer<GPUModel>(
+                Models.Count,
+                BufferTarget.ShaderStorageBuffer,
+                BufferUsageHint.StreamDraw,
+                Name + " Models"
+            );
         }
 
         private List<RenderBatch> BatchModels(IEnumerable<Model> models)
@@ -248,7 +234,7 @@ namespace GLOOP.Rendering
         {
             if (PointLights.Any())
                 PointLightsBuffer = new Buffer<GPUPointLight>(
-                    Math.Min(maxLights, PointLights.Count),
+                    Math.Min(MaxLights, PointLights.Count),
                     BufferTarget.UniformBuffer,
                     BufferUsageHint.StreamDraw,
                     Name + " PointLights"
@@ -256,7 +242,7 @@ namespace GLOOP.Rendering
 
             if (SpotLights.Any())
                 SpotLightsBuffer = new Buffer<GPUSpotLight>(
-                    Math.Min(maxLights, SpotLights.Count),
+                    Math.Min(MaxLights, SpotLights.Count),
                     BufferTarget.UniformBuffer,
                     BufferUsageHint.StreamDraw,
                     Name + " SpotLights"
@@ -268,17 +254,17 @@ namespace GLOOP.Rendering
             if (!PointLights.Any())
                 return;
 
-            culledPointLights.Clear();
+            CulledPointLights.Clear();
 
             var numCulledPointLights = 0;
-            var lights = new GPUPointLight[Math.Min(maxLights, PointLights.Count)];
+            var lights = new GPUPointLight[Math.Min(MaxLights, PointLights.Count)];
             for (var i = 0; i < lights.Length; i++)
             {
                 var light = PointLights[i];
                 if (Camera.Current.IsInsideFrustum(light.Position, light.Radius))
                 {
                     light.GetLightingScalars(out var diffuseScalar, out var specularScalar);
-                    culledPointLights.Add(i);
+                    CulledPointLights.Add(i);
                     lights[numCulledPointLights++] = new GPUPointLight(
                         light.Position,
                         light.Color,
@@ -298,10 +284,10 @@ namespace GLOOP.Rendering
             if (!SpotLights.Any())
                 return;
 
-            culledSpotLights.Clear();
+            CulledSpotLights.Clear();
 
             var numCulledSpotLights = 0;
-            var lights = new GPUSpotLight[Math.Min(maxLights, SpotLights.Count)];
+            var lights = new GPUSpotLight[Math.Min(MaxLights, SpotLights.Count)];
             for (var i = 0; i < lights.Length; i++)
             {
                 var light = SpotLights[i];
@@ -323,7 +309,7 @@ namespace GLOOP.Rendering
                     var viewProjection = new Matrix4();
                     MatrixExtensions.Multiply(projectionMatrix, viewMatrix, ref viewProjection);
 
-                    culledSpotLights.Add(i);
+                    CulledSpotLights.Add(i);
                     lights[numCulledSpotLights++] = new GPUSpotLight(
                         modelMatrix,
                         light.Position,
@@ -347,61 +333,54 @@ namespace GLOOP.Rendering
         }
 
         private void FillModelUBOs(
+            ref uint index,
             IEnumerable<RenderBatch> batches,
-            Buffer<DrawElementsIndirectData> drawIndirectBuffer,
-            Buffer<GPUModel> modelsBuffer)
+            DrawElementsIndirectData[] drawIndirectDest,
+            GPUModel[] modelDest)
         {
+            uint startIndex = index;
             var numModels = batches.Sum(batch => batch.Models.Count);
-            var drawCommands = new DrawElementsIndirectData[numModels];
-            var models = new GPUModel[numModels];
-            uint i = 0;
+            
             foreach (var batch in batches)
             {
                 foreach (var model in batch.Models)
                 {
                     var mat = (DeferredRenderingGeoMaterial)model.Material;
 
-                    models[i] = new GPUModel(
+                    modelDest[index] = new GPUModel(
                         model.Transform.Matrix,
                         new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs)
                     );
 
                     var command = model.VAO.Description;
-                    drawCommands[i] = new DrawElementsIndirectData(
+                    drawIndirectDest[index] = new DrawElementsIndirectData(
                         command.NumIndexes,
                         command.FirstIndex / sizeof(ushort),
                         command.BaseVertex,
                         command.NumInstances,
-                        i
+                        index
                     );
-                    i++;
+                    index++;
                 }
             }
-
-            drawIndirectBuffer.Update(drawCommands);
-            modelsBuffer.Update(models);
         }
 
         public virtual void RenderOccluderGeometry()
         {
-            if (OccluderDrawIndirectBuffer == null)
-                return;
-
             using var debugGroup = new DebugGroup(Name);
-            OccluderDrawIndirectBuffer.Bind();
+            DrawIndirectBuffer.Bind();
+            ModelsBuffer.Bind(1);
 
-            MultiDrawIndirect(OccluderBatches, OccluderModelsBuffer);
+            MultiDrawIndirect(OccluderBatches, 0);
         }
 
         public virtual void RenderNonOccluderGeometry()
         {
-            if (NonOccluderDrawIndirectBuffer == null)
-                return;
-
             using var debugGroup = new DebugGroup(Name);
-            NonOccluderDrawIndirectBuffer.Bind();
+            DrawIndirectBuffer.Bind();
+            ModelsBuffer.Bind(1);
 
-            MultiDrawIndirect(NonOccluderBatches, NonOccluderModelsBuffer);
+            MultiDrawIndirect(NonOccluderBatches, NonOccludersStartIndex);
         }
 
         public void RenderLights(
@@ -414,7 +393,7 @@ namespace GLOOP.Rendering
         {
             using var debugGroup = new DebugGroup(Name);
 
-            var numCulledPointLights = culledPointLights.Count;
+            var numCulledPointLights = CulledPointLights.Count;
             if (numCulledPointLights > 0)
             {
                 using var lightsDebugGroup = new DebugGroup("Point Lights");
@@ -437,7 +416,7 @@ namespace GLOOP.Rendering
                 // Debug light spheres
                 if (debugLights)
                 {
-                    foreach (var lightIdx in culledPointLights)
+                    foreach (var lightIdx in CulledPointLights)
                     {
                         var light = PointLights[lightIdx];
                         var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, Quaternion.Identity, new Vector3(light.Radius * 2));
@@ -448,7 +427,7 @@ namespace GLOOP.Rendering
                 }
             }
 
-            var numCulledSpotLights = culledSpotLights.Count;
+            var numCulledSpotLights = CulledSpotLights.Count;
             if (numCulledSpotLights > 0)
             {
                 using var lightsDebugGroup = new DebugGroup("Spot Lights");
@@ -470,7 +449,7 @@ namespace GLOOP.Rendering
                 if (debugLights)
                 {
                     var material = frustumMaterial;
-                    foreach (var lightIdx in culledSpotLights)
+                    foreach (var lightIdx in CulledSpotLights)
                     {
                         var light = SpotLights[lightIdx];
                         var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
@@ -486,15 +465,11 @@ namespace GLOOP.Rendering
         }
 
         private void MultiDrawIndirect(
-            IEnumerable<RenderBatch> batches,
-            Buffer<GPUModel> modelsBuffer)
+            IEnumerable<RenderBatch> batches, uint start)
         {
             var drawCommandPtr = (IntPtr)0;
             var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
-
-            modelsBuffer.Bind(1);
-            //matriciesBuffer.Bind(1);
-            //materialsBuffer.Bind(2);
+            drawCommandPtr += (int)start * commandSize;
 
             foreach (var batch in batches)
             {

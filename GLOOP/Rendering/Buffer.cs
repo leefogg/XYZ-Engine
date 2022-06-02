@@ -57,12 +57,12 @@ namespace GLOOP.Rendering
             Metrics.BufferWrites += (ulong)length;
         }
 
-        public void Update(T[] data, int start = 0)
+        public void Update(T[] data, uint start = 0)
         {
             var length = Marshal.SizeOf<T>() * data.Length;
             var endByte = length + start;
             System.Diagnostics.Debug.Assert(endByte <= Length, $"Wrote {endByte - Length} bytes to unmanaged memory");
-            GL.NamedBufferSubData(Handle, (IntPtr)start, length - start, data);
+            GL.NamedBufferSubData(Handle, (IntPtr)start, (int)(length - start), data);
             Metrics.BufferWrites += (ulong)length;
         }
 
