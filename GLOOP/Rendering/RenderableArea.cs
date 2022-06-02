@@ -100,52 +100,6 @@ namespace GLOOP.Rendering
             }
         }
 
-        [StructLayout(LayoutKind.Explicit, Size = 64)]
-        public readonly struct GPUDeferredGeoMaterial
-        {
-            [FieldOffset(00)] public readonly Vector3 IlluminationColor;
-            [FieldOffset(16)] public readonly Vector3 AlbedoColourTint;
-            [FieldOffset(32)] public readonly Vector2 TextureRepeat;
-            [FieldOffset(40)] public readonly Vector2 TextureOffset;
-            [FieldOffset(48)] public readonly float NormalStrength;
-            [FieldOffset(52)] public readonly bool IsWorldSpaceUVs;
-
-            public GPUDeferredGeoMaterial(Vector3 illuminationColor, Vector3 albedoColourTint, Vector2 textureRepeat, Vector2 textureOffset, float normalStrength, bool isWorldSpaceUVs)
-            {
-                IlluminationColor = illuminationColor;
-                AlbedoColourTint = albedoColourTint;
-                TextureRepeat = textureRepeat;
-                TextureOffset = textureOffset;
-                NormalStrength = normalStrength;
-                IsWorldSpaceUVs = isWorldSpaceUVs;
-            }
-        }
-
-        [StructLayout(LayoutKind.Explicit, Size = 128)]
-        public readonly struct GPUModel
-        {
-            [FieldOffset(00)] public readonly Matrix4 Matrix;
-            [FieldOffset(64)] public readonly GPUDeferredGeoMaterial Material;
-
-            public GPUModel(Matrix4 matrix, GPUDeferredGeoMaterial material)
-            {
-                Matrix = matrix;
-                Material = material;
-            }
-        }
-
-        private readonly struct QueryPair
-        {
-            public readonly Query Query;
-            public readonly StaticPixelShader shader;
-
-            public QueryPair(Query query, StaticPixelShader shader)
-            {
-                Query = query;
-                this.shader = shader;
-            }
-        }
-
         public string Name { get; private set; }
 
         public List<Model> Models = new List<Model>();
@@ -153,14 +107,12 @@ namespace GLOOP.Rendering
         public List<SpotLight> SpotLights = new List<SpotLight>();
         public List<RenderBatch> OccluderBatches, NonOccluderBatches;
 
-        private Buffer<DrawElementsIndirectData> DrawIndirectBuffer;
-        private Buffer<GPUModel> ModelsBuffer;
-        private uint NonOccludersStartIndex; // The index in the above buffers that seperates occluders and non-occluders
-
         private Buffer<GPUPointLight> PointLightsBuffer;
         private Buffer<GPUSpotLight> SpotLightsBuffer;
         private List<int> CulledSpotLights = new List<int>();
         private List<int> CulledPointLights = new List<int>();
+        public IReadOnlyList<Model> Occluders { get; private set; }
+        public IReadOnlyList<Model> NonOccluders { get; private set; }
 
         protected RenderableArea(string name)
         {
@@ -169,29 +121,7 @@ namespace GLOOP.Rendering
 
         public void Prepare()
         {
-            PrepareModels();
             PrepareLightBuffers();
-        }
-
-        private void PrepareModels()
-        {
-            CreateModelUBOs();
-        }
-
-        public void UpdateDrawBuffers()
-        {
-            var drawCommands = new DrawElementsIndirectData[Models.Count];
-            var models = new GPUModel[Models.Count];
-
-            uint index = 0;
-            if (OccluderBatches.Count > 0)
-                FillModelUBOs(ref index, OccluderBatches, drawCommands, models);
-            NonOccludersStartIndex = index;
-            if (NonOccluderBatches.Count > 0)
-                FillModelUBOs(ref index, NonOccluderBatches, drawCommands, models);
-
-            DrawIndirectBuffer.Update(drawCommands);
-            ModelsBuffer.Update(models);
         }
 
         public void UpdateLightBuffers()
@@ -202,32 +132,8 @@ namespace GLOOP.Rendering
 
         public void UpdateModelBatches()
         {
-            OccluderBatches     = BatchModels(Models.Where(o =>  o.IsOccluder && Camera.Current.IntersectsFrustumFast(o.BoundingBox)));
-            NonOccluderBatches  = BatchModels(Models.Where(o => !o.IsOccluder && Camera.Current.IntersectsFrustumFast(o.BoundingBox)));
-        }
-
-        private void CreateModelUBOs()
-        {
-            DrawIndirectBuffer = new Buffer<DrawElementsIndirectData>(
-                Models.Count,
-                BufferTarget.DrawIndirectBuffer,
-                BufferUsageHint.StreamDraw,
-                Name + " DrawCommands"
-            );
-            ModelsBuffer = new Buffer<GPUModel>(
-                Models.Count,
-                BufferTarget.ShaderStorageBuffer,
-                BufferUsageHint.StreamDraw,
-                Name + " Models"
-            );
-        }
-
-        private List<RenderBatch> BatchModels(IEnumerable<Model> models)
-        {
-            var batches = GroupBy(models, SameRenderBatch);
-            batches.ForEach(batch => batch.Models = batch.Models.OrderBy(model => (model.Transform.Position - Camera.Current.Position).LengthSquared).ToList());
-
-            return batches;
+            Occluders     =  Models.Where(o =>  o.IsOccluder && Camera.Current.IntersectsFrustumFast(o.BoundingBox)).ToList();
+            NonOccluders  =  Models.Where(o => !o.IsOccluder && Camera.Current.IntersectsFrustumFast(o.BoundingBox)).ToList();
         }
 
         private void PrepareLightBuffers()
@@ -332,57 +238,6 @@ namespace GLOOP.Rendering
             SpotLightsBuffer.Update(lights);
         }
 
-        private void FillModelUBOs(
-            ref uint index,
-            IEnumerable<RenderBatch> batches,
-            DrawElementsIndirectData[] drawIndirectDest,
-            GPUModel[] modelDest)
-        {
-            uint startIndex = index;
-            var numModels = batches.Sum(batch => batch.Models.Count);
-            
-            foreach (var batch in batches)
-            {
-                foreach (var model in batch.Models)
-                {
-                    var mat = (DeferredRenderingGeoMaterial)model.Material;
-
-                    modelDest[index] = new GPUModel(
-                        model.Transform.Matrix,
-                        new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs)
-                    );
-
-                    var command = model.VAO.Description;
-                    drawIndirectDest[index] = new DrawElementsIndirectData(
-                        command.NumIndexes,
-                        command.FirstIndex / sizeof(ushort),
-                        command.BaseVertex,
-                        command.NumInstances,
-                        index
-                    );
-                    index++;
-                }
-            }
-        }
-
-        public virtual void RenderOccluderGeometry()
-        {
-            using var debugGroup = new DebugGroup(Name);
-            DrawIndirectBuffer.Bind();
-            ModelsBuffer.Bind(1);
-
-            MultiDrawIndirect(OccluderBatches, 0);
-        }
-
-        public virtual void RenderNonOccluderGeometry()
-        {
-            using var debugGroup = new DebugGroup(Name);
-            DrawIndirectBuffer.Bind();
-            ModelsBuffer.Bind(1);
-
-            MultiDrawIndirect(NonOccluderBatches, NonOccludersStartIndex);
-        }
-
         public void RenderLights(
             FrustumMaterial frustumMaterial,
             Shader SpotLightShader,
@@ -464,34 +319,6 @@ namespace GLOOP.Rendering
             }
         }
 
-        private void MultiDrawIndirect(
-            IEnumerable<RenderBatch> batches, uint start)
-        {
-            var drawCommandPtr = (IntPtr)0;
-            var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
-            drawCommandPtr += (int)start * commandSize;
-
-            foreach (var batch in batches)
-            {
-                var batchSize = batch.Models.Count;
-
-                batch.BindState();
-
-                GL.MultiDrawElementsIndirect(
-                    PrimitiveType.Triangles,
-                    DrawElementsType.UnsignedShort,
-                    drawCommandPtr,
-                    batchSize,
-                    0
-                );
-
-                drawCommandPtr += batchSize * commandSize;
-
-                Metrics.ModelsDrawn += batchSize;
-                Metrics.RenderBatches++;
-            }
-        }
-
         private static void GetLightVars(SpotLight light, out float ar, out Vector3 scale)
         {
             ar = light.AspectRatio;
@@ -503,44 +330,5 @@ namespace GLOOP.Rendering
             var yf = halfHeight * far;
             scale = new Vector3(xf, yf, -far);
         }
-
-        private static int AverageDistanceToCamera(RenderBatch batch)
-        {
-            return (int)batch.Models.Average(model => (model.Transform.Position - Camera.Current.Position).Length);
-        }
-
-        private static bool SameRenderBatch(Model a, Model b)
-        {
-            var mat1 = (DeferredRenderingGeoMaterial)a.Material;
-            var mat2 = (DeferredRenderingGeoMaterial)b.Material;
-            return a.VAO.Container.Handle == b.VAO.Container.Handle
-                && a.Material.Shader.Handle == b.Material.Shader.Handle
-                && mat1.SameTextures(mat2);
-        }
-
-        private static List<RenderBatch> GroupBy(IEnumerable<Model> models, Func<Model, Model, bool> comparer)
-        {
-            var batches = new List<RenderBatch>();
-
-            foreach (var model in models)
-            {
-                var foundBatch = false;
-                foreach (var batch in batches)
-                {
-                    if (comparer(batch.Models[0], model))
-                    {
-                        foundBatch = true;
-                        batch.Models.Add(model);
-                        break;
-                    }
-                }
-
-                if (!foundBatch)
-                    batches.Add(new RenderBatch(new[] { model }));
-            }
-
-            return batches;
-        }
-
     }
 }

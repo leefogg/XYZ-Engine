@@ -23,6 +23,7 @@ using GLOOP.Util;
 using GLOOP.Util.Structures;
 using System.Text;
 using System.IO;
+using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
 
 namespace GLOOP.HPL
 {
@@ -87,6 +88,14 @@ namespace GLOOP.HPL
         private FrustumMaterial frustumMaterial;
         private QueryPool queryPool;
         private List<(VisibilityPortal, Query)> PortalQueries = new List<(VisibilityPortal, Query)>();
+        private Buffer<DrawElementsIndirectData> DrawIndirectBuffer;
+        private Buffer<GPUModel> ModelsBuffer;
+        private List<RenderBatch> NonOccluderBatches;
+        private List<RenderBatch> OccluderBatches;
+        private uint NonOccludersStartIndex; // The index in the above buffers that seperates occluders and non-occluders
+        private readonly List<Model> ModelsScratchList = new List<Model>();
+        private readonly List<DrawElementsIndirectData> ScratchDrawCommands = new List<DrawElementsIndirectData>();
+        private readonly List<GPUModel> ScratchGPUModels = new List<GPUModel>();
 
         // Lighting
         private float OffsetByNormalScalar = 0.05f;
@@ -140,7 +149,7 @@ namespace GLOOP.HPL
         private readonly ImGuiController ImGuiController;
         private readonly Ring<float> CPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         private readonly Ring<float> GPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
-        private readonly StringBuilder CSV = new StringBuilder(10000);
+        //private readonly StringBuilder CSV = new StringBuilder(10000);
         private const bool BenchmarkMode = false;
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
@@ -357,6 +366,7 @@ namespace GLOOP.HPL
             */
         }
 
+
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             FrameStart();
@@ -479,12 +489,97 @@ namespace GLOOP.HPL
 
             if (shouldUpdateVisibility)
             {
-                scene.UpdateDrawBuffers();
+                {
+                    ModelsScratchList.Clear();
+                    ModelsScratchList.AddRange(scene.Occluders);
+                    foreach (var room in VisibleAreas)
+                        ModelsScratchList.AddRange(room.Occluders);
+                    OccluderBatches = BatchModels(ModelsScratchList);
+
+                    ModelsScratchList.Clear();
+                    ModelsScratchList.AddRange(scene.NonOccluders);
+                    foreach (var room in VisibleAreas)
+                        ModelsScratchList.AddRange(room.NonOccluders);
+                    NonOccluderBatches = BatchModels(ModelsScratchList);
+
+                    ScratchDrawCommands.Clear();
+                    ScratchGPUModels.Clear();
+                    AddModelData(OccluderBatches, ScratchDrawCommands, ScratchGPUModels);
+                    NonOccludersStartIndex = (uint)ScratchDrawCommands.Count;
+                    AddModelData(NonOccluderBatches, ScratchDrawCommands, ScratchGPUModels);
+
+                    DrawIndirectBuffer.Update(ScratchDrawCommands.ToArray());
+                    ModelsBuffer.Update(ScratchGPUModels.ToArray());
+                }
+
                 scene.UpdateLightBuffers();
                 foreach (var room in VisibleAreas)
-                {
-                    room.UpdateDrawBuffers();
                     room.UpdateLightBuffers();
+            }
+        }
+
+        private List<RenderBatch> BatchModels(IEnumerable<Model> models)
+        {
+            var batches = GroupBy(models, SameRenderBatch);
+            batches.ForEach(batch => batch.Models = batch.Models.OrderBy(model => (model.Transform.Position - Camera.Current.Position).LengthSquared).ToList());
+
+            return batches;
+        }
+
+        private static List<RenderBatch> GroupBy(IEnumerable<Model> models, Func<Model, Model, bool> comparer)
+        {
+            var batches = new List<RenderBatch>();
+
+            foreach (var model in models)
+            {
+                var foundBatch = false;
+                foreach (var batch in batches)
+                {
+                    if (comparer(batch.Models[0], model))
+                    {
+                        foundBatch = true;
+                        batch.Models.Add(model);
+                        break;
+                    }
+                }
+
+                if (!foundBatch)
+                    batches.Add(new RenderBatch(new[] { model }));
+            }
+
+            return batches;
+        }
+
+        private static bool SameRenderBatch(Model a, Model b)
+        {
+            var mat1 = (DeferredRenderingGeoMaterial)a.Material;
+            var mat2 = (DeferredRenderingGeoMaterial)b.Material;
+            return a.VAO.Container.Handle == b.VAO.Container.Handle
+                && a.Material.Shader.Handle == b.Material.Shader.Handle
+                && mat1.SameTextures(mat2);
+        }
+
+        private void AddModelData(
+            IEnumerable<RenderBatch> batches,
+            List<DrawElementsIndirectData> drawIndirectDest,
+            List<GPUModel> modelDest)
+        {
+            foreach (var batch in batches) {
+                foreach (var model in batch.Models) {
+                    var mat = (DeferredRenderingGeoMaterial)model.Material;
+                    modelDest.Add(new GPUModel(
+                        model.Transform.Matrix,
+                        new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs)
+                    ));
+
+                    var command = model.VAO.Description;
+                    drawIndirectDest.Add(new DrawElementsIndirectData(
+                        command.NumIndexes,
+                        command.FirstIndex / sizeof(ushort),
+                        command.BaseVertex,
+                        command.NumInstances,
+                        (uint)drawIndirectDest.Count
+                    ));
                 }
             }
         }
@@ -745,19 +840,11 @@ namespace GLOOP.HPL
                 using var debugGroup = new DebugGroup(nameof(GeometryPass));
 
                 GL.Enable(EnableCap.FramebufferSrgb);
-                using (new DebugGroup("Occluders"))
-                {
-                    foreach (var area in VisibleAreas)
-                        area.RenderOccluderGeometry();
-                    scene.RenderOccluderGeometry();
-                }
 
-                using (new DebugGroup("Non Occluders"))
-                {
-                    foreach (var area in VisibleAreas)
-                        area.RenderNonOccluderGeometry();
-                    scene.RenderNonOccluderGeometry();
-                }
+                DrawIndirectBuffer.Bind();
+                ModelsBuffer.Bind(1);
+                RenderOccluderGeometry();
+                RenderNonOccluderGeometry();
 
                 scene.RenderTerrain();
             }
@@ -767,11 +854,70 @@ namespace GLOOP.HPL
             GL.Disable(EnableCap.FramebufferSrgb);
         }
 
+        public virtual void RenderOccluderGeometry()
+        {
+            using var timer = new DebugGroup("Occluders");
+            MultiDrawIndirect(OccluderBatches, 0);
+        }
+
+        public virtual void RenderNonOccluderGeometry()
+        {
+            using var timer = new DebugGroup("Non Occluders");
+            MultiDrawIndirect(NonOccluderBatches, NonOccludersStartIndex);
+        }
+
+        private void MultiDrawIndirect(
+            IEnumerable<RenderBatch> batches, uint start)
+        {
+            var drawCommandPtr = (IntPtr)0;
+            var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
+            drawCommandPtr += (int)start * commandSize;
+
+            foreach (var batch in batches)
+            {
+                var batchSize = batch.Models.Count;
+
+                batch.BindState();
+
+                GL.MultiDrawElementsIndirect(
+                    PrimitiveType.Triangles,
+                    DrawElementsType.UnsignedShort,
+                    drawCommandPtr,
+                    batchSize,
+                    0
+                );
+
+                drawCommandPtr += batchSize * commandSize;
+
+                Metrics.ModelsDrawn += batchSize;
+                Metrics.RenderBatches++;
+            }
+        }
+
         private void setupBuffers()
         {
+            CreateModelUBOs();
+
             setupBloomUBO();
 
             setupRandomTexture();
+        }
+
+        private void CreateModelUBOs()
+        {
+            var numModels = scene.VisibilityAreas.Values.Sum(area => area.Models.Count);
+            DrawIndirectBuffer = new Buffer<DrawElementsIndirectData>(
+                numModels,
+                BufferTarget.DrawIndirectBuffer,
+                BufferUsageHint.StreamDraw,
+                "DrawCommands"
+            );
+            ModelsBuffer = new Buffer<GPUModel>(
+                numModels,
+                BufferTarget.ShaderStorageBuffer,
+                BufferUsageHint.StreamDraw,
+                "Models"
+            );
         }
 
         private void setupBloomUBO()
