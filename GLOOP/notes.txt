@@ -31,7 +31,6 @@ TODO:
 			ref/in/out
 			swapchain
 		Other:
-			Rename HLP to HPL
 			Handle VR startup errors in SetUpOpenVR
 			ICameraDriver
 
@@ -62,8 +61,6 @@ TODO:
 			Directional light
 			Particles
 
-
-
 	Portal culling
 		VR
 		Check when render portals are dispatched on SOMA by searching ANY_SAMPLES_PASSED
@@ -72,13 +69,6 @@ TODO:
 		albedo color.w is translucentcy
 
 	Time sections
-	Refactor location of code into project layers and seperate projects for examples
-	Add auditing
-		Add size to Buffer class
-		frame timings to CSV file
-		File for each run
-			All metrics in one new row
-	FPS graph
 	Investigate if materials have a global specular scaler
 
 Proposed ideal render pipeline:
@@ -125,7 +115,7 @@ Proposed ideal render pipeline:
 				if (visibleFlags[i]) {
 					out_drawIndirect.append(in_drawIndirect[i]);
 					...
-				]
+				}
 			}
 		}
 	}
