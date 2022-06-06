@@ -20,7 +20,7 @@ namespace GLOOP.Rendering.Debugging
         public enum Event
         {
             UpdateBuffers,
-            Geometry,
+            Geomertry,
             Lighting,
             Post,
             ImGUI,

@@ -717,7 +717,7 @@ namespace GLOOP.HPL
 
             {
                 using var cpuTimer = CPUFrame[CPUProfiler.Event.Geomertry];
-                using var gpuTimer = GPUFrame[GPUProfiler.Event.Geometry];
+                using var gpuTimer = GPUFrame[GPUProfiler.Event.Geomertry];
                 using var debugGroup = new DebugGroup(nameof(GeometryPass));
 
                 GL.Enable(EnableCap.FramebufferSrgb);
