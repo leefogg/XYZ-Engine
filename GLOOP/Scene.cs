@@ -31,8 +31,9 @@ namespace GLOOP
         private Buffer<GPUSpotLight> SpotLightsBuffer;
         private readonly List<SpotLight> SpotLightScratchList = new List<SpotLight>();
         private readonly List<PointLight> PointLightScratchList = new List<PointLight>();
-        private readonly List<Model> Occluders = new List<Model>();
-        private readonly List<Model> NonOccluders = new List<Model>();
+        private readonly List<Model> VisibleOccluders = new List<Model>();
+        private readonly List<Model> VisibleNonOccluders = new List<Model>();
+        private readonly List<Model> VisibleTerrain = new List<Model>();
         private const int MaxLights = 200;
 
         public Scene() : base("World")
@@ -42,15 +43,11 @@ namespace GLOOP
 
         public void RenderTerrain()
         {
-            if (Terrain.Count == 0)
+            if (VisibleTerrain.Count == 0)
                 return;
 
-            var frustumPlanes = Camera.Current.FrustumPlanes;
-            var visibleTiles = Terrain.Where(terrain => Camera.Current.IntersectsFrustum(terrain.BoundingBox.ToSphereBounds()))
-                .OrderBy(terrain => (terrain.Transform.Position - Camera.Current.Position).LengthSquared);
-
             using var deugGroup = new DebugGroup("Terrain");
-            foreach (var terrainPatch in visibleTiles)
+            foreach (var terrainPatch in VisibleTerrain)
                 terrainPatch.Render();
         }
 
@@ -82,7 +79,7 @@ namespace GLOOP
 
         private void CreateModelBuffers()
         {
-            var numModels = VisibilityAreas.Values.Sum(area => area.Models.Count);
+            var numModels = Models.Count + VisibilityAreas.Values.Sum(area => area.Models.Count);
             DrawIndirectBuffer = new Buffer<DrawElementsIndirectData>(
                 numModels,
                 BufferTarget.DrawIndirectBuffer,
@@ -99,11 +96,11 @@ namespace GLOOP
 
         public void UpdateVisibility(IReadOnlyList<VisibilityArea> VisibleAreas)
         {
-            Occluders.Clear();
-            NonOccluders.Clear();
-            UpdateModelBatches(Occluders, NonOccluders);
+            VisibleOccluders.Clear();
+            VisibleNonOccluders.Clear();
+            UpdateModelBatches(VisibleOccluders, VisibleNonOccluders);
             foreach (var room in VisibleAreas)
-                room.UpdateModelBatches(Occluders, NonOccluders);
+                room.UpdateModelBatches(VisibleOccluders, VisibleNonOccluders);
 
             PointLightScratchList.Clear();
             SpotLightScratchList.Clear();
@@ -111,12 +108,19 @@ namespace GLOOP
                 PointLightScratchList.AddRange(room.GetVisiblePointLights());
             foreach (var room in VisibleAreas)
                 SpotLightScratchList.AddRange(room.GetVisibleSpotLights());
+
+            VisibleTerrain.Clear();
+            VisibleTerrain.AddRange(
+                Terrain
+                .Where(terrain => Camera.Current.IntersectsFrustum(terrain.BoundingBox.ToSphereBounds()))
+                .OrderBy(terrain => (terrain.Transform.Position - Camera.Current.Position).LengthSquared)
+            );
         }
 
         public void UpdateBuffers()
         {
-            OccluderBatches = BatchModels(Occluders);
-            NonOccluderBatches = BatchModels(NonOccluders);
+            OccluderBatches = BatchModels(VisibleOccluders);
+            NonOccluderBatches = BatchModels(VisibleNonOccluders);
 
             ScratchDrawCommands.Clear();
             ScratchGPUModels.Clear();
