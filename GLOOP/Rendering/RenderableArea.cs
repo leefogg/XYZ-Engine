@@ -21,9 +21,6 @@ namespace GLOOP.Rendering
         public List<PointLight> PointLights = new List<PointLight>();
         public List<SpotLight> SpotLights = new List<SpotLight>();
 
-        public IReadOnlyList<Model> Occluders { get; private set; }
-        public IReadOnlyList<Model> NonOccluders { get; private set; }
-
         protected RenderableArea(string name)
         {
             Name = name;
