@@ -24,6 +24,7 @@ using GLOOP.Util.Structures;
 using System.Text;
 using System.IO;
 using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
+using GLOOP.Extensions;
 
 namespace GLOOP.HPL
 {
@@ -93,9 +94,16 @@ namespace GLOOP.HPL
         private List<RenderBatch> NonOccluderBatches;
         private List<RenderBatch> OccluderBatches;
         private uint NonOccludersStartIndex; // The index in the above buffers that seperates occluders and non-occluders
-        private readonly List<Model> ModelsScratchList = new List<Model>();
         private readonly List<DrawElementsIndirectData> ScratchDrawCommands = new List<DrawElementsIndirectData>();
         private readonly List<GPUModel> ScratchGPUModels = new List<GPUModel>();
+        private Buffer<GPUPointLight> PointLightsBuffer;
+        private Buffer<GPUSpotLight> SpotLightsBuffer;
+        private readonly List<Rendering.SpotLight> SpotLightScratchList = new List<Rendering.SpotLight>();
+        private readonly List<Rendering.PointLight> PointLightScratchList = new List<Rendering.PointLight>();
+        private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
+        private readonly List<Model> Occluders = new List<Model>();
+        private readonly List<Model> NonOccluders = new List<Model>();
+        private Buffer<float> bloomBuffer;
 
         // Lighting
         private float OffsetByNormalScalar = 0.05f;
@@ -136,9 +144,6 @@ namespace GLOOP.HPL
         private bool enableImGui = false;
         private bool shouldUpdateVisibility = true;
 
-        private Buffer<float> bloomBuffer;
-        private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
-
         private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
         private CPUProfiler.Frame CPUFrame;
@@ -151,6 +156,7 @@ namespace GLOOP.HPL
         private readonly Ring<float> GPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         //private readonly StringBuilder CSV = new StringBuilder(10000);
         private const bool BenchmarkMode = false;
+        private const int MaxLights = 200;
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) 
@@ -333,9 +339,6 @@ namespace GLOOP.HPL
             scene = map.ToScene();
             var afterMapLoad = DateTime.Now;
             var beforeMapSort = DateTime.Now;
-            scene.Prepare();
-            foreach (var area in scene.VisibilityAreas.Values)
-                area.Prepare();
             var afterMapSort = DateTime.Now;
 
             Console.WriteLine($"Time taken to sort map {(afterMapSort - beforeMapSort).TotalSeconds} seconds");
@@ -474,9 +477,19 @@ namespace GLOOP.HPL
                 return;
 
             using var visibilityTimer = CPUFrame[CPUProfiler.Event.Visbility];
-            scene.UpdateModelBatches();
+
+            Occluders.Clear();
+            NonOccluders.Clear();
+            scene.UpdateModelBatches(Occluders, NonOccluders);
             foreach (var room in VisibleAreas)
-                room.UpdateModelBatches();
+                room.UpdateModelBatches(Occluders, NonOccluders);
+
+            PointLightScratchList.Clear();
+            SpotLightScratchList.Clear();
+            foreach (var room in VisibleAreas)
+                PointLightScratchList.AddRange(room.GetVisiblePointLights());
+            foreach (var room in VisibleAreas)
+                SpotLightScratchList.AddRange(room.GetVisibleSpotLights());
         }
 
         private void UpdateBuffers()
@@ -490,17 +503,8 @@ namespace GLOOP.HPL
             if (shouldUpdateVisibility)
             {
                 {
-                    ModelsScratchList.Clear();
-                    ModelsScratchList.AddRange(scene.Occluders);
-                    foreach (var room in VisibleAreas)
-                        ModelsScratchList.AddRange(room.Occluders);
-                    OccluderBatches = BatchModels(ModelsScratchList);
-
-                    ModelsScratchList.Clear();
-                    ModelsScratchList.AddRange(scene.NonOccluders);
-                    foreach (var room in VisibleAreas)
-                        ModelsScratchList.AddRange(room.NonOccluders);
-                    NonOccluderBatches = BatchModels(ModelsScratchList);
+                    OccluderBatches = BatchModels(Occluders);
+                    NonOccluderBatches = BatchModels(NonOccluders);
 
                     ScratchDrawCommands.Clear();
                     ScratchGPUModels.Clear();
@@ -512,14 +516,111 @@ namespace GLOOP.HPL
                     ModelsBuffer.Update(ScratchGPUModels.ToArray());
                 }
 
-                scene.UpdateLightBuffers();
-                foreach (var room in VisibleAreas)
-                    room.UpdateLightBuffers();
+                PopulateSpotLightsBuffer();
+                PopulatePointLightsBuffer();
             }
         }
 
+        private void PopulateSpotLightsBuffer()
+        {
+            if (SpotLightScratchList.Count == 0)
+                return;
+
+            var lights = new GPUSpotLight[Math.Min(MaxLights, SpotLightScratchList.Count)];
+            var numLights = 0;
+            foreach (var light in SpotLightScratchList)
+            {
+                lights[numLights++] = CreateLight(light);
+                if (numLights >= lights.Length)
+                    break;
+            }
+
+            SpotLightsBuffer.Update(lights);
+        }
+
+        private void PopulatePointLightsBuffer()
+        {
+            if (PointLightScratchList.Count == 0)
+                return;
+
+            var lights = new GPUPointLight[Math.Min(MaxLights, PointLightScratchList.Count)];
+            var numLights = 0;
+            foreach (var light in PointLightScratchList)
+            {
+                lights[numLights++] = CreateLight(light);
+                if (numLights >= lights.Length)
+                    break;
+            }
+
+            PointLightsBuffer.Update(lights);
+        }
+
+        private static GPUPointLight CreateLight(Rendering.PointLight light)
+        {
+            light.GetLightingScalars(out var diffuseScalar, out var specularScalar);
+            return new GPUPointLight(
+                light.Position,
+                light.Color,
+                light.Brightness,
+                light.Radius * 2, // TODO: Should not be doubled, need to fix brightness
+                light.FalloffPower,
+                diffuseScalar,
+                specularScalar
+            );
+        }
+        private static GPUSpotLight CreateLight(Rendering.SpotLight light)
+        {
+            light.GetLightingScalars(out var diffuseScalar, out var specularScalar);
+            var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
+            var dir = Matrix4.CreateFromQuaternion(light.Rotation) * new Vector4(0, 0, 1, 1);
+
+            GetLightVars(light, out var aspect, out var scale);
+
+            var rot = light.Rotation.ToEulerAngles();
+            rot.X = MathHelper.RadiansToDegrees(rot.X);
+            rot.Y = MathHelper.RadiansToDegrees(rot.Y);
+            rot.Z = MathHelper.RadiansToDegrees(rot.Z);
+            var viewMatrix = MathFunctions.CreateViewMatrix(light.Position, rot);
+            var projectionMatrix = new Matrix4();
+            MathFunctions.CreateProjectionMatrix(aspect, light.FOV, light.ZNear, light.Radius, ref projectionMatrix);
+            var viewProjection = new Matrix4();
+            MatrixExtensions.Multiply(projectionMatrix, viewMatrix, ref viewProjection);
+
+            return new GPUSpotLight(
+                modelMatrix,
+                light.Position,
+                light.Color,
+                dir.Xyz,
+                scale * 2,
+                aspect,
+                light.Brightness,
+                light.Radius * 2,
+                light.FalloffPower,
+                light.AngularFalloffPower,
+                light.FOV,
+                diffuseScalar,
+                specularScalar,
+                viewProjection
+            );
+        }
+
+        private static void GetLightVars(Rendering.SpotLight light, out float ar, out Vector3 scale)
+        {
+            ar = light.AspectRatio;
+            var deg2Rad = 0.0174533f;
+            var halfHeight = (float)Math.Tan(deg2Rad * (light.FOV / 2f));
+            var halfWidth = halfHeight * ar;
+            var far = light.Radius;
+            var xf = halfWidth * far;
+            var yf = halfHeight * far;
+            scale = new Vector3(xf, yf, -far);
+        }
+
+
         private List<RenderBatch> BatchModels(IEnumerable<Model> models)
         {
+            using var profiler = EventProfiler.Profile("Batching");
+
             var batches = GroupBy(models, SameRenderBatch);
             batches.ForEach(batch => batch.Models = batch.Models.OrderBy(model => (model.Transform.Position - Camera.Current.Position).LengthSquared).ToList());
 
@@ -896,14 +997,36 @@ namespace GLOOP.HPL
 
         private void setupBuffers()
         {
-            CreateModelUBOs();
+            CreateModelBuffers();
+
+            CreateLightBuffers();
 
             setupBloomUBO();
 
             setupRandomTexture();
         }
 
-        private void CreateModelUBOs()
+        private void CreateLightBuffers()
+        {
+            // TODO: Remove max, just render in batches of max
+            var totalPointLights = scene.PointLights.Count + scene.VisibilityAreas.Values.Sum(area => area.PointLights.Count);
+            PointLightsBuffer = new Buffer<GPUPointLight>(
+                Math.Min(MaxLights, totalPointLights),
+                BufferTarget.UniformBuffer,
+                BufferUsageHint.StreamDraw,
+                "PointLights"
+            );
+
+            var totalSpotLights = scene.SpotLights.Count + scene.VisibilityAreas.Values.Sum(area => area.SpotLights.Count);
+            SpotLightsBuffer = new Buffer<GPUSpotLight>(
+                Math.Min(MaxLights, totalPointLights),
+                BufferTarget.UniformBuffer,
+                BufferUsageHint.StreamDraw,
+                "SpotLights"
+            );
+        }
+
+        private void CreateModelBuffers()
         {
             var numModels = scene.VisibilityAreas.Values.Sum(area => area.Models.Count);
             DrawIndirectBuffer = new Buffer<DrawElementsIndirectData>(
@@ -1135,6 +1258,7 @@ namespace GLOOP.HPL
         {
             using var debugGroup = new DebugGroup("Lighting");
             using var gpuTimer = GPUFrame[GPUProfiler.Event.Lighting];
+            using var timer = CPUFrame[CPUProfiler.Event.Lighting];
 
             LightingBuffer.Use();
             GL.ClearColor(ambientColor.X, ambientColor.Y, ambientColor.Z, 0);
@@ -1201,7 +1325,6 @@ namespace GLOOP.HPL
         private void RenderLights()
         {
             using var profiler = EventProfiler.Profile();
-            using var timer = CPUFrame[CPUProfiler.Event.Lighting];
 
             var shaders = new[] { SpotLightShader, PointLightShader };
             foreach (var shader in shaders)
@@ -1218,30 +1341,85 @@ namespace GLOOP.HPL
                 shader.Set("lightScatterScalar", LightScatterScalar);
             }
 
-            var gbuffers = new[] {
+            var gbuffers = new[] { // TODO: Make this constant
                 GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse],
                 GBuffers.ColorBuffers[(int)GBufferTexture.Position],
                 GBuffers.ColorBuffers[(int)GBufferTexture.Normal],
                 GBuffers.ColorBuffers[(int)GBufferTexture.Specular],
             };
-            scene.RenderLights(
-                frustumMaterial,
-                SpotLightShader,
-                PointLightShader,
-                singleColorMaterial,
-                gbuffers,
-                debugLights
-            );
-            foreach (var area in VisibleAreas)
+
             {
-                area.RenderLights(
-                    frustumMaterial,
-                    SpotLightShader,
-                    PointLightShader,
-                    singleColorMaterial,
-                    gbuffers,
-                    debugLights
-                );
+                var numCulledPointLights = PointLightScratchList.Count;
+                if (numCulledPointLights > 0)
+                {
+                    using (new DebugGroup("Point Lights"))
+                    {
+                        PointLightsBuffer.Bind(1, 0);
+
+                        var shader = PointLightShader;
+                        shader.Use();
+                        Texture.Use(gbuffers, TextureUnit.Texture0);
+                        shader.Set("diffuseTex", TextureUnit.Texture0);
+                        shader.Set("positionTex", TextureUnit.Texture1);
+                        shader.Set("normalTex", TextureUnit.Texture2);
+                        shader.Set("specularTex", TextureUnit.Texture3);
+                        shader.Set("camPos", Camera.Current.Position);
+                        //TODO: Could render a 2D circle in screenspace instead of a sphere
+
+                        Primitives.Sphere.Draw(numInstances: numCulledPointLights);
+                        Metrics.LightsDrawn += numCulledPointLights;
+
+                        // Debug light spheres
+                        if (debugLights)
+                        {
+                            foreach (var light in PointLightScratchList)
+                            {
+                                var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, OpenTK.Mathematics.Quaternion.Identity, new Vector3(light.Radius * 2));
+                                singleColorMaterial.ModelMatrix = modelMatrix;
+                                singleColorMaterial.Commit();
+                                Primitives.Sphere.Draw(PrimitiveType.Lines);
+                            }
+                        }
+                    }
+                }
+            }
+
+            {
+                var numCulledSpotLights = SpotLightScratchList.Count;
+                if (numCulledSpotLights > 0)
+                {
+                    using (new DebugGroup("Spot Lights"))
+                    {
+                        SpotLightsBuffer.Bind(1, 0);
+
+                        var shader = SpotLightShader;
+                        shader.Use();
+                        Texture.Use(gbuffers, TextureUnit.Texture0);
+                        shader.Set("diffuseTex", TextureUnit.Texture0);
+                        shader.Set("positionTex", TextureUnit.Texture1);
+                        shader.Set("normalTex", TextureUnit.Texture2);
+                        shader.Set("specularTex", TextureUnit.Texture3);
+                        shader.Set("camPos", Camera.Current.Position);
+
+                        Primitives.Frustum.Draw(numInstances: numCulledSpotLights);
+                        Metrics.LightsDrawn += numCulledSpotLights;
+
+                        if (debugLights)
+                        {
+                            var material = frustumMaterial;
+                            foreach (var light in SpotLightScratchList)
+                            {
+                                var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
+                                GetLightVars(light, out var aspect, out var scale);
+                                material.AspectRatio = aspect;
+                                material.Scale = scale;
+                                material.ModelMatrix = modelMatrix;
+                                material.Commit();
+                                Primitives.Frustum.Draw(PrimitiveType.Lines);
+                            }
+                        }
+                    }
+                }
             }
         }
 

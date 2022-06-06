@@ -1,5 +1,6 @@
 ﻿using GLOOP.Extensions;
 using GLOOP.Rendering;
+using GLOOP.Rendering.Debugging;
 using GLOOP.Util;
 using GLOOP.Util.Structures;
 using OpenTK.Mathematics;
@@ -144,6 +145,8 @@ namespace GLOOP
 
         public bool IsInsideFrustum(Vector3 position, float radius)
         {
+            using var profiler = EventProfiler.Profile("Visibility");
+
             for (int i = 0; i < 6; i++)
             {
                 var planeEquation = FrustumPlanes[i];
@@ -173,6 +176,7 @@ namespace GLOOP
         //https://iquilezles.org/articles/frustumcorrect/
         public bool IntersectsFrustumFast(in Box3 worldspaceAABB)
         {
+            using var profiler = EventProfiler.Profile("Visibility");
             // check box outside/inside of frustum
             foreach (var plane in FrustumPlanes)
             {
