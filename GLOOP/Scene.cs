@@ -27,7 +27,6 @@ namespace GLOOP
         private Buffer<GPUModel> ModelsBuffer;
         private Buffer<GPUPointLight> PointLightsBuffer;
         private Buffer<GPUSpotLight> SpotLightsBuffer;
-        private uint NonOccludersStartIndex; // The index in the above buffers that seperates occluders and non-occluders
         private readonly List<DrawElementsIndirectData> ScratchDrawCommands = new List<DrawElementsIndirectData>();
         private readonly List<GPUModel> ScratchGPUModels = new List<GPUModel>();
         private readonly Ring<List<SpotLight>> VisibleSpotLights = new Ring<List<SpotLight>>(PowerOfTwo.Two, i => new List<SpotLight>());
@@ -145,7 +144,6 @@ namespace GLOOP
             ScratchDrawCommands.Clear();
             ScratchGPUModels.Clear();
             AddModelData(OccluderBatches, ScratchDrawCommands, ScratchGPUModels);
-            NonOccludersStartIndex = (uint)ScratchDrawCommands.Count;
             AddModelData(NonOccluderBatches, ScratchDrawCommands, ScratchGPUModels);
             if (ScratchDrawCommands.Count > 0)
             {
@@ -326,34 +324,29 @@ namespace GLOOP
         {
             DrawIndirectBuffer.Bind();
             ModelsBuffer.Bind(1);
-            RenderOccluderGeometry();
-            RenderNonOccluderGeometry();
-
-            RenderOccluderGeometry();
-            RenderNonOccluderGeometry();
+            var drawCommandPtr = (IntPtr)0;
+            RenderOccluderGeometry(ref drawCommandPtr);
+            RenderNonOccluderGeometry(ref drawCommandPtr);
         }
 
-        public void RenderOccluderGeometry()
+        public void RenderOccluderGeometry(ref IntPtr drawCommandPtr)
         {
             using var timer = new DebugGroup("Occluders");
             if (OccluderBatches != null && OccluderBatches.Count > 0)
-                MultiDrawIndirect(OccluderBatches, 0);
+                MultiDrawIndirect(OccluderBatches, ref drawCommandPtr);
         }
 
-        public void RenderNonOccluderGeometry()
+        public void RenderNonOccluderGeometry(ref IntPtr drawCommandPtr)
         {
             using var timer = new DebugGroup("Non Occluders");
             if (NonOccluderBatches != null && NonOccluderBatches.Count > 0)
-                MultiDrawIndirect(NonOccluderBatches, NonOccludersStartIndex);
+                MultiDrawIndirect(NonOccluderBatches, ref drawCommandPtr);
         }
 
-        private void MultiDrawIndirect(
-            IEnumerable<RenderBatch> batches, uint start)
-        {
-            var drawCommandPtr = (IntPtr)0;
-            var commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
-            drawCommandPtr += (int)start * commandSize;
+        private readonly int commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
 
+        private void MultiDrawIndirect(IList<RenderBatch> batches, ref IntPtr drawCommandPtr)
+        {
             foreach (var batch in batches)
             {
                 var batchSize = batch.Models.Count;
