@@ -1,4 +1,5 @@
 ﻿using GLOOP.Util;
+using GLOOP.Util.Structures;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
@@ -27,21 +28,26 @@ namespace GLOOP.Rendering.Debugging
             public override void Dispose()
             {
                 var endMs = Window.FrameMillisecondsElapsed;
-                EventTimings[FunctionName] += Math.Max(0, endMs - StartMs);
+                EventTimings.Current[FunctionName] += Math.Max(0, endMs - StartMs);
             }
         }
 
-        private static Dictionary<string, float> EventTimings = new Dictionary<string, float>();
-        private static Dictionary<string, Timer> Timers = new Dictionary<string, Timer>();
+        private static readonly Ring<Dictionary<string, float>> EventTimings = new Ring<Dictionary<string, float>>(
+            PowerOfTwo.Two,
+            i => new Dictionary<string, float>()
+        );
+        private static readonly Ring<Dictionary<string, Timer>> Timers = new Ring<Dictionary<string, Timer>>(
+            PowerOfTwo.Two,
+            i => new Dictionary<string, Timer>()
+        );
 
         public static Timer Profile([System.Runtime.CompilerServices.CallerMemberName] string functionName = "")
         {
-            Timer timer;
-            if (!Timers.TryGetValue(functionName, out timer))
+            if (!Timers.Current.TryGetValue(functionName, out var timer))
             {
                 timer = new Timer(functionName);
-                Timers.Add(functionName, timer);
-                EventTimings.Add(functionName, 0);
+                Timers.Current.Add(functionName, timer);
+                EventTimings.Current.Add(functionName, 0);
             }
 
             timer.Start();
@@ -52,10 +58,13 @@ namespace GLOOP.Rendering.Debugging
         [Conditional("BETA")]
         public static void NewFrame()
         {
-            var keys = new string[EventTimings.Keys.Count];
-            EventTimings.Keys.CopyTo(keys, 0);
+            EventTimings.MoveNext();
+            Timers.MoveNext();
+
+            var keys = new string[EventTimings.Current.Keys.Count];
+            EventTimings.Current.Keys.CopyTo(keys, 0);
             foreach (var key in keys)
-                EventTimings[key] = 0;
+                EventTimings.Current[key] = 0;
         }
 
         [Conditional("DEBUG")]
@@ -69,13 +78,11 @@ namespace GLOOP.Rendering.Debugging
             var pos = ImGui.GetWindowPos();
             var windowSize = ImGui.GetWindowContentRegionMax() - ImGui.GetWindowContentRegionMin();
             pos += ImGui.GetWindowContentRegionMin();
-            //pos.Y += windowSize.Y;
-            //pos.Y -= 20;
 
             var padding = 6;
-            var barHeight = windowSize.Y / EventTimings.Values.Count;
+            var barHeight = windowSize.Y / EventTimings.Current.Values.Count;
 
-            var labels = EventTimings.Keys.Select(key => (Key: key, WidthPx: ImGui.CalcTextSize(key).X));
+            var labels = EventTimings.Current.Keys.Select(key => (Key: key, WidthPx: ImGui.CalcTextSize(key).X));
 
             var startPos = pos;
 
@@ -89,7 +96,7 @@ namespace GLOOP.Rendering.Debugging
             pos = startPos;
             var longestLabel = labels.Max(l => l.WidthPx);
             pos.X += longestLabel + padding;
-            foreach (var (functionName, timing) in EventTimings)
+            foreach (var (functionName, timing) in EventTimings.Current)
             {
                 drawList.AddRectFilled(
                     pos,

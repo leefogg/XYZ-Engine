@@ -24,6 +24,7 @@ using GLOOP.Util.Structures;
 using System.Text;
 using System.IO;
 using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
+using System.Threading.Tasks;
 
 namespace GLOOP.HPL
 {
@@ -134,6 +135,7 @@ namespace GLOOP.HPL
         private float elapsedMilliseconds = 0;
         private CPUProfiler.Frame CPUFrame;
         private GPUProfiler.Frame GPUFrame;
+        private Task VisibilityTask;
         private readonly DateTime startTime = DateTime.Now;
         private readonly FrameBuffer backBuffer;
         private readonly int frameBufferWidth, frameBufferHeight;
@@ -358,7 +360,6 @@ namespace GLOOP.HPL
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             FrameStart();
-            Metrics.ResetFrameCounters();
 
             float frameElapsedMs = 0;
             using (var query = queryPool.BeginScope(QueryTarget.TimeElapsed))
@@ -367,18 +368,18 @@ namespace GLOOP.HPL
                 CPUFrame = cpuFrame;
                 using var gpuFrame = GPUProfiler.NextFrame;
                 GPUFrame = gpuFrame;
-
                 TaskMaster.AddTask(
                     query.IsResultAvailable,
                     () => { GPUFrameTimings.Set(1000f / (query.GetResult() / 1000000f)); GPUFrameTimings.MoveNext(); },
                     "Frame timing query"
                 );
 
+                Metrics.ResetFrameCounters();
+
                 var frameStart = DateTime.Now;
 
                 ImGuiController?.Update(this, (float)args.Time);
 
-                UpdateVisibility();
 #if VR
                 VRSystem.UpdateEyes();
                 VRSystem.UpdatePoses();
@@ -411,12 +412,16 @@ namespace GLOOP.HPL
 
                 RightEyeBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
 #else
-                UpdateBuffers();
                 ResetGBuffer();
                 RenderPass(backBuffer);
 #endif
 
                 DrawImGUIWindows();
+
+                VisibilityTask?.Wait();
+                scene.NewFrame();
+                UpdateBuffers();
+                VisibilityTask = Task.Run(UpdateVisibility);
 
                 if (BenchmarkMode && FrameNumber == 1)
                     Metrics.StartRecording($"{DateTime.Now:ddMMyyyy HHmm}.csv");

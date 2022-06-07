@@ -25,9 +25,9 @@ namespace GLOOP.HPL.Loading
             loadLights(mapPath + "_Light");
 
             loadStaticObjects(mapPath + "_StaticObject", assimp, material);
-            //loadEntities(mapPath + "_Entity", assimp, material);
-            //loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
-            //loadPrimitives(mapPath + "_Primitive", material);
+            loadEntities(mapPath + "_Entity", assimp, material);
+            loadDetailMeshes(mapPath + "_DetailMeshes", assimp, material);
+            loadPrimitives(mapPath + "_Primitive", material);
             loadTerrain(mapPath);
         }
 

@@ -11,7 +11,7 @@ namespace GLOOP.Util.Structures
         private readonly T[] Items;
         private int CurrentIndex;
 
-        private int NextIndex => CurrentIndex + 1 & Items.Length - 1;
+        private int NextIndex => GetIndex(1);
 
         public int Count => Items.Length;
 
@@ -27,6 +27,8 @@ namespace GLOOP.Util.Structures
 
         public Ring(PowerOfTwo size, Func<int, T> factory = null)
         {
+            System.Diagnostics.Debug.Assert(size >= PowerOfTwo.Two);
+
             var intitalizer = factory ?? (i => default);
             Items = new T[(int)size];
             for (int i = 0; i < (int)size; i++)
@@ -34,7 +36,7 @@ namespace GLOOP.Util.Structures
         }
 
         public void MoveNext() => CurrentIndex = NextIndex;
-        public T Peek() => Items[NextIndex];
+        public T Peek(int ahead = 1) => Items[GetIndex(ahead)];
 
         public void SetAndMove(T item)
         {
@@ -45,6 +47,8 @@ namespace GLOOP.Util.Structures
         {
             Items[CurrentIndex] = item;
         }
+
+        private int GetIndex(int offset) => CurrentIndex + offset & Items.Length - 1;
 
         public IEnumerator<T> GetEnumerator() => new RingEnumerator<T>(Items, CurrentIndex);
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

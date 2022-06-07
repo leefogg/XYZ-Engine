@@ -3,6 +3,7 @@ using GLOOP.Rendering;
 using GLOOP.Rendering.Debugging;
 using GLOOP.Rendering.Materials;
 using GLOOP.Util;
+using GLOOP.Util.Structures;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
@@ -15,6 +16,8 @@ namespace GLOOP
 {
     public class Scene : RenderableArea
     {
+        private const int MaxLights = 200;
+
         public List<Model> Terrain = new List<Model>();
         public List<VisibilityPortal> VisibilityPortals = new List<VisibilityPortal>();
         public Dictionary<string, VisibilityArea> VisibilityAreas = new Dictionary<string, VisibilityArea>();
@@ -22,32 +25,42 @@ namespace GLOOP
         // Rendering stuff
         private Buffer<DrawElementsIndirectData> DrawIndirectBuffer;
         private Buffer<GPUModel> ModelsBuffer;
-        private List<RenderBatch> NonOccluderBatches;
-        private List<RenderBatch> OccluderBatches;
+        private Buffer<GPUPointLight> PointLightsBuffer;
+        private Buffer<GPUSpotLight> SpotLightsBuffer;
         private uint NonOccludersStartIndex; // The index in the above buffers that seperates occluders and non-occluders
         private readonly List<DrawElementsIndirectData> ScratchDrawCommands = new List<DrawElementsIndirectData>();
         private readonly List<GPUModel> ScratchGPUModels = new List<GPUModel>();
-        private Buffer<GPUPointLight> PointLightsBuffer;
-        private Buffer<GPUSpotLight> SpotLightsBuffer;
-        private readonly List<SpotLight> SpotLightScratchList = new List<SpotLight>();
-        private readonly List<PointLight> PointLightScratchList = new List<PointLight>();
-        private readonly List<Model> VisibleOccluders = new List<Model>();
-        private readonly List<Model> VisibleNonOccluders = new List<Model>();
-        private readonly List<Model> VisibleTerrain = new List<Model>();
-        private const int MaxLights = 200;
+        private readonly Ring<List<SpotLight>> VisibleSpotLights = new Ring<List<SpotLight>>(PowerOfTwo.Two, i => new List<SpotLight>());
+        private readonly Ring<List<PointLight>> VisiblePointLights = new Ring<List<PointLight>>(PowerOfTwo.Two, i => new List<PointLight>());
+        private readonly Ring<List<Model>> VisibleOccluders = new Ring<List<Model>>(PowerOfTwo.Two, NewListOfModels);
+        private readonly Ring<List<Model>> VisibleNonOccluders = new Ring<List<Model>>(PowerOfTwo.Two, NewListOfModels);
+        private readonly Ring<List<Model>> VisibleTerrain = new Ring<List<Model>>(PowerOfTwo.Two, NewListOfModels);
+        private List<RenderBatch> NonOccluderBatches;
+        private List<RenderBatch> OccluderBatches;
+
+        private static List<Model> NewListOfModels(int i) => new List<Model>();
 
         public Scene() : base("World")
         {
 
         }
 
+        public void NewFrame()
+        {
+            VisibleOccluders.MoveNext();
+            VisibleNonOccluders.MoveNext();
+            VisiblePointLights.MoveNext();
+            VisibleSpotLights.MoveNext();
+            VisibleTerrain.MoveNext();
+        }
+
         public void RenderTerrain()
         {
-            if (VisibleTerrain.Count == 0)
+            if (VisibleTerrain.Current.Count == 0)
                 return;
 
             using var deugGroup = new DebugGroup("Terrain");
-            foreach (var terrainPatch in VisibleTerrain)
+            foreach (var terrainPatch in VisibleTerrain.Current)
                 terrainPatch.Render();
         }
 
@@ -94,23 +107,30 @@ namespace GLOOP
             );
         }
 
-        public void UpdateVisibility(IReadOnlyList<VisibilityArea> VisibleAreas)
+        public void UpdateVisibility(IReadOnlyList<VisibilityArea> areas)
         {
-            VisibleOccluders.Clear();
-            VisibleNonOccluders.Clear();
-            UpdateModelBatches(VisibleOccluders, VisibleNonOccluders);
-            foreach (var room in VisibleAreas)
-                room.UpdateModelBatches(VisibleOccluders, VisibleNonOccluders);
+            var visibleAreas        = areas.ToArray();
+            var visibleOccluders    = VisibleOccluders.Peek();
+            var visibleNonOccluders = VisibleNonOccluders.Peek();
+            var visibleTerrain      = VisibleTerrain.Peek();
+            var visiblePointLights  = VisiblePointLights.Peek();
+            var visibleSpotLights   = VisibleSpotLights.Peek();
 
-            PointLightScratchList.Clear();
-            SpotLightScratchList.Clear();
-            foreach (var room in VisibleAreas)
-                PointLightScratchList.AddRange(room.GetVisiblePointLights());
-            foreach (var room in VisibleAreas)
-                SpotLightScratchList.AddRange(room.GetVisibleSpotLights());
+            visibleOccluders.Clear();
+            visibleNonOccluders.Clear();
+            UpdateModelBatches(visibleOccluders, visibleNonOccluders);
+            foreach (var room in visibleAreas)
+                room.UpdateModelBatches(visibleOccluders, visibleNonOccluders);
 
-            VisibleTerrain.Clear();
-            VisibleTerrain.AddRange(
+            visiblePointLights.Clear();
+            visibleSpotLights.Clear();
+            foreach (var room in visibleAreas)
+                visiblePointLights.AddRange(room.GetVisiblePointLights());
+            foreach (var room in visibleAreas)
+                visibleSpotLights.AddRange(room.GetVisibleSpotLights());
+
+            visibleTerrain.Clear();
+            visibleTerrain.AddRange(
                 Terrain
                 .Where(terrain => Camera.Current.IntersectsFrustum(terrain.BoundingBox.ToSphereBounds()))
                 .OrderBy(terrain => (terrain.Transform.Position - Camera.Current.Position).LengthSquared)
@@ -119,15 +139,14 @@ namespace GLOOP
 
         public void UpdateBuffers()
         {
-            OccluderBatches = BatchModels(VisibleOccluders);
-            NonOccluderBatches = BatchModels(VisibleNonOccluders);
+            OccluderBatches = BatchModels(VisibleOccluders.Current);
+            NonOccluderBatches = BatchModels(VisibleNonOccluders.Current);
 
             ScratchDrawCommands.Clear();
             ScratchGPUModels.Clear();
             AddModelData(OccluderBatches, ScratchDrawCommands, ScratchGPUModels);
             NonOccludersStartIndex = (uint)ScratchDrawCommands.Count;
             AddModelData(NonOccluderBatches, ScratchDrawCommands, ScratchGPUModels);
-
             if (ScratchDrawCommands.Count > 0)
             {
                 DrawIndirectBuffer.Update(ScratchDrawCommands.ToArray());
@@ -140,12 +159,12 @@ namespace GLOOP
 
         private void PopulateSpotLightsBuffer()
         {
-            if (SpotLightScratchList.Count == 0)
+            if (VisibleSpotLights.Count == 0)
                 return;
 
-            var lights = new GPUSpotLight[Math.Min(MaxLights, SpotLightScratchList.Count)];
+            var lights = new GPUSpotLight[Math.Min(MaxLights, VisibleSpotLights.Current.Count)];
             var numLights = 0;
-            foreach (var light in SpotLightScratchList)
+            foreach (var light in VisibleSpotLights.Current)
             {
                 lights[numLights++] = CreateLight(light);
                 if (numLights >= lights.Length)
@@ -157,12 +176,12 @@ namespace GLOOP
 
         private void PopulatePointLightsBuffer()
         {
-            if (PointLightScratchList.Count == 0)
+            if (VisiblePointLights.Count == 0)
                 return;
 
-            var lights = new GPUPointLight[Math.Min(MaxLights, PointLightScratchList.Count)];
+            var lights = new GPUPointLight[Math.Min(MaxLights, VisiblePointLights.Current.Count)];
             var numLights = 0;
-            foreach (var light in PointLightScratchList)
+            foreach (var light in VisiblePointLights.Current)
             {
                 lights[numLights++] = CreateLight(light);
                 if (numLights >= lights.Length)
@@ -232,7 +251,6 @@ namespace GLOOP
             var yf = halfHeight * far;
             scale = new Vector3(xf, yf, -far);
         }
-
 
         private List<RenderBatch> BatchModels(IEnumerable<Model> models)
         {
@@ -318,13 +336,15 @@ namespace GLOOP
         public void RenderOccluderGeometry()
         {
             using var timer = new DebugGroup("Occluders");
-            MultiDrawIndirect(OccluderBatches, 0);
+            if (OccluderBatches != null && OccluderBatches.Count > 0)
+                MultiDrawIndirect(OccluderBatches, 0);
         }
 
         public void RenderNonOccluderGeometry()
         {
             using var timer = new DebugGroup("Non Occluders");
-            MultiDrawIndirect(NonOccluderBatches, NonOccludersStartIndex);
+            if (NonOccluderBatches != null && NonOccluderBatches.Count > 0)
+                MultiDrawIndirect(NonOccluderBatches, NonOccludersStartIndex);
         }
 
         private void MultiDrawIndirect(
@@ -364,7 +384,7 @@ namespace GLOOP
             bool debugLights)
         {
             {
-                var numCulledPointLights = PointLightScratchList.Count;
+                var numCulledPointLights = VisiblePointLights.Current.Count;
                 if (numCulledPointLights > 0)
                 {
                     using (new DebugGroup("Point Lights"))
@@ -387,9 +407,9 @@ namespace GLOOP
                         // Debug light spheres
                         if (debugLights)
                         {
-                            foreach (var light in PointLightScratchList)
+                            foreach (var light in VisiblePointLights.Current)
                             {
-                                var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, OpenTK.Mathematics.Quaternion.Identity, new Vector3(light.Radius * 2));
+                                var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, Quaternion.Identity, new Vector3(light.Radius * 2));
                                 singleColorMaterial.ModelMatrix = modelMatrix;
                                 singleColorMaterial.Commit();
                                 Primitives.Sphere.Draw(PrimitiveType.Lines);
@@ -400,7 +420,7 @@ namespace GLOOP
             }
 
             {
-                var numCulledSpotLights = SpotLightScratchList.Count;
+                var numCulledSpotLights = VisibleSpotLights.Current.Count;
                 if (numCulledSpotLights > 0)
                 {
                     using (new DebugGroup("Spot Lights"))
@@ -422,7 +442,7 @@ namespace GLOOP
                         if (debugLights)
                         {
                             var material = frustumMaterial;
-                            foreach (var light in SpotLightScratchList)
+                            foreach (var light in VisibleSpotLights.Current)
                             {
                                 var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
                                 GetLightVars(light, out var aspect, out var scale);

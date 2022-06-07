@@ -19,20 +19,20 @@ namespace GLOOP.Rendering.Debugging
 
         public enum Event
         {
-            UpdateBuffers,
             Geomertry,
             Lighting,
             Post,
             ImGUI,
+            UpdateBuffers,
             Count
         }
         private static uint[] Colors = new uint[(int)Event.Count]
         {
-            0xFF745D81, // Update Buffers
             0xFF0000FF, // Geometry
             0xFFA0A0A0, // Lighting
             0xFF00FF00, // Post
-            0xFFFF0000  // ImGUI
+            0xFFFF0000, // ImGUI
+            0xFF745D81, // Update Buffers
         };
 
         public class GPUEventTiming : DummyDisposable
