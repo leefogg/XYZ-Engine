@@ -58,18 +58,14 @@ namespace GLOOP.Rendering.Debugging
             }
 
             public override void Dispose() => EndMs = Window.FrameMillisecondsElapsed;
-#endif
+
             public IDisposable this[Event index]
             {
                 get
                 {
-#if !RELEASE
                     var e = EventTimings[(int)index];
                     e.Start();
                     return e;
-#else
-                    return DummyDisposable.Instance;
-#endif
                 }
             }
 
@@ -77,11 +73,17 @@ namespace GLOOP.Rendering.Debugging
 
             internal void Zero()
             {
-#if !RELEASE
                 foreach (var evnt in EventTimings)
                     evnt.Zero();
-#endif
             }
+
+#else
+            public Frame() { }
+
+            public IDisposable PeekEvent(Event index) => DummyDisposable.Instance;
+            internal void Zero() { }
+            public IDisposable this[Event index] => DummyDisposable.Instance;
+#endif
         }
 
         public class CPUEventTiming : DummyDisposable

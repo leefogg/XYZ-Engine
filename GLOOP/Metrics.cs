@@ -56,10 +56,9 @@ namespace GLOOP
             BufferWrites = 0;
         }
 
-        [Conditional("DEBUG")]
-        [Conditional("BETA")]
         public static void WriteLog(CPUProfiler.Frame cpuFrame, GPUProfiler.Frame gpuFrame)
         {
+#if !RELEASE
             float CPUEventLength(CPUProfiler.Event index)
             {
                 var e = (CPUProfiler.CPUEventTiming)cpuFrame.PeekEvent(index);
@@ -98,6 +97,7 @@ namespace GLOOP
                 GPUEventLength(GPUProfiler.Event.Lighting),
                 GPUEventLength(GPUProfiler.Event.Post)
             );
+#endif
         }
 
         [Conditional("DEBUG")]
