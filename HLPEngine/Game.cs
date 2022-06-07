@@ -374,6 +374,7 @@ namespace GLOOP.HPL
                     "Frame timing query"
                 );
 
+                Metrics.AssertMetricRanges();
                 Metrics.ResetFrameCounters();
 
                 var frameStart = DateTime.Now;
@@ -502,7 +503,7 @@ namespace GLOOP.HPL
             const int TargetFPS = 144;
             var values = GPUFrameTimings.ToArray();
             float average = values.Average();
-            var red = (float)MathFunctions.Map(average, 144, 120, 0, 1);
+            var red = (float)MathFunctions.Map(average, 144, 120, 1, 0);
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(red, 1 - red, 0, 1));
             ImGui.PlotHistogram("GPU", ref values[0], values.Length, 0, null, 60, 144, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
             ImGui.Text($"Average: {1000f / average:0.00}ms ({average:0.000} fps)");
