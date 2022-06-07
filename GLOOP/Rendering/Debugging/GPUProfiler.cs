@@ -167,7 +167,7 @@ namespace GLOOP.Rendering.Debugging
             {
                 var evnt = lastFrame.EventTimings[i];
                 drawList.AddRectFilled(pos - offset, pos + rectOffset - offset, Colors[i]);
-                var text = $"[{((evnt.EndNs - evnt.StartNs)/1000f):0000.000}ms] {Enum.GetName(typeof(Event), (Event)i)}";
+                var text = $"[{((evnt.EndNs - evnt.StartNs)/1_000f):0000.000}ns] {Enum.GetName(typeof(Event), (Event)i)}";
                 drawList.AddText(pos + textOffset - offset, Colors[i], text);
                 offset.Y += 15;
             }
