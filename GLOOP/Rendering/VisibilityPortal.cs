@@ -14,6 +14,22 @@ namespace GLOOP.Rendering
         public readonly string Name;
         public readonly Box3 BoundingBox;
         public string[] VisibilityAreas;
+        private bool isVisible;
+        private byte VisibilityConfidence;
+        public bool IsVisible
+        {
+            get => isVisible;
+            set
+            {
+                var dir = value ? 1 : -1;
+                if ((dir == -1 && VisibilityConfidence > 0) || (dir == 1 && VisibilityConfidence < 3))
+                    VisibilityConfidence += (byte)dir;
+                if (isVisible && VisibilityConfidence == 0)
+                    isVisible = false;
+                else if (!isVisible && VisibilityConfidence == 3)
+                    isVisible = true;
+            }
+        }
 
         public Matrix4 ModelMatrix => Matrix4.CreateScale(BoundingBox.Size) * Matrix4.CreateTranslation(BoundingBox.Center);
 

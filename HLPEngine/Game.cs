@@ -159,6 +159,7 @@ namespace GLOOP.HPL
                 enableFXAA = true;
                 enableBloom = true;
                 enableSSAO = true;
+                VSync = VSyncMode.Off;
             }
             else
             {
@@ -566,8 +567,12 @@ namespace GLOOP.HPL
                 if (PortalQueries.Any(pair => !pair.Item2.IsResultAvailable()))
                     return;
                 foreach (var (portal, query) in PortalQueries)
-                    if (query.GetResult() > 0) // Is visible
+                {
+                    portal.IsVisible = query.GetResult() > 0;
+                    if (portal.IsVisible)
                         VisibleAreas.AddRange(portal.VisibilityAreas.Select(areaName => scene.VisibilityAreas[areaName]));
+                }
+
                 PortalQueries.Clear();
 
                 using (new DebugGroup("Portals"))
