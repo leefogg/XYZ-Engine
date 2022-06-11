@@ -26,7 +26,7 @@ namespace GLOOP.Rendering
             Name = name;
         }
 
-        public void UpdateModelBatches(List<Model> occluders, List<Model> nonOccluders)
+        public void AddVisibleModels(List<Model> occluders, List<Model> nonOccluders)
         {
             foreach (var model in Models)
             {

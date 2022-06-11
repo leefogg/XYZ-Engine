@@ -34,8 +34,8 @@ namespace GLOOP
         private readonly Ring<List<Model>> VisibleOccluders = new Ring<List<Model>>(PowerOfTwo.Two, NewListOfModels);
         private readonly Ring<List<Model>> VisibleNonOccluders = new Ring<List<Model>>(PowerOfTwo.Two, NewListOfModels);
         private readonly Ring<List<Model>> VisibleTerrain = new Ring<List<Model>>(PowerOfTwo.Two, NewListOfModels);
-        private List<RenderBatch> NonOccluderBatches;
-        private List<RenderBatch> OccluderBatches;
+        private readonly List<RenderBatch> NonOccluderBatches = new List<RenderBatch>();
+        private readonly List<RenderBatch> OccluderBatches = new List<RenderBatch>();
 
         private static List<Model> NewListOfModels(int i) => new List<Model>();
 
@@ -117,9 +117,9 @@ namespace GLOOP
 
             visibleOccluders.Clear();
             visibleNonOccluders.Clear();
-            UpdateModelBatches(visibleOccluders, visibleNonOccluders);
+            AddVisibleModels(visibleOccluders, visibleNonOccluders);
             foreach (var room in visibleAreas)
-                room.UpdateModelBatches(visibleOccluders, visibleNonOccluders);
+                room.AddVisibleModels(visibleOccluders, visibleNonOccluders);
 
             visiblePointLights.Clear();
             visibleSpotLights.Clear();
@@ -138,12 +138,12 @@ namespace GLOOP
 
         public void UpdateBuffers()
         {
-            OccluderBatches = BatchModels(VisibleOccluders.Current);
-            NonOccluderBatches = BatchModels(VisibleNonOccluders.Current);
+            BatchModels(VisibleOccluders.Current, OccluderBatches);
+            BatchModels(VisibleNonOccluders.Current, NonOccluderBatches);
 
             ScratchDrawCommands.Clear();
             ScratchGPUModels.Clear();
-            AddModelData(OccluderBatches, ScratchDrawCommands, ScratchGPUModels);
+            AddModelData(OccluderBatches,    ScratchDrawCommands, ScratchGPUModels);
             AddModelData(NonOccluderBatches, ScratchDrawCommands, ScratchGPUModels);
             if (ScratchDrawCommands.Count > 0)
             {
@@ -250,19 +250,19 @@ namespace GLOOP
             scale = new Vector3(xf, yf, -far);
         }
 
-        private List<RenderBatch> BatchModels(IEnumerable<Model> models)
+        private List<RenderBatch> BatchModels(IEnumerable<Model> models, List<RenderBatch> batches)
         {
             using var profiler = EventProfiler.Profile("Batching");
 
-            var batches = GroupBy(models, SameRenderBatch);
+            GroupBy(models, batches, SameRenderBatch);
             batches.ForEach(batch => batch.Models = batch.Models.OrderBy(model => (model.Transform.Position - Camera.Current.Position).LengthSquared).ToList());
 
             return batches;
         }
 
-        private static List<RenderBatch> GroupBy(IEnumerable<Model> models, Func<Model, Model, bool> comparer)
+        private static void GroupBy(IEnumerable<Model> models, List<RenderBatch> batches, Func<Model, Model, bool> comparer)
         {
-            var batches = new List<RenderBatch>();
+            batches.Clear();
 
             foreach (var model in models)
             {
@@ -280,8 +280,6 @@ namespace GLOOP
                 if (!foundBatch)
                     batches.Add(new RenderBatch(new[] { model }));
             }
-
-            return batches;
         }
 
         private static bool SameRenderBatch(Model a, Model b)

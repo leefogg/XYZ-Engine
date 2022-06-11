@@ -73,5 +73,18 @@ namespace GLOOP.Extensions
                     self.Add(factory == null ? default : factory());
             }
         }
+
+        public static int IndexOf<T>(this IEnumerable<T> self, T item) where T : IComparable<T>
+        {
+            int i = -1;
+            foreach (var el in self)
+            {
+                i++;
+                if (el != null && el.CompareTo(item) == 0)
+                    return i;
+            }
+
+            return -1;
+        }
     }
 }

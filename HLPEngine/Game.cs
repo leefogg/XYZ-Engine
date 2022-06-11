@@ -463,8 +463,6 @@ namespace GLOOP.HPL
 
         private void UpdateVisibility()
         {
-            using var visibilityTimer = CPUFrame[CPUProfiler.Event.Visbility];
-
             if (!(shouldUpdateVisibility || FrameNumber == 0))
                 return;
 
@@ -745,7 +743,8 @@ namespace GLOOP.HPL
 
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
 
-            scene.UpdateBuffers();
+            if (shouldUpdateVisibility || FrameNumber == 0)
+                scene.UpdateBuffers();
         }
 
         private void setupBuffers()

@@ -1,4 +1,5 @@
-﻿using GLOOP.Util;
+﻿using GLOOP.Extensions;
+using GLOOP.Util;
 using GLOOP.Util.Structures;
 using ImGuiNET;
 using System;
@@ -13,13 +14,12 @@ namespace GLOOP.Rendering.Debugging
     {
         public class Timer : DummyDisposable
         {
-            public float StartMs;
-            private string FunctionName;
-            public Timer(string name)
+            private float StartMs;
+            internal int FuncIndex;
+            public Timer(int index)
             {
-                FunctionName = name;
+                FuncIndex = index;
             }
-
             public void Start()
             {
                 StartMs = Window.FrameMillisecondsElapsed;
@@ -28,26 +28,43 @@ namespace GLOOP.Rendering.Debugging
             public override void Dispose()
             {
                 var endMs = Window.FrameMillisecondsElapsed;
-                EventTimings.Current[FunctionName] += Math.Max(0, endMs - StartMs);
+                if (FuncIndex < EventTimings.Current.Length)
+                    EventTimings.Current[FuncIndex] += Math.Max(0, endMs - StartMs);
+                else
+                    Debug.Fail("Not enough space to store timing for function " + FunctionNames[FuncIndex]);
             }
         }
 
-        private static readonly Ring<Dictionary<string, float>> EventTimings = new Ring<Dictionary<string, float>>(
-            PowerOfTwo.Two,
-            i => new Dictionary<string, float>()
-        );
-        private static readonly Ring<Dictionary<string, Timer>> Timers = new Ring<Dictionary<string, Timer>>(
-            PowerOfTwo.Two,
-            i => new Dictionary<string, Timer>()
-        );
+        private const int MAX_TRACKED_FUNCTIONS = 32;
+        private static readonly string[] FunctionNames = new string[MAX_TRACKED_FUNCTIONS];
+        private static readonly Timer[] Timers = new Timer[MAX_TRACKED_FUNCTIONS];
+        private static readonly Ring<float[]> EventTimings = new Ring<float[]>(PowerOfTwo.Two, i => new float[MAX_TRACKED_FUNCTIONS]);
+        private static int NumTrackedFunctions;
 
-        public static Timer Profile([System.Runtime.CompilerServices.CallerMemberName] string functionName = "")
+        public static float GetTiming(string funcName) 
         {
-            if (!Timers.Current.TryGetValue(functionName, out var timer))
+            var index = FunctionNames.IndexOf(funcName);
+            if (index == -1)
+                return 0;
+            return EventTimings.Current[index];
+        }
+
+        public static IDisposable Profile([System.Runtime.CompilerServices.CallerMemberName] string functionName = "")
+        {
+            var nameIdx = FunctionNames.IndexOf(functionName);
+            Timer timer;
+            if (nameIdx == -1)
             {
-                timer = new Timer(functionName);
-                Timers.Current.Add(functionName, timer);
-                EventTimings.Current.Add(functionName, 0);
+                nameIdx = NumTrackedFunctions;
+                FunctionNames[NumTrackedFunctions] = functionName;
+                timer = new Timer(nameIdx);
+                Timers[NumTrackedFunctions] = timer;
+                NumTrackedFunctions++;
+            } 
+            else
+            {
+                timer = Timers[nameIdx];
+                timer.FuncIndex = nameIdx;
             }
 
             timer.Start();
@@ -59,12 +76,7 @@ namespace GLOOP.Rendering.Debugging
         public static void NewFrame()
         {
             EventTimings.MoveNext();
-            Timers.MoveNext();
-
-            var keys = new string[EventTimings.Current.Keys.Count];
-            EventTimings.Current.Keys.CopyTo(keys, 0);
-            foreach (var key in keys)
-                EventTimings.Current[key] = 0;
+            Array.Clear(EventTimings.Current, 0, NumTrackedFunctions);
         }
 
         [Conditional("DEBUG")]
@@ -80,24 +92,24 @@ namespace GLOOP.Rendering.Debugging
             pos += ImGui.GetWindowContentRegionMin();
 
             var padding = 6;
-            var barHeight = windowSize.Y / EventTimings.Current.Values.Count;
-
-            var labels = EventTimings.Current.Keys.Select(key => (Key: key, WidthPx: ImGui.CalcTextSize(key).X));
+            var barHeight = windowSize.Y / NumTrackedFunctions;
 
             var startPos = pos;
 
             pos.Y += padding;
-            foreach (var (functionName, _) in labels)
+            for (int i = 0; i < NumTrackedFunctions; i++)
             {
-                drawList.AddText(pos, 0xFFFFFFFF, functionName);
+                drawList.AddText(pos, 0xFFFFFFFF, FunctionNames[i]);
                 pos.Y += barHeight;
             }
 
             pos = startPos;
-            var longestLabel = labels.Max(l => l.WidthPx);
+            var longestLabel = FunctionNames.Max(key => ImGui.CalcTextSize(key).X);
             pos.X += longestLabel + padding;
-            foreach (var (functionName, timing) in EventTimings.Current)
+            for (int i = 0; i < NumTrackedFunctions; i++)
             {
+                var functionName = FunctionNames[i];
+                var timing = EventTimings.Current[i];
                 drawList.AddRectFilled(
                     pos,
                     pos + new System.Numerics.Vector2((int)Math.Ceiling(timing * 100f), barHeight - padding),
