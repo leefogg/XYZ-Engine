@@ -254,7 +254,7 @@ namespace GLOOP
         {
             using var profiler = EventProfiler.Profile("Batching");
 
-            GroupBy(models, batches, SameRenderBatch);
+            GroupBy(models.OrderBy(m => m.Material.Shader.Handle), batches, SameRenderBatch);
             batches.ForEach(batch => batch.Models = batch.Models.OrderBy(model => (model.Transform.Position - Camera.Current.Position).LengthSquared).ToList());
 
             return batches;
