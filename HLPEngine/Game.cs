@@ -103,9 +103,11 @@ namespace GLOOP.HPL
         private bool UseLightSpecular = true;
         private float LightScatterScalar = 0.1f;
         // Bloom
-        private float BrightPass = 10;
-        private System.Numerics.Vector3 SizeWeight = new System.Numerics.Vector3(0.1f, 0.5f, 0.25f);
-        private float WeightScalar = 3.5f;
+        private float BrightPass = 1;
+        private System.Numerics.Vector3 SizeWeight = new System.Numerics.Vector3(0.5f, 0.75f, 1f);
+        private float WeightScalar = 1.75f;
+        private float hWidth = 5f, vWidth = 5f, offset = 1.75f;
+        private int numSamples = 6;
         // Post
         private float Key = 1f;
         private float Exposure = 1f;
@@ -264,7 +266,7 @@ namespace GLOOP.HPL
                 null,
                 "Fullbright"
             );
-            ExtractBright = new StaticPixelShader(
+            ExtractBright = new DynamicPixelShader(
                 "assets/shaders/Bloom/Extract/vertex.vert",
                 "assets/shaders/Bloom/Extract/fragment.frag",
                 null,
@@ -756,45 +758,57 @@ namespace GLOOP.HPL
         {
             scene.SetupBuffers();
 
-            setupBloomUBO();
+            UpdateBloomBuffer();
 
             setupRandomTexture();
         }
 
-        private void setupBloomUBO()
+        private void UpdateBloomBuffer()
         {
-            var weights = new[,] {
-                {1.00000f, 1.94883f, 1.75699f, 1.45802f, 1.11366f, 0.78296f, 0.50667f, 0.30179f, 0.16545f, 0.08349f, 0.03878f, 0.01658f, 0.00652f, 0.00236f, 0.00079f, 0.00024f, 0.00007f, 0.00002f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f},
-                {1.00000f, 1.94883f, 1.75699f, 1.45802f, 1.11366f, 0.78296f, 0.50667f, 0.30179f, 0.16545f, 0.08349f, 0.03878f, 0.01658f, 0.00652f, 0.00236f, 0.00079f, 0.00024f, 0.00007f, 0.00002f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f},
-                {1.00000f, 1.89943f, 1.54556f, 1.06639f, 0.62389f, 0.30950f, 0.13018f, 0.04643f, 0.01404f, 0.00360f, 0.00078f, 0.00014f, 0.00002f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f},
-                {1.00000f, 1.89943f, 1.54556f, 1.06639f, 0.62389f, 0.30950f, 0.13018f, 0.04643f, 0.01404f, 0.00360f, 0.00078f, 0.00014f, 0.00002f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f},
-                {1.00000f, 1.80567f, 1.20071f, 0.57600f, 0.19930f, 0.04972f, 0.00894f, 0.00116f, 0.00011f, 0.00001f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f},
-                {1.00000f, 1.80567f, 1.20071f, 0.57600f, 0.19930f, 0.04972f, 0.00894f, 0.00116f, 0.00011f, 0.00001f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f, 0.00000f}
-            };
-            var offsets = new[,] {
-                {0.00000f, 0.00289f, 0.00675f, 0.01060f, 0.01446f, 0.01832f, 0.02217f, 0.02603f, 0.02988f, 0.03374f, 0.03760f, 0.04145f, 0.04531f, 0.04917f, 0.05302f, 0.05688f, 0.06074f, 0.06460f, 0.06846f, 0.07231f, 0.07617f, 0.08003f, 0.08389f, 0.08775f},
-                {0.00000f, 0.00155f, 0.00363f, 0.00570f, 0.00777f, 0.00984f, 0.01192f, 0.01399f, 0.01606f, 0.01814f, 0.02021f, 0.02228f, 0.02435f, 0.02643f, 0.02850f, 0.03057f, 0.03265f, 0.03472f, 0.03679f, 0.03887f, 0.04094f, 0.04302f, 0.04509f, 0.04717f},
-                {0.00000f, 0.00575f, 0.01342f, 0.02110f, 0.02877f, 0.03644f, 0.04412f, 0.05179f, 0.05947f, 0.06715f, 0.07483f, 0.08252f, 0.09021f, 0.09789f, 0.10559f, 0.11328f, 0.12098f, 0.12868f, 0.13638f, 0.14408f, 0.15179f, 0.15950f, 0.16721f, 0.17492f},
-                {0.00000f, 0.00309f, 0.00722f, 0.01134f, 0.01546f, 0.01959f, 0.02371f, 0.02784f, 0.03197f, 0.03609f, 0.04022f, 0.04435f, 0.04849f, 0.05262f, 0.05675f, 0.06089f, 0.06503f, 0.06916f, 0.07330f, 0.07744f, 0.08159f, 0.08573f, 0.08988f, 0.09402f},
-                {0.00000f, 0.01139f, 0.02657f, 0.04176f, 0.05697f, 0.07218f, 0.08742f, 0.10268f, 0.11795f, 0.13325f, 0.14856f, 0.16390f, 0.17925f, 0.19463f, 0.21001f, 0.22542f, 0.24083f, 0.25626f, 0.27170f, 0.28715f, 0.30260f, 0.31807f, 0.33353f, 0.34901f},
-                {0.00000f, 0.00612f, 0.01428f, 0.02245f, 0.03062f, 0.03880f, 0.04699f, 0.05519f, 0.06340f, 0.07162f, 0.07985f, 0.08810f, 0.09635f, 0.10461f, 0.11288f, 0.12116f, 0.12945f, 0.13774f, 0.14604f, 0.15434f, 0.16265f, 0.17096f, 0.17927f, 0.18759f}
-            };
+            if (ImGui.Begin("Blur"))
+            {
+                ImGui.SliderInt("NumSamples", ref numSamples, 6, 12);
+                ImGui.SliderFloat("Horizontal Width", ref hWidth, 1, 25);
+                ImGui.SliderFloat("Vertical Width", ref vWidth, 1, 25);
+                ImGui.SliderFloat("Offset", ref offset, 0, 0.75f);
+            }
+            ImGui.End();
 
-            var structs = new List<float>();
+            var floats = new List<float>();
             for (int y = 0; y < 6; y++)
             {
-                for (int x = 0; x < 24; x++)
+                var aspect = frameBufferWidth / frameBufferHeight;
+                float frameBufferSize, blurSize;
+                if ((y & 1) == 0)
                 {
-                    structs.Add(weights[y, x]);
-                    structs.Add(offsets[y, x]);
+                    frameBufferSize = frameBufferWidth;
+                    blurSize = hWidth;
                 }
-                while (sizeof(float) * structs.Count % Globals.UniformBufferOffsetAlignment != 0)
-                    structs.Add(0);
-                bloomDataStride = Math.Min(sizeof(float) * structs.Count, bloomDataStride);
+                else
+                {
+                    frameBufferSize = frameBufferHeight;
+                    blurSize = vWidth * aspect;
+                }
+                
+                var sizePerPx = 1f / frameBufferSize;
+                var sizePerStep = sizePerPx * blurSize / numSamples;
+                var invSamples = 1f / (numSamples + 1);
+
+                for (int x = 0; x < numSamples; x++)
+                {
+                    floats.Add(1f - (invSamples * x));
+                    floats.Add(sizePerStep * blurSize * x + (offset * sizePerPx));
+                }
+                while (sizeof(float) * floats.Count % Globals.UniformBufferOffsetAlignment != 0)
+                    floats.Add(0);
+                bloomDataStride = Math.Min(sizeof(float) * floats.Count, bloomDataStride);
             }
 
-            var data = structs.ToArray();
-            bloomBuffer = new Buffer<float>(data, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
+            var data = floats.ToArray();
+            if (bloomBuffer == null)
+                bloomBuffer = new Buffer<float>(data, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
+            else
+                bloomBuffer.Update(data);
         }
 
         private void setupRandomTexture()
@@ -859,7 +873,7 @@ namespace GLOOP.HPL
             return outputBuffer;
         }
 
-        private FrameBuffer DoBloomPass(Texture diffuse)
+        private FrameBuffer DoBloomPass(Texture2D diffuse)
         {
             using var timer = CPUFrame[CPUProfiler.Event.Bloom];
 
@@ -875,38 +889,38 @@ namespace GLOOP.HPL
                     ExtractBright.Use();
                     diffuse.Use(TextureUnit.Texture0);
                     ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
-                    ExtractBright.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
                     ExtractBright.Set("afBrightPass", BrightPass);
                     Primitives.Quad.Draw();
                 }
 
                 using (new DebugGroup("Blur"))
                 {
+                    UpdateBloomBuffer();
+
                     // Take bright parts and blur
                     bloomBuffer.Bind();
 
-                    int width = frameBufferWidth,
-                        height = frameBufferHeight;
                     var previousTexture = currentFB.ColorBuffers[0];
                     Shader shader;
                     for (var i = 0; i < BloomBuffers.Length;)
                     {
-                        width /= 2;
-                        height /= 2;
-                        GL.Viewport(0, 0, width, height);
+                        var buffer = BloomBuffers[i];
+
+                        GL.Viewport(0, 0, buffer.Width, buffer.Height);
 
                         var shaderSteps = new[] { VerticalBlurShader, HorizontalBlurShader };
                         foreach (var step in shaderSteps)
                         {
                             shader = step;
                             shader.Use();
+                            shader.Set("NumSamples", numSamples);
                             BloomBuffers[i].Use();
 
                             bloomBuffer.Bind(3, bloomDataStride * i);
 
                             DoPostEffect(shader, previousTexture);
 
-                            previousTexture = BloomBuffers[i].ColorBuffers[0];
+                            previousTexture = buffer.ColorBuffers[0];
                             i++;
                         }
                     }
@@ -950,6 +964,7 @@ namespace GLOOP.HPL
             ImGui.Separator();
             ImGui.SliderFloat3("Size Weight", ref SizeWeight, 0f, 1f);
             ImGui.DragFloat("Weight Scalar", ref WeightScalar, 0.01f, 0, 10f);
+            ImGui.Separator();
 
             ImGui.End();
         }

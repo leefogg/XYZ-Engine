@@ -1,6 +1,7 @@
 #version 420
 
 uniform sampler2D texture0;
+uniform int NumSamples;
 
 in vec2 texCoord;
 
@@ -10,7 +11,7 @@ struct uniformData {
 };
 
 layout (shared, binding = 3) uniform uniforms {
-	uniformData data[24];
+	uniformData data[32];
 };
 
 layout (location = 0) out vec3 fragColor; 
@@ -22,7 +23,7 @@ void main()
 	float fWeight = data[0].weight * 0.5;
 	vec3 vAmount = texture(texture0, texCoord + data[0].offset * vOffsetMul).rgb * data[0].weight;
 	
-	for(int i=1; i<24; i+=1)
+	for(int i=1; i<NumSamples; i+=1)
 	{	
 		vec2 vOffset = data[i].offset * vOffsetMul;
 
