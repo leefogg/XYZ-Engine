@@ -14,6 +14,7 @@ namespace GLOOP.Rendering.Debugging
     {
         public ref struct Timer 
         {
+#if !RELEASE
             private float StartMs;
             internal int FuncIndex;
             public Timer(int index)
@@ -30,6 +31,10 @@ namespace GLOOP.Rendering.Debugging
                 else
                     Debug.Fail("Not enough space to store timing for function " + FunctionNames[FuncIndex]);
             }
+#else
+            public Timer(int index) { }
+            public void Dispose() { }
+#endif
         }
 
         private const int MAX_TRACKED_FUNCTIONS = 32;
