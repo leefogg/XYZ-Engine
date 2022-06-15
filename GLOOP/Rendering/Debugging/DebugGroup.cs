@@ -5,7 +5,7 @@ using System.Text;
 
 namespace GLOOP.Rendering.Debugging
 {
-    public struct DebugGroup : IDisposable
+    public ref struct DebugGroup
     {
         private static int stackDepth = 0;
 
