@@ -25,6 +25,7 @@ using System.Text;
 using System.IO;
 using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
 using System.Threading.Tasks;
+using System.Diagnostics.Contracts;
 
 namespace GLOOP.HPL
 {
@@ -384,6 +385,9 @@ namespace GLOOP.HPL
 
                 ImGuiController?.Update(this, (float)args.Time);
 
+                GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+                GL.Viewport(0, 0, Size.X, Size.Y);
+
 #if VR
                 VRSystem.UpdateEyes();
                 VRSystem.UpdatePoses();
@@ -461,7 +465,7 @@ namespace GLOOP.HPL
             EventProfiler.DrawImGuiWindow();
             TaskMaster.DrawImGuiWindow();
 
-            DrawImGui();
+            ImGuiController?.Render();
         }
 
         private void UpdateVisibility()
@@ -470,14 +474,6 @@ namespace GLOOP.HPL
                 return;
 
             scene.UpdateVisibility(VisibleAreas);
-        }
-
-        private void DrawImGui()
-        {
-            backBuffer.Use();
-            GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
-            GL.Viewport(0, 0, Size.X, Size.Y);
-            ImGuiController?.Render();
         }
 
         [Conditional("DEBUG")]
@@ -641,7 +637,7 @@ namespace GLOOP.HPL
 
                 if (debugGBufferTexture > -1)
                 {
-                    DisplayGBuffer(currentBuffer = PostMan.NextFramebuffer, debugGBufferTexture);
+                    DisplayTexture(currentBuffer = PostMan.NextFramebuffer, GBuffers.ColorBuffers[debugGBufferTexture]);
                 }
                 else
                 {
@@ -666,7 +662,8 @@ namespace GLOOP.HPL
 
                     if (!debugLightBuffer)
                     {
-                        currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]); // TODO: Take into account enableBloom
+                        if (enableBloom)
+                            currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
 
                         DrawImGUIColourCorrectionWindow();
 
@@ -685,29 +682,30 @@ namespace GLOOP.HPL
                         currentBuffer = newBuffer;
                     }
                 }
-
-                if (showBoundingBoxes)
-                {
-                    using var bbGroup = new DebugGroup("Bounding Boxes");
-                    GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-
-                    foreach (var area in scene.VisibilityPortals)
-                        area.RenderBoundingBox();
-                    foreach (var area in scene.VisibilityAreas.Values)
-                        area.RenderBoundingBox();
-                    foreach (var model in scene.Models)
-                        model.RenderBoundingBox();
-                    foreach (var area in VisibleAreas)
-                        foreach (var model in area.Models)
-                            model.RenderBoundingBox();
-                    foreach (var terrainPeice in scene.Terrain)
-                        terrainPeice.RenderBoundingBox();
-
-                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
-                }
             }
 
-            currentBuffer.BlitTo(finalBuffer, ClearBufferMask.ColorBufferBit);
+            if (showBoundingBoxes)
+            {
+                using var bbGroup = new DebugGroup("Bounding Boxes");
+                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+                foreach (var area in scene.VisibilityPortals)
+                    area.RenderBoundingBox();
+                foreach (var area in scene.VisibilityAreas.Values)
+                    area.RenderBoundingBox();
+                foreach (var model in scene.Models)
+                    model.RenderBoundingBox();
+                foreach (var area in VisibleAreas)
+                    foreach (var model in area.Models)
+                        model.RenderBoundingBox();
+                foreach (var terrainPeice in scene.Terrain)
+                    terrainPeice.RenderBoundingBox();
+
+                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+            }
+
+            finalBuffer.Use();
+            DoPostEffect(FullBrightShader, currentBuffer.ColorBuffers[0]);
         }
 
         [Conditional("DEBUG")]
@@ -970,16 +968,17 @@ namespace GLOOP.HPL
             ImGui.End();
         }
 
-        private void DisplayGBuffer(FrameBuffer finalBuffer, int buffer)
+        private void DisplayTexture(FrameBuffer finalBuffer, Texture inputTexture)
         {
             GL.Enable(EnableCap.FramebufferSrgb);
             finalBuffer.Use();
 
-            DoPostEffect(FullBrightShader, GBuffers.ColorBuffers[buffer]);
+            DoPostEffect(FullBrightShader, inputTexture);
 
             GL.Disable(EnableCap.FramebufferSrgb);
         }
 
+        [Pure]
         private void DoPostEffect(Shader shader, Texture input)
         {
             shader.Use();
