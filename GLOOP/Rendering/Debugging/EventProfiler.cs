@@ -12,20 +12,17 @@ namespace GLOOP.Rendering.Debugging
 {
     public static class EventProfiler
     {
-        public class Timer : DummyDisposable
+        public ref struct Timer 
         {
             private float StartMs;
             internal int FuncIndex;
             public Timer(int index)
             {
                 FuncIndex = index;
-            }
-            public void Start()
-            {
                 StartMs = Window.FrameMillisecondsElapsed;
             }
 
-            public override void Dispose()
+            public void Dispose()
             {
                 var endMs = Window.FrameMillisecondsElapsed;
                 if (FuncIndex < EventTimings.Current.Length)
@@ -37,7 +34,6 @@ namespace GLOOP.Rendering.Debugging
 
         private const int MAX_TRACKED_FUNCTIONS = 32;
         private static readonly string[] FunctionNames = new string[MAX_TRACKED_FUNCTIONS];
-        private static readonly Timer[] Timers = new Timer[MAX_TRACKED_FUNCTIONS];
         private static readonly Ring<float[]> EventTimings = new Ring<float[]>(PowerOfTwo.Two, i => new float[MAX_TRACKED_FUNCTIONS]);
         private static int NumTrackedFunctions;
 
@@ -49,26 +45,17 @@ namespace GLOOP.Rendering.Debugging
             return EventTimings.Current[index];
         }
 
-        public static IDisposable Profile([System.Runtime.CompilerServices.CallerMemberName] string functionName = "")
+        public static Timer Profile([System.Runtime.CompilerServices.CallerMemberName] string functionName = "")
         {
             var nameIdx = FunctionNames.IndexOf(functionName);
-            Timer timer;
             if (nameIdx == -1)
             {
                 nameIdx = NumTrackedFunctions;
                 FunctionNames[NumTrackedFunctions] = functionName;
-                timer = new Timer(nameIdx);
-                Timers[NumTrackedFunctions] = timer;
                 NumTrackedFunctions++;
-            } 
-            else
-            {
-                timer = Timers[nameIdx];
-                timer.FuncIndex = nameIdx;
             }
 
-            timer.Start();
-            return timer;
+            return new Timer(nameIdx);
         }
 
         [Conditional("DEBUG")]
