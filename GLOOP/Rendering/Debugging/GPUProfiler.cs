@@ -31,7 +31,7 @@ namespace GLOOP.Rendering.Debugging
             0xFF0000FF, // Geometry
             0xFFA0A0A0, // Lighting
             0xFF00FF00, // Post
-            0xFFFF0000, // ImGUI
+            0xFFFF8080, // ImGUI
             0xFF745D81, // Update Buffers
         };
 
@@ -164,7 +164,7 @@ namespace GLOOP.Rendering.Debugging
             var frameSize = new Vector2(FrameWidth, 0);
             var start = new Vector2(0, 0);
             var end = new Vector2(0, 0);
-            const long maxNs = 20_000_000;
+            const long maxNs = 5_000_000;
             float scalar = windowSize.Y / maxNs;
             Frame lastFrame = null;
             for (int frameIdx = 0; frameIdx < availableFrames; frameIdx++)
@@ -177,7 +177,9 @@ namespace GLOOP.Rendering.Debugging
                 end.Y = frameLength * scalar;
                 drawList.AddRectFilled(pos - start, pos - end + frameSize, 0xFFFFFFFF, 0);
 
-                for (int i = 0; i < (int)Event.Count; i++)
+                // Drawing forward hides inner measurements
+                // Still doesn't render correctly, but at least you'll see its wrong
+                for (int i = (int)Event.Count-1; i >= 0 ; i--)
                 {
                     var evnt = frame.EventTimings[i];
                     start.Y = (evnt.StartNs - frameStart) * scalar;
