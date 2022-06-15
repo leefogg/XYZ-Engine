@@ -161,21 +161,26 @@ namespace GLOOP.Rendering.Debugging
             pos.X += FrameSpacing;
 
             const int squareHeight = 15;
+            var yOffset = 0;
             for (int i = 0; i < (int)Event.Count; i++)
             {
-                var yOffset = squareHeight * i;
                 var evnt = lastFrame.EventTimings[i];
                 var startY = evnt.StartMs * scalar;
                 var endY = evnt.EndMs * scalar;
-                var polyVerts = new[]
+                if (startY != endY)
                 {
-                    pos - new Vector2(0, endY),
-                    pos - new Vector2(-TaskMarkerWidth, squareHeight + yOffset),
-                    pos + new Vector2(TaskMarkerWidth, -yOffset),
-                    pos - new Vector2(0, startY),
-                };
 
-                drawList.AddConvexPolyFilled(ref polyVerts[0], 4, Colors[i]);
+                    var polyVerts = new[]
+                    {
+                        pos - new Vector2(0, endY),
+                        pos - new Vector2(-TaskMarkerWidth, squareHeight + yOffset),
+                        pos + new Vector2(TaskMarkerWidth, -yOffset),
+                        pos - new Vector2(0, startY),
+                    };
+
+                    drawList.AddConvexPolyFilled(ref polyVerts[0], 4, Colors[i]);
+                    yOffset += squareHeight;
+                }
             }
             pos.X += TaskMarkerWidth;
 
@@ -185,10 +190,14 @@ namespace GLOOP.Rendering.Debugging
             for (int i = 0; i < (int)Event.Count; i++)
             {
                 var evnt = lastFrame.EventTimings[i];
-                drawList.AddRectFilled(pos - offset, pos + rectOffset - offset, Colors[i]);
-                var text = $"[{evnt.EndMs - evnt.StartMs:00.000}ms] {Enum.GetName(typeof(Event), (Event)i)}";
-                drawList.AddText(pos + textOffset - offset, Colors[i], text);
+                var length = evnt.EndMs - evnt.StartMs;
+                if (length > 0)
+                {
+                    drawList.AddRectFilled(pos - offset, pos + rectOffset - offset, Colors[i]);
+                    var text = $"[{evnt.EndMs - evnt.StartMs:00.000}ms] {Enum.GetName(typeof(Event), (Event)i)}";
+                    drawList.AddText(pos + textOffset - offset, Colors[i], text);
                 offset.Y += 15;
+                }
             }
 
             ImGui.End();
