@@ -5,32 +5,15 @@ using System.Text;
 
 namespace GLOOP.Rendering
 {
-    public class Query : IDisposable
+    public abstract class Query
     {
         public readonly int Handle = GL.GenQuery();
         public readonly QueryTarget Type;
-        public bool Running { get; private set; }
+        public bool Running { get; protected set; }
 
-        public Query(QueryTarget type)
+        protected Query(QueryTarget type)
         {
             Type = type;
-            BeginScope();
-        }
-
-        public void BeginScope()
-        {
-            if (Running)
-                return;
-
-            GL.BeginQuery(Type, Handle);
-            Metrics.QueriesPerformed++;
-            Running = true;
-        }
-
-        private void EndScope()
-        {
-            if (Running)
-                GL.EndQuery(Type);
         }
 
         public bool IsResultAvailable()
@@ -51,8 +34,6 @@ namespace GLOOP.Rendering
             Running = false;
             return result;
         }
-
-        public void Dispose() => EndScope();
 
         public override string ToString() => $"ID: {Handle}, Running:{Running}";
     }

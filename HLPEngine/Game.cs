@@ -88,7 +88,7 @@ namespace GLOOP.HPL
         private Shader ColorCorrectionShader;
         private FrustumMaterial frustumMaterial;
         private QueryPool queryPool;
-        private List<(VisibilityPortal, Query)> PortalQueries = new List<(VisibilityPortal, Query)>();
+        private List<(VisibilityPortal, ScopedQuery)> PortalQueries = new List<(VisibilityPortal, ScopedQuery)>();
         private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
         private Buffer<float> bloomBuffer;
 
@@ -636,72 +636,75 @@ namespace GLOOP.HPL
             var currentBuffer = PostMan.NextFramebuffer;
             GeometryPass(currentBuffer);
 
-            using var gpuTimer = GPUFrame[GPUProfiler.Event.Post];
-            if (debugGBufferTexture > -1)
+            using (GPUFrame[GPUProfiler.Event.Post])
             {
-                DisplayGBuffer(currentBuffer = PostMan.NextFramebuffer, debugGBufferTexture);
-            }
-            else
-            {
-                Texture albedo;
-                if (!debugLightBuffer && enableFXAA)
+
+                if (debugGBufferTexture > -1)
                 {
-                    using (new DebugGroup("FXAA"))
+                    DisplayGBuffer(currentBuffer = PostMan.NextFramebuffer, debugGBufferTexture);
+                }
+                else
+                {
+                    Texture albedo;
+                    if (!debugLightBuffer && enableFXAA)
                     {
+                        using (new DebugGroup("FXAA"))
+                        {
+                            var newBuffer = PostMan.NextFramebuffer;
+                            newBuffer.Use();
+                            DoPostEffect(FXAAShader, GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse]);
+                            currentBuffer = newBuffer;
+                            albedo = currentBuffer.ColorBuffers[0];
+                        }
+                    }
+                    else
+                    {
+                        albedo = GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse];
+                    }
+
+                    currentBuffer = ResolveGBuffer(albedo);
+
+                    if (!debugLightBuffer)
+                    {
+                        currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]); // TODO: Take into account enableBloom
+
+                        DrawImGUIColourCorrectionWindow();
+
+                        using var group = new DebugGroup("Colour Correction");
+                        using var timer = CPUFrame[CPUProfiler.Event.PostEffects];
+
                         var newBuffer = PostMan.NextFramebuffer;
                         newBuffer.Use();
-                        DoPostEffect(FXAAShader, GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse]);
+                        var shader = ColorCorrectionShader;
+                        shader.Use();
+                        shader.Set("afKey", Key);
+                        shader.Set("afExposure", Exposure);
+                        shader.Set("afInvGammaCorrection", 1f / Gamma);
+                        shader.Set("afWhiteCut", WhiteCut);
+                        DoPostEffect(shader, currentBuffer.ColorBuffers[0]);
                         currentBuffer = newBuffer;
-                        albedo = currentBuffer.ColorBuffers[0];
                     }
-                } 
-                else 
-                {
-                    albedo = GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse];
                 }
 
-                currentBuffer = ResolveGBuffer(albedo);
-
-                if (!debugLightBuffer)
+                if (showBoundingBoxes)
                 {
-                    currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]); // TODO: Take into account enableBloom
+                    using var bbGroup = new DebugGroup("Bounding Boxes");
+                    GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
-                    DrawImGUIColourCorrectionWindow();
-
-                    using var group = new DebugGroup("Colour Correction");
-                    using var timer = CPUFrame[CPUProfiler.Event.PostEffects];
-
-                    var newBuffer = PostMan.NextFramebuffer;
-                    newBuffer.Use();
-                    var shader = ColorCorrectionShader;
-                    shader.Use();
-                    shader.Set("afKey", Key);
-                    shader.Set("afExposure", Exposure);
-                    shader.Set("afInvGammaCorrection", 1f / Gamma);
-                    shader.Set("afWhiteCut", WhiteCut);
-                    DoPostEffect(shader, currentBuffer.ColorBuffers[0]);
-                    currentBuffer = newBuffer;
-                }
-            }
-
-            if (showBoundingBoxes)
-            {
-                using var bbGroup = new DebugGroup("Bounding Boxes");
-                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-
-                foreach (var area in scene.VisibilityPortals)
-                    area.RenderBoundingBox();
-                foreach (var area in scene.VisibilityAreas.Values)
-                    area.RenderBoundingBox();
-                foreach (var model in scene.Models)
-                    model.RenderBoundingBox();
-                foreach (var area in VisibleAreas)
-                    foreach (var model in area.Models)
+                    foreach (var area in scene.VisibilityPortals)
+                        area.RenderBoundingBox();
+                    foreach (var area in scene.VisibilityAreas.Values)
+                        area.RenderBoundingBox();
+                    foreach (var model in scene.Models)
                         model.RenderBoundingBox();
-                foreach (var terrainPeice in scene.Terrain)
-                    terrainPeice.RenderBoundingBox();
+                    foreach (var area in VisibleAreas)
+                        foreach (var model in area.Models)
+                            model.RenderBoundingBox();
+                    foreach (var terrainPeice in scene.Terrain)
+                        terrainPeice.RenderBoundingBox();
 
-                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                }
             }
 
             currentBuffer.BlitTo(finalBuffer, ClearBufferMask.ColorBufferBit);
@@ -757,8 +760,6 @@ namespace GLOOP.HPL
         private void setupBuffers()
         {
             scene.SetupBuffers();
-
-            UpdateBloomBuffer();
 
             setupRandomTexture();
         }

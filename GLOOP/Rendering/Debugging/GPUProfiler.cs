@@ -38,13 +38,32 @@ namespace GLOOP.Rendering.Debugging
         public class GPUEventTiming : DummyDisposable
         {
 #if !RELEASE
+            internal TimestampQuery StartQuery = new TimestampQuery(), EndQuery = new TimestampQuery();
             internal long StartNs, EndNs;
+            internal bool Running = false;
 
-            internal void Start() => StartNs = GetTimestamp();
+            internal void Start()
+            {
+                StartQuery.Dispatch();
+                Running = true;
+            }
 
-            public override void Dispose() => EndNs = GetTimestamp();
+            public override void Dispose() => EndQuery.Dispatch();
 
             internal void Zero() => StartNs = EndNs = 0;
+
+            internal bool IsResultAvailable() => Running && EndQuery.IsResultAvailable();
+
+            internal virtual void ReadResult()
+            {
+                if (!Running)
+                    return;
+
+                StartNs = StartQuery.GetResult();
+                EndNs = EndQuery.GetResult();
+
+                Running = false;
+            }
 
             public override string ToString() => $"{StartNs}-{EndNs}";
 #endif
@@ -77,6 +96,14 @@ namespace GLOOP.Rendering.Debugging
             }
 
             public IDisposable PeekEvent(Event index) => EventTimings[(int)index];
+
+            internal override void ReadResult()
+            {
+                base.ReadResult();
+
+                foreach (var timing in EventTimings)
+                    timing.ReadResult();
+            }
         }
 
         private static Ring<Frame> TimingsRingbuffer = new Ring<Frame>(
@@ -88,7 +115,22 @@ namespace GLOOP.Rendering.Debugging
         {
             get
             {
+                // Scan backward for all fired but not read queries
+                int i = 0;
+                for (; i < TimingsRingbuffer.Count; i++)
+                {
+                    var prevFrame = TimingsRingbuffer.Peek(-i);
+                    if (!prevFrame.Running)
+                        break;
+
+                    //if (!prevFrame.IsResultAvailable())
+                    //    break;
+
+                    prevFrame.ReadResult();
+                }
+
                 var frame = TimingsRingbuffer.Next;
+                Debug.Assert(!frame.Running, "All Frames are pending!");
 #if !RELEASE
                 frame.Zero();
                 frame.Start();
@@ -106,22 +148,29 @@ namespace GLOOP.Rendering.Debugging
             if (!ImGui.Begin("GPU Frame Profiler"))
                 return;
 
+            int availableFrames = 1;
+            for (; availableFrames < TimingsRingbuffer.Count; availableFrames++)
+                if (TimingsRingbuffer.Peek(availableFrames).Running)
+                    break;
+
             var drawList = ImGui.GetWindowDrawList();
             var pos = ImGui.GetWindowPos();
             var windowSize = ImGui.GetWindowContentRegionMax() - ImGui.GetWindowContentRegionMin();
             pos += ImGui.GetWindowContentRegionMin();
-            drawList.AddRect(pos, pos + new Vector2(TimingsRingbuffer.Count * (FrameWidth + FrameSpacing), windowSize.Y), 0xFFFFFFFF, 0);
+            drawList.AddRect(pos, pos + new Vector2(availableFrames * (FrameWidth + FrameSpacing), windowSize.Y), 0xFFFFFFFF, 0);
             pos.Y += windowSize.Y;
             pos.X += 1;
             pos.Y += 1;
             var frameSize = new Vector2(FrameWidth, 0);
             var start = new Vector2(0, 0);
             var end = new Vector2(0, 0);
-            const long maxNs = 10_000_000;
+            const long maxNs = 20_000_000;
             float scalar = windowSize.Y / maxNs;
             Frame lastFrame = null;
-            foreach (var frame in TimingsRingbuffer)
+            for (int frameIdx = 0; frameIdx < availableFrames; frameIdx++)
             {
+                var frame = TimingsRingbuffer.Peek(frameIdx);
+
                 var frameStart = frame.StartNs;
                 var frameLength = frame.EndNs - frameStart;
                 start.Y = 0;

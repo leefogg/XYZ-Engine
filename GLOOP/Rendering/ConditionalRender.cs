@@ -7,7 +7,7 @@ namespace GLOOP.Rendering
 {
     public class ConditionalRender : IDisposable
     {
-        public ConditionalRender(Query pixelQuery, ConditionalRenderType type)
+        public ConditionalRender(ScopedQuery pixelQuery, ConditionalRenderType type)
         {
             System.Diagnostics.Debug.Assert(pixelQuery.Type == QueryTarget.AnySamplesPassed);
             GL.BeginConditionalRender(pixelQuery.Handle, type);

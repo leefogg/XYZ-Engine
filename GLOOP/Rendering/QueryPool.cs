@@ -8,20 +8,20 @@ namespace GLOOP.Rendering
 {
     public class QueryPool
     {
-        private Query[] Queries;
+        private ScopedQuery[] Queries;
 
         public QueryPool(int initialSize)
         {
-            Queries = new Query[initialSize];
+            Queries = new ScopedQuery[initialSize];
         }
 
-        private Query FindNextAvailable(QueryTarget target, int startIndex = 0)
+        private ScopedQuery FindNextAvailable(QueryTarget target, int startIndex = 0)
         {
             for (var i = startIndex; i < Queries.Length; i++)
             {
                 if (Queries[i] == null)
                 {
-                    Queries[i] = new Query(target);
+                    Queries[i] = new ScopedQuery(target);
                     return Queries[i];
                 } 
                 else
@@ -37,7 +37,7 @@ namespace GLOOP.Rendering
             return null;
         }
 
-        private Query BeginQuery(QueryTarget target)
+        private ScopedQuery BeginQuery(QueryTarget target)
         {
             var nextAvailable = FindNextAvailable(target);
             if (nextAvailable == null)
@@ -55,14 +55,14 @@ namespace GLOOP.Rendering
             Console.WriteLine("Out of queries. Must resize");
 
             var currentQuries = Queries;
-            Queries = new Query[Queries.Length * 2];
+            Queries = new ScopedQuery[Queries.Length * 2];
 
             var i = 0;
             for (; i < currentQuries.Length; i++)
                 Queries[i] = currentQuries[i];
         }
 
-        public Query BeginScope(QueryTarget target)
+        public ScopedQuery BeginScope(QueryTarget target)
         {
             var query = BeginQuery(target);
             return query;
