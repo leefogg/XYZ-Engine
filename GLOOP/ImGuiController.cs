@@ -48,7 +48,7 @@ namespace GLOOP
             CreateDeviceResources();
             SetKeyMappings();
 
-            SetPerFrameImGuiData(1f / 60f);
+            SetPerFrameImGuiData(1f / 144f);
 
             ImGui.NewFrame();
             _frameBegun = true;

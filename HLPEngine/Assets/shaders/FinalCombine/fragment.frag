@@ -1,67 +1,29 @@
 ﻿#version 330 core
 
-in vec4 outColor;
 in vec2 texCoord;
 
-uniform sampler2D texture0;
-uniform sampler2D texture1;
-uniform int frame;
-uniform vec2 resolution;
+uniform sampler2D lightMap;
+uniform sampler2D noiseMap;
+uniform float timeMilliseconds;
+uniform float noiseScalar = 0.00005;
 
 out vec3 FragColor;
 
-// provides 16 psuedo-random bits
-// conviently packaged in a float
-// in the [0,1] range.
-float squares16(uint ctr) {
-    const uint key = uint(0x7a1a912f);
-    const float two16 = 65536.0;
-
-    uint x, y, z;
-
-    // initialize
-    // ==================================
-    // Weyl sequence vars, y and z
-    y = ctr * key;
-    z = (ctr + uint(1)) * key;
-
-    // init the mixing var, x
-    x = y;
-
-    // begin the mixing rounds
-    // ===================================
-
-    // round 1
-    x = x*x + y; x = (x>>16) | (x<<16);
-
-    // round 2
-    x = x*x + z; x = (x>>16) | (x<<16);
-
-    // round 3
-    x = (x*x + y) >> 16;
-
-    return float(x)/two16;
-}
-
-float pixel_id(vec2 fragCoord) {
-    return dot(fragCoord.xy,
-               vec2(1, resolution.x));
+#define MOD3 vec3(443.8975,397.2973, 491.1871)
+float rand(vec2 p) {
+	vec3 p3  = fract(vec3(p.xyx) * MOD3);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return fract((p3.x + p3.y) * p3.z);
 }
 
 void main()
 {
-	vec3 albedo =  texture(texture0, texCoord).rgb;
-	vec3 lighting = texture(texture1, texCoord).rgb;
-	
-	vec2 fragCoord = texCoord * resolution;
-	float id = pixel_id(fragCoord);
-    int cnt_pixels = int(resolution.x * resolution.y);
+	vec3 lighting = texture(lightMap, texCoord).rgb;
 
-	// 0.01% dither. Measured to take about 0.02ms
-	// This will mess with FXAA so should be done after
-    float dither = squares16(uint(id) + uint(frame * cnt_pixels));
-	dither = dither * 0.0005;
-    dither -= 0.000025;
+    // This will mess with FXAA so should be done after
+    vec3 noise = texture(noiseMap, vec2(rand(texCoord), rand(texCoord)) + vec2(timeMilliseconds)).rgb;
+    noise *= noiseScalar;
+    noise -= noiseScalar / 2.0;
 
-    FragColor = albedo * (lighting - vec3(dither));
+    FragColor = lighting + noise;
 }

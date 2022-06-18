@@ -37,7 +37,7 @@ struct Model {
 	Material ModelMaterial;
 };
 
-layout (shared, binding = 1) buffer ModelBuffer {
+layout (std430, binding = 1) buffer ModelBuffer {
 	Model Models[];
 };
 

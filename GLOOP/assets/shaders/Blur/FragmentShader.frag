@@ -1,4 +1,4 @@
-#version 420
+#version 430
 
 uniform sampler2D texture0;
 uniform int NumSamples;
@@ -10,7 +10,7 @@ struct uniformData {
 	float offset;
 };
 
-layout (shared, binding = 3) uniform uniforms {
+layout (std140, binding = 3) uniform uniforms {
 	uniformData data[32];
 };
 

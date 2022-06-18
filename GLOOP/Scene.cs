@@ -44,7 +44,7 @@ namespace GLOOP
 
         }
 
-        public void NewFrame()
+        private void NextBuffers()
         {
             VisibleOccluders.MoveNext();
             VisibleNonOccluders.MoveNext();
@@ -134,6 +134,8 @@ namespace GLOOP
                 .Where(terrain => Camera.Current.IntersectsFrustum(terrain.BoundingBox.ToSphereBounds()))
                 .OrderBy(terrain => (terrain.Transform.Position - Camera.Current.Position).LengthSquared)
             );
+
+            NextBuffers();
         }
 
         public void UpdateBuffers()

@@ -103,11 +103,12 @@ namespace GLOOP.HPL
         private bool UseLightDiffuse = true;
         private bool UseLightSpecular = true;
         private float LightScatterScalar = 0.1f;
+        private float NoiseScalar = 0.05f;
         // Bloom
         private float BrightPass = 1;
         private System.Numerics.Vector3 SizeWeight = new System.Numerics.Vector3(0.5f, 0.75f, 1f);
         private float WeightScalar = 1.75f;
-        private float hWidth = 5f, vWidth = 5f, offset = 1.75f;
+        private float hWidth = 5f, vWidth = 5f, offset = 0.75f;
         private int numSamples = 6;
         // Post
         private float Key = 1f;
@@ -267,7 +268,7 @@ namespace GLOOP.HPL
                 null,
                 "Fullbright"
             );
-            ExtractBright = new DynamicPixelShader(
+            ExtractBright = new StaticPixelShader(
                 "assets/shaders/Bloom/Extract/vertex.vert",
                 "assets/shaders/Bloom/Extract/fragment.frag",
                 null,
@@ -291,7 +292,7 @@ namespace GLOOP.HPL
                },
                "Blur Horizontally"
             );
-            BloomCombineShader = new DynamicPixelShader(
+            BloomCombineShader = new StaticPixelShader(
                "assets/shaders/Bloom/Combine/vertex.vert",
                "assets/shaders/Bloom/Combine/fragment.frag",
                null,
@@ -426,10 +427,11 @@ namespace GLOOP.HPL
 
                 DrawImGUIWindows();
 
-                VisibilityTask?.Wait();
-                scene.NewFrame();
-                UpdateBuffers();
-                VisibilityTask = Task.Run(UpdateVisibility);
+                if (VisibilityTask?.IsCompleted ?? true)
+                {
+                    UpdateBuffers();
+                    VisibilityTask = Task.Run(UpdateVisibility);
+                }
 
                 if (BenchmarkMode && FrameNumber == 1)
                     Metrics.StartRecording($"{DateTime.Now:ddMMyyyy HHmm}.csv");
@@ -500,9 +502,9 @@ namespace GLOOP.HPL
             const int TargetFPS = 144;
             var values = GPUFrameTimings.ToArray();
             float average = values.Average();
-            var red = (float)MathFunctions.Map(average, 144, 120, 1, 0);
+            var red = (float)MathFunctions.Map(average, 144, 120, 0, 1);
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(red, 1 - red, 0, 1));
-            ImGui.PlotHistogram("GPU", ref values[0], values.Length, 0, null, 60, 144, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
+            ImGui.PlotHistogram("GPU", ref values[0], values.Length, 0, null, 144 * 2, 60, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
             ImGui.Text($"Average: {1000f / average:0.00}ms ({average:0.000} fps)");
             ImGui.PopStyleColor();
 
@@ -641,7 +643,7 @@ namespace GLOOP.HPL
                 }
                 else
                 {
-                    Texture albedo;
+                    Texture2D albedo;
                     if (!debugLightBuffer && enableFXAA)
                     {
                         using (new DebugGroup("FXAA"))
@@ -805,9 +807,9 @@ namespace GLOOP.HPL
 
             var data = floats.ToArray();
             if (bloomBuffer == null)
-                bloomBuffer = new Buffer<float>(data, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
-            else
-                bloomBuffer.Update(data);
+                bloomBuffer = new Buffer<float>(sizeof(float) * 2 * MaxSamples * 2, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
+            
+            bloomBuffer.Update(data);
         }
 
         private void setupRandomTexture()
@@ -831,7 +833,7 @@ namespace GLOOP.HPL
             NoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
         }
        
-        private FrameBuffer ResolveGBuffer(Texture albedo)
+        private FrameBuffer ResolveGBuffer(Texture2D albedo)
         {
             var outputBuffer = PostMan.NextFramebuffer;
 
@@ -840,25 +842,24 @@ namespace GLOOP.HPL
 
             DoLightPass(new Vector3(0.00f));
 
+            outputBuffer.Use();
+            GL.Clear(ClearBufferMask.ColorBufferBit);
             if (debugLightBuffer) {
                 GL.Enable(EnableCap.FramebufferSrgb);
-                outputBuffer.Use();
-
                 DoPostEffect(FullBrightShader, LightingBuffer.ColorBuffers[0]);
-
                 GL.Disable(EnableCap.FramebufferSrgb);
             } else {
-                outputBuffer.Use();
+                DrawLightResolveImGuiWindow();
                 using (new DebugGroup("Light Resolve"))
                 {
                     var shader = FinalCombineShader;
                     shader.Use();
                     LightingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
-                    albedo.Use(TextureUnit.Texture1);
-                    shader.Set("texture0", TextureUnit.Texture0);
-                    shader.Set("texture1", TextureUnit.Texture1);
-                    shader.Set("frame", (int)FrameNumber);
-                    shader.Set("resolution", new Vector2(frameBufferWidth, frameBufferHeight));
+                    NoiseMap.Use(TextureUnit.Texture1);
+                    shader.Set("lightMap", TextureUnit.Texture0);
+                    shader.Set("noiseMap", TextureUnit.Texture1);
+                    shader.Set("timeMilliseconds", elapsedMilliseconds);
+                    shader.Set("noiseScalar", NoiseScalar);
                     Primitives.Quad.Draw();
                 }
             }
@@ -870,6 +871,19 @@ namespace GLOOP.HPL
             GL.Enable(EnableCap.DepthTest);
 
             return outputBuffer;
+        }
+
+        [Conditional("DEBUG")]
+        private void DrawLightResolveImGuiWindow()
+        {
+            if (!enableImGui)
+                return;
+
+            if (ImGui.Begin("Light Resolve"))
+            {
+                ImGui.SliderFloat("Noise scale", ref NoiseScalar, 0f, 0.1f);
+            }
+            ImGui.End();
         }
 
         private FrameBuffer DoBloomPass(Texture2D diffuse)
