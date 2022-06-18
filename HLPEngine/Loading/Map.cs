@@ -556,17 +556,13 @@ namespace GLOOP.HPL.Loading
             var models = Entities.SelectMany(ent => ent.Models).ToList();
             foreach (var area in visibilityAreas) 
             {
-                Box3 matToAABB(Matrix4 boundingBoxMatrix)
-                {
-                    return new Box3(-0.5f, -0.5f, -0.5f, 0.5f, 0.5f, 0.5f).Transform(boundingBoxMatrix);
-                }
                 Box3 RadToAABB(float radius)
                 {
                     return new Box3(-radius, -radius, -radius, radius, radius, radius);
                 }
 
                 // "An object will be part of all visibility areas that it is fully inside of."
-                var modelsContained = models.Where(model => area.BoundingBox.CompletelyContains(matToAABB(model.BoundingBoxMatrix))).ToList();
+                var modelsContained = models.Where(model => area.BoundingBox.CompletelyContains(model.BoundingBox)).ToList();
                 area.Models.AddRange(modelsContained);
                 //models.RemoveRange(modelsContained);
 
