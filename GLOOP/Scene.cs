@@ -27,8 +27,8 @@ namespace GLOOP
         private Buffer<GPUModel> ModelsBuffer;
         private Buffer<GPUPointLight> PointLightsBuffer;
         private Buffer<GPUSpotLight> SpotLightsBuffer;
-        private readonly List<DrawElementsIndirectData> ScratchDrawCommands = new List<DrawElementsIndirectData>();
-        private readonly List<GPUModel> ScratchGPUModels = new List<GPUModel>();
+        private readonly FastList<DrawElementsIndirectData> ScratchDrawCommands = new FastList<DrawElementsIndirectData>(1024 * 4);
+        private readonly FastList<GPUModel> ScratchGPUModels = new FastList<GPUModel>(1024 * 4);
         private readonly Ring<List<SpotLight>> VisibleSpotLights = new Ring<List<SpotLight>>(PowerOfTwo.Two, i => new List<SpotLight>());
         private readonly Ring<List<PointLight>> VisiblePointLights = new Ring<List<PointLight>>(PowerOfTwo.Two, i => new List<PointLight>());
         private readonly Ring<List<Model>> VisibleOccluders = new Ring<List<Model>>(PowerOfTwo.Two, NewListOfModels);
@@ -149,8 +149,8 @@ namespace GLOOP
             AddModelData(NonOccluderBatches, ScratchDrawCommands, ScratchGPUModels);
             if (ScratchDrawCommands.Count > 0)
             {
-                DrawIndirectBuffer.Update(ScratchDrawCommands.ToArray());
-                ModelsBuffer.Update(ScratchGPUModels.ToArray());
+                DrawIndirectBuffer.Update(ScratchDrawCommands.Elements, ScratchDrawCommands.Count);
+                ModelsBuffer.Update(ScratchGPUModels.Elements, ScratchGPUModels.Count);
             }
 
             PopulateSpotLightsBuffer();
@@ -295,8 +295,8 @@ namespace GLOOP
 
         private void AddModelData(
             IEnumerable<RenderBatch> batches,
-            List<DrawElementsIndirectData> drawIndirectDest,
-            List<GPUModel> modelDest)
+            FastList<DrawElementsIndirectData> drawIndirectDest,
+            FastList<GPUModel> modelDest)
         {
             foreach (var batch in batches)
             {

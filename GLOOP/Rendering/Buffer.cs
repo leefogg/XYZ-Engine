@@ -59,7 +59,14 @@ namespace GLOOP.Rendering
 
         public void Update(T[] data, uint start = 0)
         {
-            var length = Marshal.SizeOf<T>() * data.Length;
+            Update(data, data.Length, start);
+        }
+
+        public void Update(T[] data, int numElements, uint startElement = 0)
+        {
+            var elemSize = Marshal.SizeOf<T>();
+            var length = elemSize * numElements;
+            var start = elemSize * startElement;
             var endByte = length + start;
             System.Diagnostics.Debug.Assert(endByte <= Length, $"Wrote {endByte - Length} bytes to unmanaged memory");
             GL.NamedBufferSubData(Handle, (IntPtr)start, (int)(length - start), data);
