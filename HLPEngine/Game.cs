@@ -76,7 +76,7 @@ namespace GLOOP.HPL
 #endif
         private Shader PointLightShader;
         private Shader SpotLightShader;
-        private Texture2D NoiseMap;
+        private Texture2D RGBNoiseMap, BWNoiseMap;
         private SingleColorMaterial singleColorMaterial;
         private Shader FinalCombineShader;
         private Shader FullBrightShader;
@@ -103,7 +103,7 @@ namespace GLOOP.HPL
         private bool UseLightDiffuse = true;
         private bool UseLightSpecular = true;
         private float LightScatterScalar = 0.1f;
-        private float NoiseScalar = 0.05f;
+        private float NoiseScalar = 0.01f;
         // Bloom
         private float BrightPass = 1;
         private System.Numerics.Vector3 SizeWeight = new System.Numerics.Vector3(0.5f, 0.75f, 1f);
@@ -759,7 +759,8 @@ namespace GLOOP.HPL
         {
             scene.SetupBuffers();
 
-            setupRandomTexture();
+            CreateRandomRGBTexture();
+            CreateRandomBWTexture();
 
             UpdateBloomBuffer();
         }
@@ -811,7 +812,7 @@ namespace GLOOP.HPL
             bloomBuffer.Update(floats.Elements, floats.Count, 0);
         }
 
-        private void setupRandomTexture()
+        private void CreateRandomRGBTexture()
         {
             const int randomTextureSize = 64;
             const int randomTexturePixels = randomTextureSize * randomTextureSize;
@@ -822,16 +823,37 @@ namespace GLOOP.HPL
             {
                 GenerateMips = false,
                 InternalFormat = PixelInternalFormat.Rgb,
-                MagFilter = TextureMinFilter.Linear,
-                MinFilter = TextureMinFilter.Linear,
+                MagFilter = TextureMinFilter.Nearest,
+                MinFilter = TextureMinFilter.Nearest,
                 WrapMode = TextureWrapMode.Repeat,
-                Name = "Random",
+                Name = "Random RGB",
                 PixelFormat = PixelFormat.Rgb,
                 Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
             };
-            NoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
+            RGBNoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
         }
-       
+
+        private void CreateRandomBWTexture()
+        {
+            const int randomTextureSize = 64;
+            const int randomTexturePixels = randomTextureSize * randomTextureSize;
+            var data = new byte[randomTexturePixels];
+            new Random().NextBytes(data);
+
+            var texParams = new TextureParams()
+            {
+                GenerateMips = false,
+                InternalFormat = PixelInternalFormat.CompressedRed,
+                MagFilter = TextureMinFilter.Nearest,
+                MinFilter = TextureMinFilter.Nearest,
+                WrapMode = TextureWrapMode.Repeat,
+                Name = "Random Red",
+                PixelFormat = PixelFormat.Red,
+                Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
+            };
+            BWNoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
+        }
+
         private FrameBuffer ResolveGBuffer(Texture2D albedo)
         {
             var outputBuffer = PostMan.NextFramebuffer;
@@ -854,7 +876,7 @@ namespace GLOOP.HPL
                     var shader = FinalCombineShader;
                     shader.Use();
                     LightingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
-                    NoiseMap.Use(TextureUnit.Texture1);
+                    BWNoiseMap.Use(TextureUnit.Texture1);
                     shader.Set("lightMap", TextureUnit.Texture0);
                     shader.Set("noiseMap", TextureUnit.Texture1);
                     shader.Set("timeMilliseconds", elapsedMilliseconds);
@@ -946,7 +968,7 @@ namespace GLOOP.HPL
 
                     var shader = BloomCombineShader;
                     shader.Use();
-                    Texture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], NoiseMap }, TextureUnit.Texture0);
+                    Texture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], RGBNoiseMap }, TextureUnit.Texture0);
                     shader.Set("blurMap0", TextureUnit.Texture0);
                     shader.Set("blurMap1", TextureUnit.Texture1);
                     shader.Set("blurMap2", TextureUnit.Texture2);

@@ -36,7 +36,7 @@ namespace GLOOP
         public static void AssertMetricRanges()
         {
             Debug.Assert(RenderBatches < 180, "Concerning number of render batches");
-            Debug.Assert(BufferBinds < 12, "Cercerning number of buffer binds");
+            Debug.Assert(BufferBinds < 13, "Cercerning number of buffer binds");
             Debug.Assert(ShaderBinds < 150, "Cercerning number of shader binds");
         }
 
