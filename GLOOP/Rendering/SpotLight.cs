@@ -7,6 +7,10 @@ namespace GLOOP.Rendering
 {
     public class SpotLight : Light
     {
+        public static new int NumLights { get; private set; } = 0;
+
+        public readonly int SpotLightIndex = NumLights++;
+
         public readonly Quaternion Rotation;
         public readonly float FOV;
         public readonly float ZNear;

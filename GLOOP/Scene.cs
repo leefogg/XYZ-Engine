@@ -16,7 +16,7 @@ namespace GLOOP
 {
     public class Scene : RenderableArea
     {
-        private const int MaxLights = 200;
+        private static readonly int commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
 
         public List<Model> Terrain = new List<Model>();
         public List<VisibilityPortal> VisibilityPortals = new List<VisibilityPortal>();
@@ -27,15 +27,22 @@ namespace GLOOP
         private Buffer<GPUModel> ModelsBuffer;
         private Buffer<GPUPointLight> PointLightsBuffer;
         private Buffer<GPUSpotLight> SpotLightsBuffer;
+        private Buffer<int> PointLightIndexBuffer, SpotLightIndexBuffer;
         private readonly FastList<DrawElementsIndirectData> ScratchDrawCommands = new FastList<DrawElementsIndirectData>(1024 * 4);
         private readonly FastList<GPUModel> ScratchGPUModels = new FastList<GPUModel>(1024 * 4);
-        private readonly Ring<List<SpotLight>> VisibleSpotLights = new Ring<List<SpotLight>>(PowerOfTwo.Two, i => new List<SpotLight>());
-        private readonly Ring<List<PointLight>> VisiblePointLights = new Ring<List<PointLight>>(PowerOfTwo.Two, i => new List<PointLight>());
+        private readonly Ring<FastList<int>> VisibleSpotLights = new Ring<FastList<int>>(PowerOfTwo.Two, i => new FastList<int>(1024));
+        private readonly Ring<FastList<int>> VisiblePointLights = new Ring<FastList<int>>(PowerOfTwo.Two, i => new FastList<int>(1024));
         private readonly Ring<List<Model>> VisibleOccluders = new Ring<List<Model>>(PowerOfTwo.Two, NewListOfModels);
         private readonly Ring<List<Model>> VisibleNonOccluders = new Ring<List<Model>>(PowerOfTwo.Two, NewListOfModels);
         private readonly Ring<List<Model>> VisibleTerrain = new Ring<List<Model>>(PowerOfTwo.Two, NewListOfModels);
         private readonly List<RenderBatch> NonOccluderBatches = new List<RenderBatch>();
         private readonly List<RenderBatch> OccluderBatches = new List<RenderBatch>();
+
+#if DEBUG
+        // Debug
+        private IList<SpotLight> AllSpotLights;
+        private IList<PointLight> AllPointLights;
+#endif
 
         private static List<Model> NewListOfModels(int i) => new List<Model>();
 
@@ -71,22 +78,38 @@ namespace GLOOP
 
         private void CreateLightBuffers()
         {
-            // TODO: Remove max, just render in batches of max
             var totalPointLights = PointLights.Count + VisibilityAreas.Values.Sum(area => area.PointLights.Count);
             PointLightsBuffer = new Buffer<GPUPointLight>(
-                Math.Min(MaxLights, totalPointLights),
+                totalPointLights,
+                BufferTarget.ShaderStorageBuffer,
+                BufferUsageHint.StaticDraw,
+                "PointLights"
+            );
+            PointLightIndexBuffer = new Buffer<int>(
+                Enumerable.Range(0, 512).ToArray(),
                 BufferTarget.UniformBuffer,
                 BufferUsageHint.StreamDraw,
-                "PointLights"
+                "Point Light Indicies"
             );
 
             var totalSpotLights = SpotLights.Count + VisibilityAreas.Values.Sum(area => area.SpotLights.Count);
             SpotLightsBuffer = new Buffer<GPUSpotLight>(
-                Math.Min(MaxLights, totalPointLights),
-                BufferTarget.UniformBuffer,
-                BufferUsageHint.StreamDraw,
+                totalSpotLights,
+                BufferTarget.ShaderStorageBuffer,
+                BufferUsageHint.StaticDraw,
                 "SpotLights"
             );
+
+            SpotLightIndexBuffer = new Buffer<int>(
+                Enumerable.Range(0, 512).ToArray(),
+                BufferTarget.UniformBuffer,
+                BufferUsageHint.StreamDraw,
+                "Spot Light Indicies"
+            );
+
+
+            PopulatePointLightsBuffer(PointLights.AppendRange(VisibilityAreas.Values.SelectMany(area => area.PointLights)).Distinct().ToArray());
+            PopulateSpotLightsBuffer(SpotLights.AppendRange(VisibilityAreas.Values.SelectMany(area => area.SpotLights)).Distinct().ToArray());
         }
 
         private void CreateModelBuffers()
@@ -124,9 +147,19 @@ namespace GLOOP
             visiblePointLights.Clear();
             visibleSpotLights.Clear();
             foreach (var room in visibleAreas)
-                visiblePointLights.AddRange(room.GetVisiblePointLights());
+            {
+                var visibleLights = room.PointLights
+                    .Where(light => Camera.Current.IntersectsFrustum(light.Position, light.Radius * 2))
+                    .Select(light => light.PointLightIndex);
+                visiblePointLights.AddRange(visibleLights);
+            }
             foreach (var room in visibleAreas)
-                visibleSpotLights.AddRange(room.GetVisibleSpotLights());
+            {
+                var visibleLights = room.SpotLights
+                    .Where(light =>Camera.Current.IntersectsFrustum(light.Position, light.Radius * 2))
+                    .Select(light => light.SpotLightIndex);
+                visibleSpotLights.AddRange(visibleLights);
+            }
 
             visibleTerrain.Clear();
             visibleTerrain.AddRange(
@@ -153,41 +186,35 @@ namespace GLOOP
                 ModelsBuffer.Update(ScratchGPUModels.Elements, ScratchGPUModels.Count);
             }
 
-            PopulateSpotLightsBuffer();
-            PopulatePointLightsBuffer();
+            PointLightIndexBuffer.Update(VisiblePointLights.Current.Elements, VisiblePointLights.Current.Count);
+            SpotLightIndexBuffer.Update(VisibleSpotLights.Current.Elements, VisibleSpotLights.Current.Count);
         }
 
-        private void PopulateSpotLightsBuffer()
+        private void PopulateSpotLightsBuffer(IList<SpotLight> visibleLights)
         {
-            if (VisibleSpotLights.Count == 0)
+            if (visibleLights.Count == 0)
                 return;
 
-            var lights = new GPUSpotLight[Math.Min(MaxLights, VisibleSpotLights.Current.Count)];
-            var numLights = 0;
-            foreach (var light in VisibleSpotLights.Current)
-            {
-                lights[numLights++] = CreateLight(light);
-                if (numLights >= lights.Length)
-                    break;
-            }
-
+            var lights = new GPUSpotLight[SpotLight.NumLights];
+            foreach (var light in visibleLights)
+                lights[light.SpotLightIndex] = CreateLight(light);
+#if DEBUG
+            AllSpotLights = visibleLights;
+#endif
             SpotLightsBuffer.Update(lights);
         }
 
-        private void PopulatePointLightsBuffer()
+        private void PopulatePointLightsBuffer(IList<PointLight> visibleLights)
         {
-            if (VisiblePointLights.Count == 0)
+            if (visibleLights.Count == 0)
                 return;
 
-            var lights = new GPUPointLight[Math.Min(MaxLights, VisiblePointLights.Current.Count)];
-            var numLights = 0;
-            foreach (var light in VisiblePointLights.Current)
-            {
-                lights[numLights++] = CreateLight(light);
-                if (numLights >= lights.Length)
-                    break;
-            }
-
+            var lights = new GPUPointLight[PointLight.NumLights];
+            foreach (var light in visibleLights)
+                lights[light.PointLightIndex] = CreateLight(light);
+#if DEBUG
+            AllPointLights = visibleLights;
+#endif
             PointLightsBuffer.Update(lights);
         }
 
@@ -343,8 +370,6 @@ namespace GLOOP
                 MultiDrawIndirect(NonOccluderBatches, ref drawCommandPtr);
         }
 
-        private readonly int commandSize = Marshal.SizeOf<DrawElementsIndirectData>();
-
         private void MultiDrawIndirect(IList<RenderBatch> batches, ref IntPtr drawCommandPtr)
         {
             foreach (var batch in batches)
@@ -382,7 +407,8 @@ namespace GLOOP
                 {
                     using (new DebugGroup("Point Lights"))
                     {
-                        PointLightsBuffer.Bind(1, 0);
+                        PointLightsBuffer.Bind(1);
+                        PointLightIndexBuffer.Bind(1);
 
                         var shader = pointLightShader;
                         shader.Use();
@@ -398,16 +424,19 @@ namespace GLOOP
                         Metrics.LightsDrawn += numCulledPointLights;
 
                         // Debug light spheres
+#if DEBUG
                         if (debugLights)
                         {
-                            foreach (var light in VisiblePointLights.Current)
+                            foreach (var index in VisiblePointLights.Current.ToSpan())
                             {
-                                var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, Quaternion.Identity, new Vector3(light.Radius * 2));
+                                var light = AllPointLights[index];
+                                var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, Quaternion.Identity, new Vector3(light.Radius));
                                 singleColorMaterial.ModelMatrix = modelMatrix;
                                 singleColorMaterial.Commit();
                                 Primitives.Sphere.Draw(PrimitiveType.Lines);
                             }
                         }
+#endif
                     }
                 }
             }
@@ -418,7 +447,8 @@ namespace GLOOP
                 {
                     using (new DebugGroup("Spot Lights"))
                     {
-                        SpotLightsBuffer.Bind(1, 0);
+                        SpotLightsBuffer.Bind(1);
+                        SpotLightIndexBuffer.Bind(1);
 
                         var shader = spotLightShader;
                         shader.Use();
@@ -431,12 +461,13 @@ namespace GLOOP
 
                         Primitives.Frustum.Draw(numInstances: numCulledSpotLights);
                         Metrics.LightsDrawn += numCulledSpotLights;
-
+#if DEBUG
                         if (debugLights)
                         {
                             var material = frustumMaterial;
-                            foreach (var light in VisibleSpotLights.Current)
+                            foreach (var index in VisibleSpotLights.Current.ToSpan())
                             {
+                                var light = AllSpotLights[index];
                                 var modelMatrix = MathFunctions.CreateModelMatrix(light.Position, light.Rotation, Vector3.One);
                                 GetLightVars(light, out var aspect, out var scale);
                                 material.AspectRatio = aspect;
@@ -446,6 +477,7 @@ namespace GLOOP
                                 Primitives.Frustum.Draw(PrimitiveType.Lines);
                             }
                         }
+#endif
                     }
                 }
             }

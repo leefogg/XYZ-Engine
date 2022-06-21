@@ -108,8 +108,8 @@ namespace GLOOP.HPL
         private float BrightPass = 1;
         private System.Numerics.Vector3 SizeWeight = new System.Numerics.Vector3(0.5f, 0.75f, 1f);
         private float WeightScalar = 1.75f;
-        private float hWidth = 5f, vWidth = 5f, offset = 0.75f;
-        private int numSamples = 6;
+        private float BlurWidthPercent = 5f, BlurHeightPercent = 5f, BlurPixelOffset = 0.75f;
+        private int NumBlurSamples = 6;
         // Post
         private float Key = 1f;
         private float Exposure = 1f;
@@ -330,10 +330,7 @@ namespace GLOOP.HPL
             );
             scene = map.ToScene();
             var afterMapLoad = DateTime.Now;
-            var beforeMapSort = DateTime.Now;
-            var afterMapSort = DateTime.Now;
 
-            Console.WriteLine($"Time taken to sort map {(afterMapSort - beforeMapSort).TotalSeconds} seconds");
             Console.WriteLine($"Time taken to load map {(afterMapLoad - beforeMapLoad).TotalSeconds} seconds");
             Console.WriteLine($"Time taken to load models {Metrics.TimeLoadingModels.TotalSeconds} seconds");
             Console.WriteLine($"Time taken to load textures {Metrics.TimeLoadingTextures.TotalSeconds} seconds");
@@ -650,6 +647,7 @@ namespace GLOOP.HPL
                         {
                             var newBuffer = PostMan.NextFramebuffer;
                             newBuffer.Use();
+                            GL.Clear(ClearBufferMask.ColorBufferBit);
                             DoPostEffect(FXAAShader, GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse]);
                             currentBuffer = newBuffer;
                             albedo = currentBuffer.ColorBuffers[0];
@@ -762,20 +760,22 @@ namespace GLOOP.HPL
             scene.SetupBuffers();
 
             setupRandomTexture();
+
+            UpdateBloomBuffer();
         }
 
         private void UpdateBloomBuffer()
         {
             if (ImGui.Begin("Blur"))
             {
-                ImGui.SliderInt("NumSamples", ref numSamples, 6, 12);
-                ImGui.SliderFloat("Horizontal Width", ref hWidth, 1, 25);
-                ImGui.SliderFloat("Vertical Width", ref vWidth, 1, 25);
-                ImGui.SliderFloat("Offset", ref offset, 0, 0.75f);
+                ImGui.SliderInt("NumSamples", ref NumBlurSamples, 6, 12);
+                ImGui.SliderFloat("Horizontal Width", ref BlurWidthPercent, 1, 25);
+                ImGui.SliderFloat("Vertical Width", ref BlurHeightPercent, 1, 25);
+                ImGui.SliderFloat("Offset", ref BlurPixelOffset, 0, 0.75f);
             }
             ImGui.End();
 
-            var floats = new List<float>();
+            var floats = new FastList<float>(sizeof(float) * 2 * MaxSamples * 2);
             for (int y = 0; y < 6; y++)
             {
                 var aspect = frameBufferWidth / frameBufferHeight;
@@ -783,33 +783,32 @@ namespace GLOOP.HPL
                 if ((y & 1) == 0)
                 {
                     frameBufferSize = frameBufferWidth;
-                    blurSize = hWidth;
+                    blurSize = BlurWidthPercent;
                 }
                 else
                 {
                     frameBufferSize = frameBufferHeight;
-                    blurSize = vWidth * aspect;
+                    blurSize = BlurHeightPercent * aspect;
                 }
                 
                 var sizePerPx = 1f / frameBufferSize;
-                var sizePerStep = sizePerPx * blurSize / numSamples;
-                var invSamples = 1f / (numSamples + 1);
+                var sizePerStep = sizePerPx * blurSize / NumBlurSamples;
+                var invSamples = 1f / (NumBlurSamples + 1);
 
-                for (int x = 0; x < numSamples; x++)
+                for (int x = 0; x < NumBlurSamples; x++)
                 {
                     floats.Add(1f - (invSamples * x));
-                    floats.Add(sizePerStep * blurSize * x + (offset * sizePerPx));
+                    floats.Add(sizePerStep * blurSize * x + (BlurPixelOffset * sizePerPx));
                 }
                 while (sizeof(float) * floats.Count % Globals.UniformBufferOffsetAlignment != 0)
                     floats.Add(0);
                 bloomDataStride = Math.Min(sizeof(float) * floats.Count, bloomDataStride);
             }
 
-            var data = floats.ToArray();
             if (bloomBuffer == null)
-                bloomBuffer = new Buffer<float>(sizeof(float) * 2 * MaxSamples * 2, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
+                bloomBuffer = new Buffer<float>(floats.Count, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
             
-            bloomBuffer.Update(data);
+            bloomBuffer.Update(floats.Elements, floats.Count, 0);
         }
 
         private void setupRandomTexture()
@@ -908,11 +907,9 @@ namespace GLOOP.HPL
 
                 using (new DebugGroup("Blur"))
                 {
+#if DEBUG
                     UpdateBloomBuffer();
-
-                    // Take bright parts and blur
-                    bloomBuffer.Bind();
-
+#endif
                     var previousTexture = currentFB.ColorBuffers[0];
                     Shader shader;
                     for (var i = 0; i < BloomBuffers.Length;)
@@ -926,7 +923,7 @@ namespace GLOOP.HPL
                         {
                             shader = step;
                             shader.Use();
-                            shader.Set("NumSamples", numSamples);
+                            shader.Set("NumSamples", NumBlurSamples);
                             BloomBuffers[i].Use();
 
                             bloomBuffer.Bind(3, bloomDataStride * i);
@@ -987,6 +984,7 @@ namespace GLOOP.HPL
             GL.Enable(EnableCap.FramebufferSrgb);
             finalBuffer.Use();
 
+            GL.Clear(ClearBufferMask.ColorBufferBit);
             DoPostEffect(FullBrightShader, inputTexture);
 
             GL.Disable(EnableCap.FramebufferSrgb);
@@ -1176,6 +1174,9 @@ namespace GLOOP.HPL
 
                 if (input.IsKeyPressed(Keys.B))
                     showBoundingBoxes = !showBoundingBoxes;
+
+                if (input.IsKeyPressed(Keys.G))
+                    shouldUpdateVisibility = !shouldUpdateVisibility;
 
                 if (input.IsKeyPressed(Keys.F1))
                 {

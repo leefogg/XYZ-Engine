@@ -12,13 +12,13 @@ namespace GLOOP.Rendering
         public readonly int Handle = GL.GenBuffer();
         private readonly BufferTarget Type;
         private readonly BufferUsageHint Usage;
-        private readonly int Length;
+        public readonly int SizeInBytes;
 
         private Buffer(BufferTarget type, BufferUsageHint usage, int length, string name)
         {
             Type = type;
             Usage = usage;
-            Length = length;
+            SizeInBytes = length;
 
             Bind();
 
@@ -32,22 +32,22 @@ namespace GLOOP.Rendering
         public Buffer(T data, BufferTarget type, BufferUsageHint usage, string name)
             : this(type, usage, Marshal.SizeOf<T>(), name)
         {
-            GL.NamedBufferData(Handle, Length, ref data, usage);
-            Metrics.BufferWrites += (ulong)Length; 
+            GL.NamedBufferData(Handle, SizeInBytes, ref data, usage);
+            Metrics.BufferWrites += (ulong)SizeInBytes; 
         }
 
         public Buffer(T[] data, BufferTarget type, BufferUsageHint usage, string name)
             : this(type, usage, Marshal.SizeOf<T>() * data.Length, name)
         {
-            GL.NamedBufferData(Handle, Length, data, usage);
-            Metrics.BufferWrites += (ulong)Length; 
+            GL.NamedBufferData(Handle, SizeInBytes, data, usage);
+            Metrics.BufferWrites += (ulong)SizeInBytes; 
         }
 
         public Buffer(int count, BufferTarget type, BufferUsageHint usage, string name)
             : this(type, usage, Marshal.SizeOf<T>() * count, name)
         {
-            GL.NamedBufferData(Handle, Length, (IntPtr)0, usage);
-            Metrics.BufferWrites += (ulong)Length; 
+            GL.NamedBufferData(Handle, SizeInBytes, (IntPtr)0, usage);
+            Metrics.BufferWrites += (ulong)SizeInBytes; 
         }
 
         public void Update(T data, uint start = 0)
@@ -68,7 +68,7 @@ namespace GLOOP.Rendering
             var length = elemSize * numElements;
             var start = elemSize * startElement;
             var endByte = length + start;
-            System.Diagnostics.Debug.Assert(endByte <= Length, $"Wrote {endByte - Length} bytes to unmanaged memory");
+            System.Diagnostics.Debug.Assert(endByte <= SizeInBytes, $"Wrote {endByte - SizeInBytes} bytes to unmanaged memory");
             GL.NamedBufferSubData(Handle, (IntPtr)start, (int)(length - start), data);
             Metrics.BufferWrites += (ulong)length;
         }
@@ -97,11 +97,11 @@ namespace GLOOP.Rendering
             GL.BindBufferBase((BufferRangeTarget)Type, index, Handle);
             Metrics.BufferBinds++;
         }
-        public void Bind(int index, int start) => Bind(index, Length, start);
+        public void Bind(int index, int start) => Bind(index, SizeInBytes, start);
         public void Bind(int index, int length, int start = 0)
         {
             System.Diagnostics.Debug.Assert(Enum.GetName(typeof(BufferRangeTarget), Type) != null, $"Cannot bind range for type {Type}");
-            GL.BindBufferRange((BufferRangeTarget)Type, index, Handle, (IntPtr)start, length);
+            GL.BindBufferRange((BufferRangeTarget)Type, index, Handle, (IntPtr)(start * Marshal.SizeOf<T>()), length * Marshal.SizeOf<T>());
             Metrics.BufferBinds++;
         }
     }

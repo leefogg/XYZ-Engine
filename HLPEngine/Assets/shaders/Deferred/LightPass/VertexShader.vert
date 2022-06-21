@@ -1,4 +1,5 @@
 #version 420
+#define MAX_LIGHTS 512
 
 layout (location = 0) in vec3 Position;
 
@@ -26,8 +27,11 @@ layout (std140, binding = 0) uniform CameraMatricies {
 		float diffuseScalar;
 		float specularScalar;
 	};
-	layout (std140, binding = 1) uniform pointlights {
-		PointLight[200] pointLights;
+	layout (std140, binding = 1) buffer pointlights {
+		PointLight[] lights;
+	};
+	layout (std140, binding = 1) uniform pointLightIndexes {
+		ivec4[MAX_LIGHTS / 4] indexes;
 	};
 	out PointLight light;
 #else
@@ -47,15 +51,19 @@ layout (std140, binding = 0) uniform CameraMatricies {
 		float specularScalar;
 		mat4 viewProjection;
 	};
-	layout (std140, binding = 1) uniform spotlights {
-		SpotLight[200] spotLights;
+	layout (std140, binding = 1) buffer spotlights {
+		SpotLight[] lights;
+	};
+	layout (std140, binding = 1) uniform spotLightIndicies {
+		ivec4[MAX_LIGHTS / 4] indexes;
 	};
 	out SpotLight light;
 #endif
 
 void main(void) {
+	light = lights[indexes[gl_InstanceID / 4][gl_InstanceID % 4]];
+
 #if (LIGHTTYPE == POINT)
-	light = pointLights[gl_InstanceID];
 	vec3 v = Position;
 
 	mat4 modelMatrix = mat4(1);
@@ -63,8 +71,6 @@ void main(void) {
 	modelMatrix[0][0] = modelMatrix[1][1] = modelMatrix[2][2] = light.radius;
 	//modelMatrix[3][3] = 1;
 #else
-	light = spotLights[gl_InstanceID];
-
 	vec3 v = Position;
 	if (gl_VertexID > 0) {
 		v = normalize(v * light.scale * vec3(1, 1, light.ar));

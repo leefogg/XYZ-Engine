@@ -37,10 +37,5 @@ namespace GLOOP.Rendering
                 }
             }
         }
-
-        public IEnumerable<PointLight> GetVisiblePointLights() 
-            => PointLights.Where(light => Camera.Current.IsInsideFrustum(light.Position, light.Radius));
-        public IEnumerable<SpotLight> GetVisibleSpotLights()
-            => SpotLights.Where(light => Camera.Current.IsInsideFrustum(light.Position, light.Radius));
     }
 }

@@ -86,5 +86,13 @@ namespace GLOOP.Extensions
 
             return -1;
         }
+
+        public static IEnumerable<T> AppendRange<T>(this IEnumerable<T> self, IEnumerable<T> other)
+        {
+            foreach (var item in self)
+                yield return item;
+            foreach (var item in other)
+                yield return item;
+        }
     }
 }

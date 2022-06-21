@@ -7,6 +7,10 @@ namespace GLOOP.Rendering
 {
     public abstract class Light
     {
+        public static int NumLights { get; private set; } = 0;
+
+        public readonly int LightIndex = NumLights++;
+
         public Vector3 Position { get; set; }
         public Vector3 Color { get; }
         public float Brightness { get; }
