@@ -114,7 +114,6 @@ namespace GLOOP
         public bool IntersectsFrustum(SphereBounds sphere) => IntersectsFrustum(sphere.Position, sphere.Radius);
         public bool IntersectsFrustum(Vector3 center, float radius)
         {
-            //return true;
             // Project sphere into view space.
             var viewSpace = new Vector4(center.X, center.Y, center.Z, 1) * ViewMatrix;
             center = (viewSpace / viewSpace.W).Xyz;  // Perspective division.

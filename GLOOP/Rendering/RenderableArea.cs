@@ -1,15 +1,4 @@
-﻿using GLOOP.Extensions;
-using GLOOP.Rendering.Debugging;
-using GLOOP.Rendering.Materials;
-using GLOOP.Util;
-using OpenTK.Graphics.OpenGL4;
-using OpenTK.Mathematics;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
+﻿using System.Collections.Generic;
 
 namespace GLOOP.Rendering
 {
