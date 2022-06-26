@@ -75,7 +75,7 @@ namespace GLOOP.HPL
         private static readonly MapSetup Omicron = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter03\03_02_omicron_inside\03_02_omicron_inside.hpm", new Vector3(-1.0284736f, -2.0497713f, 21.69069f));
         private static readonly MapSetup TauOutside = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_01_tau_outside\04_01_tau_outside.hpm", new Vector3(77.65444f, 315.97113f, -340.09308f));
         private static readonly MapSetup Tau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm", new Vector3(26.263678f, 1.7000114f, 36.090767f));
-        private readonly MapSetup MapToUse = Phi;
+        private readonly MapSetup MapToUse = Custom;
 
         private Camera Camera;
         private Scene scene;
@@ -101,6 +101,7 @@ namespace GLOOP.HPL
         private Shader SSAOShader;
         private Shader ColorCorrectionShader;
         private FrustumMaterial frustumMaterial;
+        private Texture2D DirtTexture, CrackTexture;
         private QueryPool queryPool;
         private List<(VisibilityPortal, ScopedQuery)> PortalQueries = new List<(VisibilityPortal, ScopedQuery)>();
         private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
@@ -123,6 +124,15 @@ namespace GLOOP.HPL
         private float WeightScalar = 1.75f;
         private float BlurWidthPercent = 5f, BlurPixelOffset = 0.75f;
         private int NumBlurSamples = 6;
+#if DEBUG
+        private float DirtHighlightScalar = 0.5f;
+        private float DirtGeneralScalar = 0.01f;
+        private float CrackScalar = 0.005f;
+#else
+        private float DirtHighlightScalar = 2.0f;
+        private float DirtGeneralScalar = 0.01f;
+        private float CrackScalar = 0.02f;
+#endif
         // Post
         private float Key = 1f;
         private float Exposure = 1f;
@@ -304,7 +314,7 @@ namespace GLOOP.HPL
                },
                "Blur Horizontally"
             );
-            BloomCombineShader = new StaticPixelShader(
+            BloomCombineShader = new DynamicPixelShader(
                "assets/shaders/Bloom/Combine/vertex.vert",
                "assets/shaders/Bloom/Combine/fragment.frag",
                null,
@@ -322,7 +332,7 @@ namespace GLOOP.HPL
                 null,
                 "SSAO"
             );
-            ColorCorrectionShader = new DynamicPixelShader(
+            ColorCorrectionShader = new StaticPixelShader(
                 "assets/shaders/ColorCorrection/vertex.vert",
                 "assets/shaders/ColorCorrection/fragment.frag",
                 null,
@@ -480,7 +490,7 @@ namespace GLOOP.HPL
             if (!(shouldUpdateVisibility || FrameNumber == 0))
                 return;
 
-            scene.UpdateVisibility(VisibleAreas);
+            scene.UpdateVisibility(VisibleAreas.Cast<RenderableArea>().ToList());
         }
 
         [Conditional("DEBUG")]
@@ -777,6 +787,22 @@ namespace GLOOP.HPL
 
             CreateRandomRGBTexture();
             CreateRandomBWTexture();
+            DirtTexture = new Texture2D("assets/textures/Scratches.png", new TextureParams()
+            {
+                InternalFormat = PixelInternalFormat.R8,
+                GenerateMips = false,
+                MinFilter = TextureMinFilter.Nearest,
+                MagFilter = TextureMinFilter.Nearest,
+                Name = "Dirt"
+            });
+            CrackTexture = new Texture2D("assets/textures/Crack.jpg", new TextureParams()
+            {
+                InternalFormat = PixelInternalFormat.Rgb,
+                GenerateMips = false,
+                MinFilter = TextureMinFilter.Linear,
+                MagFilter = TextureMinFilter.Linear,
+                Name = "Crack"
+            });
 
             UpdateBloomBuffer();
         }
@@ -796,6 +822,9 @@ namespace GLOOP.HPL
                 ImGui.SliderInt("NumSamples", ref NumBlurSamples, 6, MaxSamples);
                 ImGui.SliderFloat("Horizontal Width", ref BlurWidthPercent, 1, 25);
                 ImGui.SliderFloat("Offset", ref BlurPixelOffset, 0, 0.75f);
+                ImGui.SliderFloat("Dirt Highlights", ref DirtHighlightScalar, 0, 5);
+                ImGui.SliderFloat("Dirt General", ref DirtGeneralScalar, 0, 0.1f);
+                ImGui.SliderFloat("Crack Strength", ref CrackScalar, 0, 0.1f);
             }
 
 
@@ -996,21 +1025,32 @@ namespace GLOOP.HPL
                     GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
                     currentFB = PostMan.NextFramebuffer;
                     currentFB.Use();
-                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                    GL.Disable(EnableCap.Blend);
 
                     var shader = BloomCombineShader;
                     shader.Use();
-                    Texture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], RGBNoiseMap }, TextureUnit.Texture0);
+                    Texture.Use(new[] {
+                        BloomBuffers[1].ColorBuffers[0],
+                        BloomBuffers[3].ColorBuffers[0], 
+                        BloomBuffers[5].ColorBuffers[0],
+                        DirtTexture, 
+                        CrackTexture,
+                        diffuse
+                    }, TextureUnit.Texture0);
+                    //shader.Set("avSizeWeight", SizeWeight);
                     shader.Set("blurMap0", TextureUnit.Texture0);
                     shader.Set("blurMap1", TextureUnit.Texture1);
                     shader.Set("blurMap2", TextureUnit.Texture2);
-                    shader.Set("noiseMap", TextureUnit.Texture3);
-                    shader.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
-                    shader.Set("timeMilliseconds", elapsedMilliseconds);
-                    shader.Set("avSizeWeight", new Vector3(SizeWeight.X * WeightScalar, SizeWeight.Y * WeightScalar, SizeWeight.Z * WeightScalar));
+                    shader.Set("dirtMap", TextureUnit.Texture3);
+                    shader.Set("crackMap", TextureUnit.Texture4);
+                    shader.Set("diffuseMap", TextureUnit.Texture5);
+                    shader.Set("dirtHighlightScalar", DirtHighlightScalar);
+                    shader.Set("dirtGeneralScalar", DirtGeneralScalar);
+                    shader.Set("crackScalar", CrackScalar);
                     Primitives.Quad.Draw();
 
-                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                    GL.Enable(EnableCap.Blend);
                     GL.Disable(EnableCap.FramebufferSrgb);
                 }
 
