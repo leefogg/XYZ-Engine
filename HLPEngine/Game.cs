@@ -30,6 +30,19 @@ using System.Diagnostics.Contracts;
 namespace GLOOP.HPL
 {
     public class Game : Window {
+        [StructLayout(LayoutKind.Explicit, Size = 16)]
+        private readonly struct BlurData
+        {
+            [FieldOffset(00)] public readonly float Weight;
+            [FieldOffset(04)] public readonly float Offset;
+            // +8 more bytes of padding
+
+            public BlurData(float weight, float offset)
+            {
+                Weight = weight;
+                Offset = offset;
+            }
+        }
         private readonly struct MapSetup
         {
             public readonly string Path;
@@ -91,7 +104,7 @@ namespace GLOOP.HPL
         private QueryPool queryPool;
         private List<(VisibilityPortal, ScopedQuery)> PortalQueries = new List<(VisibilityPortal, ScopedQuery)>();
         private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
-        private Buffer<float> bloomBuffer;
+        private Buffer<BlurData> bloomBuffer;
 
         // Lighting
         private float OffsetByNormalScalar = 0.05f;
@@ -108,7 +121,7 @@ namespace GLOOP.HPL
         private float BrightPass = 1;
         private System.Numerics.Vector3 SizeWeight = new System.Numerics.Vector3(0.5f, 0.75f, 1f);
         private float WeightScalar = 1.75f;
-        private float BlurWidthPercent = 5f, BlurHeightPercent = 5f, BlurPixelOffset = 0.75f;
+        private float BlurWidthPercent = 5f, BlurPixelOffset = 0.75f;
         private int NumBlurSamples = 6;
         // Post
         private float Key = 1f;
@@ -117,7 +130,7 @@ namespace GLOOP.HPL
         private float WhiteCut = 1f;
         // SSAO
         private int MinSamples = 8;
-        private int MaxSamples = 16;
+        private int MaxSamples = 32;
         private float MaxSamplesDistance = 0.5f;
         private float Intensity = 8f;
         private float Bias = 0.5f;
@@ -135,7 +148,6 @@ namespace GLOOP.HPL
         private bool enableImGui = false;
         private bool shouldUpdateVisibility = true;
 
-        private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
         private CPUProfiler.Frame CPUFrame;
         private GPUProfiler.Frame GPUFrame;
@@ -422,13 +434,9 @@ namespace GLOOP.HPL
                 RenderPass(backBuffer);
 #endif
 
-                DrawImGUIWindows();
+                UpdateBuffers();
 
-                if (VisibilityTask?.IsCompleted ?? true)
-                {
-                    UpdateBuffers();
-                    VisibilityTask = Task.Run(UpdateVisibility);
-                }
+                DrawImGUIWindows();
 
                 if (BenchmarkMode && FrameNumber == 1)
                     Metrics.StartRecording($"{DateTime.Now:ddMMyyyy HHmm}.csv");
@@ -749,10 +757,18 @@ namespace GLOOP.HPL
             using var cpuTimer = CPUFrame[CPUProfiler.Event.UpdateBuffers];
             using var gpuTimer = GPUFrame[GPUProfiler.Event.UpdateBuffers];
 
+            if (VisibilityTask?.IsCompleted ?? true)
+            {
+                VisibilityTask = Task.Run(UpdateVisibility);
+                if (shouldUpdateVisibility || FrameNumber == 0)
+                    scene.UpdateBuffers();
+            }
+
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
 
-            if (shouldUpdateVisibility || FrameNumber == 0)
-                scene.UpdateBuffers();
+#if DEBUG
+            UpdateBloomBuffer();
+#endif
         }
 
         private void setupBuffers()
@@ -767,49 +783,68 @@ namespace GLOOP.HPL
 
         private void UpdateBloomBuffer()
         {
+            if (!enableBloom)
+                return;
+
+#if !DEBUG
+            if (bloomBuffer != null)
+                return;
+#endif
+
             if (ImGui.Begin("Blur"))
             {
-                ImGui.SliderInt("NumSamples", ref NumBlurSamples, 6, 12);
+                ImGui.SliderInt("NumSamples", ref NumBlurSamples, 6, MaxSamples);
                 ImGui.SliderFloat("Horizontal Width", ref BlurWidthPercent, 1, 25);
-                ImGui.SliderFloat("Vertical Width", ref BlurHeightPercent, 1, 25);
                 ImGui.SliderFloat("Offset", ref BlurPixelOffset, 0, 0.75f);
             }
-            ImGui.End();
 
-            var floats = new FastList<float>(sizeof(float) * 2 * MaxSamples * 2);
-            for (int y = 0; y < 6; y++)
+
+            var sizeOfStruct = Marshal.SizeOf<BlurData>();
+            Debug.Assert(Globals.UniformBufferOffsetAlignment % sizeOfStruct == 0, "BlurData cannot align to UniformBuffer Offset Alignment");
+
+            var structs = new FastList<BlurData>(sizeOfStruct * MaxSamples);
+
+            int scale = 1;
+            for (int y = 0; y < 6; y++, scale *= 2)
             {
-                var aspect = frameBufferWidth / frameBufferHeight;
                 float frameBufferSize, blurSize;
-                if ((y & 1) == 0)
+                blurSize = BlurWidthPercent;
+                if ((y & 1) == 0) // Vertical or horizoncal blur pass
                 {
-                    frameBufferSize = frameBufferWidth;
-                    blurSize = BlurWidthPercent;
+                    frameBufferSize = frameBufferHeight;
                 }
                 else
                 {
-                    frameBufferSize = frameBufferHeight;
-                    blurSize = BlurHeightPercent * aspect;
+                    frameBufferSize = frameBufferWidth;
                 }
-                
+
                 var sizePerPx = 1f / frameBufferSize;
-                var sizePerStep = sizePerPx * blurSize / NumBlurSamples;
-                var invSamples = 1f / (NumBlurSamples + 1);
+                var pixelOffset = BlurPixelOffset * sizePerPx;
+                var sizePerStep = (sizePerPx * blurSize) / NumBlurSamples;
+                var invSamples = 1f / NumBlurSamples;
 
                 for (int x = 0; x < NumBlurSamples; x++)
                 {
-                    floats.Add(1f - (invSamples * x));
-                    floats.Add(sizePerStep * blurSize * x + (BlurPixelOffset * sizePerPx));
+                    structs.Add(new BlurData(
+                        1f - invSamples * x,
+                        (sizePerStep * blurSize * x) + pixelOffset
+                    ));
                 }
-                while (sizeof(float) * floats.Count % Globals.UniformBufferOffsetAlignment != 0)
-                    floats.Add(0);
-                bloomDataStride = Math.Min(sizeof(float) * floats.Count, bloomDataStride);
+                while (sizeOfStruct * structs.Count % Globals.UniformBufferOffsetAlignment != 0)
+                    structs.Add(new BlurData(0, 0));
             }
 
             if (bloomBuffer == null)
-                bloomBuffer = new Buffer<float>(floats.Count, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
-            
-            bloomBuffer.Update(floats.Elements, floats.Count, 0);
+                bloomBuffer = new Buffer<BlurData>(sizeOfStruct * MaxSamples, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
+
+            bloomBuffer.Update(structs.Elements, structs.Count, 0);
+
+            var weights = structs.Elements.Select(s => s.Weight).ToArray();
+            var offsets = structs.Elements.Select(s => s.Offset).ToArray();
+            ImGui.PlotLines("Weights", ref weights[0], NumBlurSamples * 6,0, string.Empty, 0, 1, new System.Numerics.Vector2(0,50));
+            ImGui.PlotLines("Offsets", ref offsets[0], NumBlurSamples * 6, 0, string.Empty, 0, .2f, new System.Numerics.Vector2(0,50));
+
+            ImGui.End();
         }
 
         private void CreateRandomRGBTexture()
@@ -929,9 +964,6 @@ namespace GLOOP.HPL
 
                 using (new DebugGroup("Blur"))
                 {
-#if DEBUG
-                    UpdateBloomBuffer();
-#endif
                     var previousTexture = currentFB.ColorBuffers[0];
                     Shader shader;
                     for (var i = 0; i < BloomBuffers.Length;)
@@ -948,7 +980,7 @@ namespace GLOOP.HPL
                             shader.Set("NumSamples", NumBlurSamples);
                             BloomBuffers[i].Use();
 
-                            bloomBuffer.Bind(3, bloomDataStride * i);
+                            bloomBuffer.Bind(3, NumBlurSamples, NumBlurSamples * i);
 
                             DoPostEffect(shader, previousTexture);
 
