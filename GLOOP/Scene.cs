@@ -129,9 +129,10 @@ namespace GLOOP
             );
         }
 
-        public void UpdateVisibility(IReadOnlyList<VisibilityArea> areas)
+        public void UpdateVisibility(IList<RenderableArea> areas)
         {
-            var visibleAreas        = areas.ToArray();
+            var visibleAreas = areas;
+            visibleAreas.Add(this);
             var visibleOccluders    = VisibleOccluders.Peek();
             var visibleNonOccluders = VisibleNonOccluders.Peek();
             var visibleTerrain      = VisibleTerrain.Peek();
@@ -140,7 +141,6 @@ namespace GLOOP
 
             visibleOccluders.Clear();
             visibleNonOccluders.Clear();
-            AddVisibleModels(visibleOccluders, visibleNonOccluders);
             foreach (var room in visibleAreas)
                 room.AddVisibleModels(visibleOccluders, visibleNonOccluders);
 
