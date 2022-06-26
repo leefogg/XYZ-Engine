@@ -1196,47 +1196,53 @@ namespace GLOOP.HPL
             //CSV.Append(Camera.Position.X + "," + Camera.Position.Y + "," + Camera.Position.Z + ",");
             //CSV.AppendLine(Camera.Rotation.X + "," + Camera.Rotation.Y);
 
-            if (IsFocused) {
-                var input = KeyboardState;
+            if (IsFocused)
+                UpdateDebugVars();
+        }
 
-                if (input.IsKeyPressed(Keys.L))
-                    debugLights = !debugLights;
+        [Conditional("DEBUG")]
+        [Conditional("BETA")]
+        private void UpdateDebugVars()
+        {
+            var input = KeyboardState;
 
-                if (input.IsKeyDown(Keys.X))
-                    HPLEntity.Offset.X += 0.01f;
-                if (input.IsKeyDown(Keys.Y))
-                    HPLEntity.Offset.Y += 0.01f;
-                if (input.IsKeyDown(Keys.Z))
-                    HPLEntity.Offset.Z += 0.01f;
+            if (input.IsKeyPressed(Keys.L))
+                debugLights = !debugLights;
 
-                if (input.IsKeyPressed(Keys.D0))
-                    debugGBufferTexture = -1;
-                if (input.IsKeyReleased(Keys.D1))
-                    debugGBufferTexture = (int)GBufferTexture.Diffuse;
-                if (input.IsKeyReleased(Keys.D2))
-                    debugGBufferTexture = (int)GBufferTexture.Position;
-                if (input.IsKeyReleased(Keys.D3))
-                    debugGBufferTexture = (int)GBufferTexture.Normal;
-                if (input.IsKeyReleased(Keys.D4))
-                    debugGBufferTexture = (int)GBufferTexture.Specular;
+            if (input.IsKeyDown(Keys.X))
+                HPLEntity.Offset.X += 0.01f;
+            if (input.IsKeyDown(Keys.Y))
+                HPLEntity.Offset.Y += 0.01f;
+            if (input.IsKeyDown(Keys.Z))
+                HPLEntity.Offset.Z += 0.01f;
 
-                if (input.IsKeyReleased(Keys.D9))
-                    debugLightBuffer = !debugLightBuffer;
+            if (input.IsKeyPressed(Keys.D0))
+                debugGBufferTexture = -1;
+            if (input.IsKeyReleased(Keys.D1))
+                debugGBufferTexture = (int)GBufferTexture.Diffuse;
+            if (input.IsKeyReleased(Keys.D2))
+                debugGBufferTexture = (int)GBufferTexture.Position;
+            if (input.IsKeyReleased(Keys.D3))
+                debugGBufferTexture = (int)GBufferTexture.Normal;
+            if (input.IsKeyReleased(Keys.D4))
+                debugGBufferTexture = (int)GBufferTexture.Specular;
 
-                if (input.IsKeyPressed(Keys.V))
-                    VSync = VSync == VSyncMode.Off ? VSyncMode.On : VSyncMode.Off;
+            if (input.IsKeyReleased(Keys.D9))
+                debugLightBuffer = !debugLightBuffer;
 
-                if (input.IsKeyPressed(Keys.B))
-                    showBoundingBoxes = !showBoundingBoxes;
+            if (input.IsKeyPressed(Keys.V))
+                VSync = VSync == VSyncMode.Off ? VSyncMode.On : VSyncMode.Off;
 
-                if (input.IsKeyPressed(Keys.G))
-                    shouldUpdateVisibility = !shouldUpdateVisibility;
+            if (input.IsKeyPressed(Keys.B))
+                showBoundingBoxes = !showBoundingBoxes;
 
-                if (input.IsKeyPressed(Keys.F1))
-                {
-                    enableImGui = !enableImGui;
-                    bindMouse = !enableImGui;
-                }
+            if (input.IsKeyPressed(Keys.G))
+                shouldUpdateVisibility = !shouldUpdateVisibility;
+
+            if (input.IsKeyPressed(Keys.F1))
+            {
+                enableImGui = !enableImGui;
+                bindMouse = !enableImGui;
             }
         }
 
