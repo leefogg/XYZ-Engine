@@ -8,6 +8,7 @@ in vec2 texCoord;
 struct uniformData {
 	float weight;
 	float offset;
+	float padding1, padding2;
 };
 
 layout (std140, binding = 3) uniform uniforms {

@@ -9,6 +9,9 @@ namespace GLOOP.IO
     {
         public static Bitmap Load(string path, TextureParams settings)
         {
+            if (!System.IO.File.Exists(path))
+                System.Diagnostics.Debug.Fail("File does not exist");
+
             var image = new Bitmap(path);
             var data = image.LockBits(
                 new Rectangle(0, 0, image.Width, image.Height),

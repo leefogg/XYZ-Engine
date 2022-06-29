@@ -4,13 +4,15 @@ in vec4 outColor;
 in vec2 texCoord;
 
 uniform vec3 avSizeWeight = vec3(0.25, 0.5, 1) * 5;
-
 uniform sampler2D blurMap0;
 uniform sampler2D blurMap1;
 uniform sampler2D blurMap2;
-uniform sampler2D noiseMap;
-uniform float timeMilliseconds;
-uniform vec2 avInvScreenSize;
+uniform sampler2D dirtMap;
+uniform sampler2D crackMap;
+uniform sampler2D diffuseMap;
+uniform float dirtHighlightScalar = 2.0;
+uniform float dirtGeneralScalar = 0.01;
+uniform float crackScalar = 0.02;
 
 out vec4 FragColor;
 
@@ -23,13 +25,11 @@ float rand(vec2 p) {
 
 void main()
 {
-	vec4 vNoise = texture(noiseMap, vec2(rand(texCoord), rand(texCoord)) + vec2(timeMilliseconds));
+	vec2 crackOffset = (texture(crackMap, texCoord).xy * 2.0 - 1.0) * crackScalar;
 
-	vec2 vBloomNoise = (vNoise.rg - vec2(0.5)) * 5 * avInvScreenSize;
-
-	vec4 vBlurColor0 = texture(blurMap0, texCoord + vBloomNoise * 1);
-	vec4 vBlurColor1 = texture(blurMap1, texCoord + vBloomNoise * 2);
-	vec4 vBlurColor2 = texture(blurMap2, texCoord + vBloomNoise * 3);
+	vec4 vBlurColor0 = texture(blurMap0, texCoord);
+	vec4 vBlurColor1 = texture(blurMap1, texCoord);
+	vec4 vBlurColor2 = texture(blurMap2, texCoord);
 	
 	//vec4 vBlurColor = sqrt((vBlurColor0 * avSizeWeight.x + vBlurColor1 * avSizeWeight.y + vBlurColor2 * avSizeWeight.z) / dot(avSizeWeight, vec3(1.0)));
 	vec4 vBlurColor = (vBlurColor0 * avSizeWeight.x + vBlurColor1 * avSizeWeight.y + vBlurColor2 * avSizeWeight.z);
@@ -37,6 +37,14 @@ void main()
 	// Perform the brightness check in normalized space since value can be more than 1.0
 	vec2 vMax = max(vBlurColor.xy, vec2(vBlurColor.z, 0.001));
 	vBlurColor *= dot(vBlurColor.xyz / max(vMax.x, vMax.y), vec3(0.3, 0.58, 0.12));
+
+	float dirtOverlay = 1.0 - texture(dirtMap, texCoord  / 0.4).r;
+
+	vec4 diffuse = texture(diffuseMap, texCoord - crackOffset);
 	
-    FragColor = vBlurColor;
+    FragColor = 
+		  vBlurColor 
+		+ (vBlurColor * dirtOverlay * dirtHighlightScalar) 
+		+ vec4(dirtOverlay * dirtGeneralScalar) 
+		+ diffuse;
 }

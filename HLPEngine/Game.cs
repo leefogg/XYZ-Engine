@@ -30,6 +30,19 @@ using System.Diagnostics.Contracts;
 namespace GLOOP.HPL
 {
     public class Game : Window {
+        [StructLayout(LayoutKind.Explicit, Size = 16)]
+        private readonly struct BlurData
+        {
+            [FieldOffset(00)] public readonly float Weight;
+            [FieldOffset(04)] public readonly float Offset;
+            // +8 more bytes of padding
+
+            public BlurData(float weight, float offset)
+            {
+                Weight = weight;
+                Offset = offset;
+            }
+        }
         private readonly struct MapSetup
         {
             public readonly string Path;
@@ -62,7 +75,7 @@ namespace GLOOP.HPL
         private static readonly MapSetup Omicron = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter03\03_02_omicron_inside\03_02_omicron_inside.hpm", new Vector3(-1.0284736f, -2.0497713f, 21.69069f));
         private static readonly MapSetup TauOutside = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_01_tau_outside\04_01_tau_outside.hpm", new Vector3(77.65444f, 315.97113f, -340.09308f));
         private static readonly MapSetup Tau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm", new Vector3(26.263678f, 1.7000114f, 36.090767f));
-        private readonly MapSetup MapToUse = Phi;
+        private readonly MapSetup MapToUse = Custom;
 
         private Camera Camera;
         private Scene scene;
@@ -88,10 +101,11 @@ namespace GLOOP.HPL
         private Shader SSAOShader;
         private Shader ColorCorrectionShader;
         private FrustumMaterial frustumMaterial;
+        private Texture2D DirtTexture, CrackTexture;
         private QueryPool queryPool;
         private List<(VisibilityPortal, ScopedQuery)> PortalQueries = new List<(VisibilityPortal, ScopedQuery)>();
         private List<VisibilityArea> VisibleAreas = new List<VisibilityArea>();
-        private Buffer<float> bloomBuffer;
+        private Buffer<BlurData> bloomBuffer;
 
         // Lighting
         private float OffsetByNormalScalar = 0.05f;
@@ -108,8 +122,17 @@ namespace GLOOP.HPL
         private float BrightPass = 1;
         private System.Numerics.Vector3 SizeWeight = new System.Numerics.Vector3(0.5f, 0.75f, 1f);
         private float WeightScalar = 1.75f;
-        private float BlurWidthPercent = 5f, BlurHeightPercent = 5f, BlurPixelOffset = 0.75f;
+        private float BlurWidthPercent = 5f, BlurPixelOffset = 0.75f;
         private int NumBlurSamples = 6;
+#if DEBUG
+        private float DirtHighlightScalar = 0.5f;
+        private float DirtGeneralScalar = 0.01f;
+        private float CrackScalar = 0.005f;
+#else
+        private float DirtHighlightScalar = 2.0f;
+        private float DirtGeneralScalar = 0.01f;
+        private float CrackScalar = 0.02f;
+#endif
         // Post
         private float Key = 1f;
         private float Exposure = 1f;
@@ -117,7 +140,7 @@ namespace GLOOP.HPL
         private float WhiteCut = 1f;
         // SSAO
         private int MinSamples = 8;
-        private int MaxSamples = 16;
+        private int MaxSamples = 32;
         private float MaxSamplesDistance = 0.5f;
         private float Intensity = 8f;
         private float Bias = 0.5f;
@@ -135,7 +158,6 @@ namespace GLOOP.HPL
         private bool enableImGui = false;
         private bool shouldUpdateVisibility = true;
 
-        private int bloomDataStride = 1000;
         private float elapsedMilliseconds = 0;
         private CPUProfiler.Frame CPUFrame;
         private GPUProfiler.Frame GPUFrame;
@@ -292,7 +314,7 @@ namespace GLOOP.HPL
                },
                "Blur Horizontally"
             );
-            BloomCombineShader = new StaticPixelShader(
+            BloomCombineShader = new DynamicPixelShader(
                "assets/shaders/Bloom/Combine/vertex.vert",
                "assets/shaders/Bloom/Combine/fragment.frag",
                null,
@@ -310,7 +332,7 @@ namespace GLOOP.HPL
                 null,
                 "SSAO"
             );
-            ColorCorrectionShader = new DynamicPixelShader(
+            ColorCorrectionShader = new StaticPixelShader(
                 "assets/shaders/ColorCorrection/vertex.vert",
                 "assets/shaders/ColorCorrection/fragment.frag",
                 null,
@@ -422,13 +444,9 @@ namespace GLOOP.HPL
                 RenderPass(backBuffer);
 #endif
 
-                DrawImGUIWindows();
+                UpdateBuffers();
 
-                if (VisibilityTask?.IsCompleted ?? true)
-                {
-                    UpdateBuffers();
-                    VisibilityTask = Task.Run(UpdateVisibility);
-                }
+                DrawImGUIWindows();
 
                 if (BenchmarkMode && FrameNumber == 1)
                     Metrics.StartRecording($"{DateTime.Now:ddMMyyyy HHmm}.csv");
@@ -472,7 +490,7 @@ namespace GLOOP.HPL
             if (!(shouldUpdateVisibility || FrameNumber == 0))
                 return;
 
-            scene.UpdateVisibility(VisibleAreas);
+            scene.UpdateVisibility(VisibleAreas.Cast<RenderableArea>().ToList());
         }
 
         [Conditional("DEBUG")]
@@ -749,10 +767,18 @@ namespace GLOOP.HPL
             using var cpuTimer = CPUFrame[CPUProfiler.Event.UpdateBuffers];
             using var gpuTimer = GPUFrame[GPUProfiler.Event.UpdateBuffers];
 
+            if (VisibilityTask?.IsCompleted ?? true)
+            {
+                VisibilityTask = Task.Run(UpdateVisibility);
+                if (shouldUpdateVisibility || FrameNumber == 0)
+                    scene.UpdateBuffers();
+            }
+
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
 
-            if (shouldUpdateVisibility || FrameNumber == 0)
-                scene.UpdateBuffers();
+#if DEBUG
+            UpdateBloomBuffer();
+#endif
         }
 
         private void setupBuffers()
@@ -761,55 +787,93 @@ namespace GLOOP.HPL
 
             CreateRandomRGBTexture();
             CreateRandomBWTexture();
+            DirtTexture = new Texture2D("assets/textures/Scratches.png", new TextureParams()
+            {
+                InternalFormat = PixelInternalFormat.R8,
+                GenerateMips = false,
+                MinFilter = TextureMinFilter.Nearest,
+                MagFilter = TextureMinFilter.Nearest,
+                Name = "Dirt"
+            });
+            CrackTexture = new Texture2D("assets/textures/Crack.jpg", new TextureParams()
+            {
+                InternalFormat = PixelInternalFormat.Rgb,
+                GenerateMips = false,
+                MinFilter = TextureMinFilter.Linear,
+                MagFilter = TextureMinFilter.Linear,
+                Name = "Crack"
+            });
 
             UpdateBloomBuffer();
         }
 
         private void UpdateBloomBuffer()
         {
+            if (!enableBloom)
+                return;
+
+#if !DEBUG
+            if (bloomBuffer != null)
+                return;
+#endif
+
             if (ImGui.Begin("Blur"))
             {
-                ImGui.SliderInt("NumSamples", ref NumBlurSamples, 6, 12);
+                ImGui.SliderInt("NumSamples", ref NumBlurSamples, 6, MaxSamples);
                 ImGui.SliderFloat("Horizontal Width", ref BlurWidthPercent, 1, 25);
-                ImGui.SliderFloat("Vertical Width", ref BlurHeightPercent, 1, 25);
                 ImGui.SliderFloat("Offset", ref BlurPixelOffset, 0, 0.75f);
+                ImGui.SliderFloat("Dirt Highlights", ref DirtHighlightScalar, 0, 5);
+                ImGui.SliderFloat("Dirt General", ref DirtGeneralScalar, 0, 0.1f);
+                ImGui.SliderFloat("Crack Strength", ref CrackScalar, 0, 0.1f);
             }
-            ImGui.End();
 
-            var floats = new FastList<float>(sizeof(float) * 2 * MaxSamples * 2);
-            for (int y = 0; y < 6; y++)
+
+            var sizeOfStruct = Marshal.SizeOf<BlurData>();
+            Debug.Assert(Globals.UniformBufferOffsetAlignment % sizeOfStruct == 0, "BlurData cannot align to UniformBuffer Offset Alignment");
+
+            var structs = new FastList<BlurData>(sizeOfStruct * MaxSamples);
+
+            int scale = 1;
+            for (int y = 0; y < 6; y++, scale *= 2)
             {
-                var aspect = frameBufferWidth / frameBufferHeight;
                 float frameBufferSize, blurSize;
-                if ((y & 1) == 0)
+                blurSize = BlurWidthPercent;
+                if ((y & 1) == 0) // Vertical or horizoncal blur pass
                 {
-                    frameBufferSize = frameBufferWidth;
-                    blurSize = BlurWidthPercent;
+                    frameBufferSize = frameBufferHeight;
                 }
                 else
                 {
-                    frameBufferSize = frameBufferHeight;
-                    blurSize = BlurHeightPercent * aspect;
+                    frameBufferSize = frameBufferWidth;
                 }
-                
+
                 var sizePerPx = 1f / frameBufferSize;
-                var sizePerStep = sizePerPx * blurSize / NumBlurSamples;
-                var invSamples = 1f / (NumBlurSamples + 1);
+                var pixelOffset = BlurPixelOffset * sizePerPx;
+                var sizePerStep = (sizePerPx * blurSize) / NumBlurSamples;
+                var invSamples = 1f / NumBlurSamples;
 
                 for (int x = 0; x < NumBlurSamples; x++)
                 {
-                    floats.Add(1f - (invSamples * x));
-                    floats.Add(sizePerStep * blurSize * x + (BlurPixelOffset * sizePerPx));
+                    structs.Add(new BlurData(
+                        1f - invSamples * x,
+                        (sizePerStep * blurSize * x) + pixelOffset
+                    ));
                 }
-                while (sizeof(float) * floats.Count % Globals.UniformBufferOffsetAlignment != 0)
-                    floats.Add(0);
-                bloomDataStride = Math.Min(sizeof(float) * floats.Count, bloomDataStride);
+                while (sizeOfStruct * structs.Count % Globals.UniformBufferOffsetAlignment != 0)
+                    structs.Add(new BlurData(0, 0));
             }
 
             if (bloomBuffer == null)
-                bloomBuffer = new Buffer<float>(floats.Count, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
-            
-            bloomBuffer.Update(floats.Elements, floats.Count, 0);
+                bloomBuffer = new Buffer<BlurData>(sizeOfStruct * MaxSamples, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
+
+            bloomBuffer.Update(structs.Elements, structs.Count, 0);
+
+            var weights = structs.Elements.Select(s => s.Weight).ToArray();
+            var offsets = structs.Elements.Select(s => s.Offset).ToArray();
+            ImGui.PlotLines("Weights", ref weights[0], NumBlurSamples * 6,0, string.Empty, 0, 1, new System.Numerics.Vector2(0,50));
+            ImGui.PlotLines("Offsets", ref offsets[0], NumBlurSamples * 6, 0, string.Empty, 0, .2f, new System.Numerics.Vector2(0,50));
+
+            ImGui.End();
         }
 
         private void CreateRandomRGBTexture()
@@ -929,9 +993,6 @@ namespace GLOOP.HPL
 
                 using (new DebugGroup("Blur"))
                 {
-#if DEBUG
-                    UpdateBloomBuffer();
-#endif
                     var previousTexture = currentFB.ColorBuffers[0];
                     Shader shader;
                     for (var i = 0; i < BloomBuffers.Length;)
@@ -948,7 +1009,7 @@ namespace GLOOP.HPL
                             shader.Set("NumSamples", NumBlurSamples);
                             BloomBuffers[i].Use();
 
-                            bloomBuffer.Bind(3, bloomDataStride * i);
+                            bloomBuffer.Bind(3, NumBlurSamples, NumBlurSamples * i);
 
                             DoPostEffect(shader, previousTexture);
 
@@ -964,21 +1025,32 @@ namespace GLOOP.HPL
                     GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
                     currentFB = PostMan.NextFramebuffer;
                     currentFB.Use();
-                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.One);
+                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                    GL.Disable(EnableCap.Blend);
 
                     var shader = BloomCombineShader;
                     shader.Use();
-                    Texture.Use(new[] { BloomBuffers[1].ColorBuffers[0], BloomBuffers[3].ColorBuffers[0], BloomBuffers[5].ColorBuffers[0], RGBNoiseMap }, TextureUnit.Texture0);
+                    Texture.Use(new[] {
+                        BloomBuffers[1].ColorBuffers[0],
+                        BloomBuffers[3].ColorBuffers[0], 
+                        BloomBuffers[5].ColorBuffers[0],
+                        DirtTexture, 
+                        CrackTexture,
+                        diffuse
+                    }, TextureUnit.Texture0);
+                    //shader.Set("avSizeWeight", SizeWeight);
                     shader.Set("blurMap0", TextureUnit.Texture0);
                     shader.Set("blurMap1", TextureUnit.Texture1);
                     shader.Set("blurMap2", TextureUnit.Texture2);
-                    shader.Set("noiseMap", TextureUnit.Texture3);
-                    shader.Set("avInvScreenSize", new Vector2(1f / frameBufferWidth, 1f / frameBufferHeight));
-                    shader.Set("timeMilliseconds", elapsedMilliseconds);
-                    shader.Set("avSizeWeight", new Vector3(SizeWeight.X * WeightScalar, SizeWeight.Y * WeightScalar, SizeWeight.Z * WeightScalar));
+                    shader.Set("dirtMap", TextureUnit.Texture3);
+                    shader.Set("crackMap", TextureUnit.Texture4);
+                    shader.Set("diffuseMap", TextureUnit.Texture5);
+                    shader.Set("dirtHighlightScalar", DirtHighlightScalar);
+                    shader.Set("dirtGeneralScalar", DirtGeneralScalar);
+                    shader.Set("crackScalar", CrackScalar);
                     Primitives.Quad.Draw();
 
-                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                    GL.Enable(EnableCap.Blend);
                     GL.Disable(EnableCap.FramebufferSrgb);
                 }
 
@@ -1164,47 +1236,53 @@ namespace GLOOP.HPL
             //CSV.Append(Camera.Position.X + "," + Camera.Position.Y + "," + Camera.Position.Z + ",");
             //CSV.AppendLine(Camera.Rotation.X + "," + Camera.Rotation.Y);
 
-            if (IsFocused) {
-                var input = KeyboardState;
+            if (IsFocused)
+                UpdateDebugVars();
+        }
 
-                if (input.IsKeyPressed(Keys.L))
-                    debugLights = !debugLights;
+        [Conditional("DEBUG")]
+        [Conditional("BETA")]
+        private void UpdateDebugVars()
+        {
+            var input = KeyboardState;
 
-                if (input.IsKeyDown(Keys.X))
-                    HPLEntity.Offset.X += 0.01f;
-                if (input.IsKeyDown(Keys.Y))
-                    HPLEntity.Offset.Y += 0.01f;
-                if (input.IsKeyDown(Keys.Z))
-                    HPLEntity.Offset.Z += 0.01f;
+            if (input.IsKeyPressed(Keys.L))
+                debugLights = !debugLights;
 
-                if (input.IsKeyPressed(Keys.D0))
-                    debugGBufferTexture = -1;
-                if (input.IsKeyReleased(Keys.D1))
-                    debugGBufferTexture = (int)GBufferTexture.Diffuse;
-                if (input.IsKeyReleased(Keys.D2))
-                    debugGBufferTexture = (int)GBufferTexture.Position;
-                if (input.IsKeyReleased(Keys.D3))
-                    debugGBufferTexture = (int)GBufferTexture.Normal;
-                if (input.IsKeyReleased(Keys.D4))
-                    debugGBufferTexture = (int)GBufferTexture.Specular;
+            if (input.IsKeyDown(Keys.X))
+                HPLEntity.Offset.X += 0.01f;
+            if (input.IsKeyDown(Keys.Y))
+                HPLEntity.Offset.Y += 0.01f;
+            if (input.IsKeyDown(Keys.Z))
+                HPLEntity.Offset.Z += 0.01f;
 
-                if (input.IsKeyReleased(Keys.D9))
-                    debugLightBuffer = !debugLightBuffer;
+            if (input.IsKeyPressed(Keys.D0))
+                debugGBufferTexture = -1;
+            if (input.IsKeyReleased(Keys.D1))
+                debugGBufferTexture = (int)GBufferTexture.Diffuse;
+            if (input.IsKeyReleased(Keys.D2))
+                debugGBufferTexture = (int)GBufferTexture.Position;
+            if (input.IsKeyReleased(Keys.D3))
+                debugGBufferTexture = (int)GBufferTexture.Normal;
+            if (input.IsKeyReleased(Keys.D4))
+                debugGBufferTexture = (int)GBufferTexture.Specular;
 
-                if (input.IsKeyPressed(Keys.V))
-                    VSync = VSync == VSyncMode.Off ? VSyncMode.On : VSyncMode.Off;
+            if (input.IsKeyReleased(Keys.D9))
+                debugLightBuffer = !debugLightBuffer;
 
-                if (input.IsKeyPressed(Keys.B))
-                    showBoundingBoxes = !showBoundingBoxes;
+            if (input.IsKeyPressed(Keys.V))
+                VSync = VSync == VSyncMode.Off ? VSyncMode.On : VSyncMode.Off;
 
-                if (input.IsKeyPressed(Keys.G))
-                    shouldUpdateVisibility = !shouldUpdateVisibility;
+            if (input.IsKeyPressed(Keys.B))
+                showBoundingBoxes = !showBoundingBoxes;
 
-                if (input.IsKeyPressed(Keys.F1))
-                {
-                    enableImGui = !enableImGui;
-                    bindMouse = !enableImGui;
-                }
+            if (input.IsKeyPressed(Keys.G))
+                shouldUpdateVisibility = !shouldUpdateVisibility;
+
+            if (input.IsKeyPressed(Keys.F1))
+            {
+                enableImGui = !enableImGui;
+                bindMouse = !enableImGui;
             }
         }
 
