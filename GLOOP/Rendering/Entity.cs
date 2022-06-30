@@ -51,9 +51,9 @@ namespace GLOOP.Rendering
                 throw new NotSupportedException("FBX files not supported yet");
 
             var steps = Assimp.PostProcessSteps.FlipUVs
-                | Assimp.PostProcessSteps.PreTransformVertices
                 | Assimp.PostProcessSteps.GenerateNormals
                 | Assimp.PostProcessSteps.CalculateTangentSpace
+                | Assimp.PostProcessSteps.LimitBoneWeights
                 | Assimp.PostProcessSteps.Triangulate;
             var startLoadingModel = DateTime.Now;
             var scene = assimp.ImportFile(path, steps);

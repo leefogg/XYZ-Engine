@@ -63,7 +63,7 @@
     <None Update="assets\models\dodecahedron.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\models\icosphere.obj">
+    <None Update="Assets\models\sphere.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\models\plane.dae">
