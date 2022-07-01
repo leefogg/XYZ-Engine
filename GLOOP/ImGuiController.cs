@@ -282,9 +282,7 @@ void main()
             using var debugGroup = new Rendering.Debugging.DebugGroup("ImGui");
 
             if (draw_data.CmdListsCount == 0)
-            {
                 return;
-            }
 
             for (int i = 0; i < draw_data.CmdListsCount; i++)
             {
@@ -320,8 +318,10 @@ void main()
             _shader.Use();
             _shader.Set("projection_matrix", mvp);
             _shader.Set("in_fontTexture", 0);
+            
 
             GL.BindVertexArray(_vertexArray);
+            VAO.Bind(_vertexArray);
 
             draw_data.ScaleClipRects(io.DisplayFramebufferScale);
 
@@ -353,8 +353,7 @@ void main()
                     }
                     else
                     {
-                        GL.ActiveTexture(TextureUnit.Texture0);
-                        GL.BindTexture(TextureTarget.Texture2D, (int)pcmd.TextureId);
+                        Texture.Use(TextureTarget.Texture2D, (int)pcmd.TextureId, TextureUnit.Texture0);
 
                         // We do _windowHeight - (int)clip.W instead of (int)clip.Y because gl has flipped Y when it comes to these coordinates
                         var clip = pcmd.ClipRect;
