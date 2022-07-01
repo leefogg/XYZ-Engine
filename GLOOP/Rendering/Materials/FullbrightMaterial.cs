@@ -27,7 +27,8 @@ namespace GLOOP.Rendering.Materials
         {
             shader.Use();
             shader.ModelMatrix = ModelMatrix;
-            shader.DiffuseTexture = diffuse.BindlessHandle;
+            diffuse.Use(TextureUnit.Texture0);
+            shader.DiffuseTexture = TextureUnit.Texture0;
         }
 
         public override Material Clone()
