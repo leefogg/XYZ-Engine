@@ -6,7 +6,7 @@ using System.Text;
 
 namespace GLOOP.Rendering
 {
-    public struct Transform
+    public class Transform
     {
         public static Transform Default => new Transform(Vector3.Zero, Vector3.One, new Quaternion());
 

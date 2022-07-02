@@ -13,12 +13,12 @@ using GLOOP.Rendering.Materials;
 
 namespace GLOOP.HPL.Loading
 {
-    public class HPLEntity : Rendering.Entity {
+    public class HPLModelLoader : ModelLoader {
         public static Vector3 Offset = new Vector3(0,0,0);
 
         public string ResourcePath { get; }
 
-        public HPLEntity(string path,  Assimp.AssimpContext assimp, DeferredRenderingGeoMaterial material) 
+        public HPLModelLoader(string path,  Assimp.AssimpContext assimp, DeferredRenderingGeoMaterial material) 
             : base(path, assimp, material) {
             ResourcePath = path;
         }
@@ -172,13 +172,13 @@ namespace GLOOP.HPL.Loading
                 illumTex = Texture.Black;
         }
 
-        public new HPLEntity Clone() {
-            return new HPLEntity(Models, Transform, OriginalBoundingBox);
+        public new HPLModelLoader Clone() {
+            return new HPLModelLoader(Models, Transform, OriginalBoundingBox);
         }
 
-        public HPLEntity(List<Model> renderables, Box3 boundingBox) 
+        public HPLModelLoader(List<Model> renderables, Box3 boundingBox) 
             : this(renderables.Select(r => r.Clone()).ToList(), Transform.Default, boundingBox) { }
-        private HPLEntity(List<Model> renderables, Transform transform, Box3 originalBoundingBox) 
+        private HPLModelLoader(List<Model> renderables, Transform transform, Box3 originalBoundingBox) 
             : base(renderables.Select(r => r.Clone()).ToList(), transform, originalBoundingBox) { 
         }
     }

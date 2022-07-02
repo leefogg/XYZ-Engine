@@ -14,7 +14,7 @@ using System.Xml.Serialization;
 namespace GLOOP.HPL.Loading
 {
     public class Map {
-        public List<HPLEntity> Entities = new List<HPLEntity>();
+        public List<HPLModelLoader> Entities = new List<HPLModelLoader>();
         public List<Model> Terrain = new List<Model>();
         public List<Rendering.PointLight> PointLights = new List<Rendering.PointLight>();
         public List<Rendering.SpotLight> SpotLights = new List<Rendering.SpotLight>();
@@ -177,11 +177,11 @@ namespace GLOOP.HPL.Loading
 
             int attempted = 0, success = 0;
             var failed = new List<string>();
-            var instances = new List<HPLEntity>();
+            var instances = new List<HPLModelLoader>();
             Console.WriteLine();
             Console.Write("Loading Entites");
             foreach (var section in entityDict.sections) {
-                var files = new HPLEntity[section.Files.Length];
+                var files = new HPLModelLoader[section.Files.Length];
                 var entities = new Entity[section.Files.Length];
                 foreach (var entFile in section.Files) {
                     try {
@@ -273,11 +273,11 @@ namespace GLOOP.HPL.Loading
 
             int attempted = 0, success = 0;
             var failed = new List<string>();
-            var instances = new List<HPLEntity>();
+            var instances = new List<HPLModelLoader>();
             Console.WriteLine();
             Console.Write("Loading Static Objects");
             foreach (var section in staticObjects.sections) {
-                var files = new HPLEntity[section.Files.Length];
+                var files = new HPLModelLoader[section.Files.Length];
                 foreach (var entFile in section.Files) {
                     try {
                         attempted++;
@@ -286,7 +286,7 @@ namespace GLOOP.HPL.Loading
 
                        //if (fullPath.Contains("05_01_adon_support.DAE") || fullPath.Contains("05_01_adon_box_small.DAE") || fullPath.Contains("phi_tunnel_straight.DAE")) { 
                         if (true) {
-                            files[entFile.Id] = new HPLEntity(fullPath, assimp, material);
+                            files[entFile.Id] = new HPLModelLoader(fullPath, assimp, material);
 
                             //Console.WriteLine("SUCCESS.");
                             success++;
@@ -370,7 +370,7 @@ namespace GLOOP.HPL.Loading
                         //geo.Rotate(-MathHelper.RadiansToDegrees(rot.X), -MathHelper.RadiansToDegrees(rot.Y), -MathHelper.RadiansToDegrees(rot.Z));
                         var vao = geo.ToVirtualVAO(prim.Name);
 
-                        HPLEntity.getTextures(
+                        HPLModelLoader.getTextures(
                             mat.Textures?.Diffuse?.Path,
                             mat.Textures?.NormalMap?.Path,
                             mat.Textures?.Specular?.Path,
@@ -392,7 +392,7 @@ namespace GLOOP.HPL.Loading
                         materialInstance.IlluminationTexture = illumTex;
 
                         var model = new Model(vao, materialInstance);
-                        var ent = new HPLEntity(new List<Model> { model }, vao.BoundingBox);
+                        var ent = new HPLModelLoader(new List<Model> { model }, vao.BoundingBox);
                         ent.Transform.Position = prim.Position.ParseVector3();
                         ent.Transform.Rotation = new Quaternion(prim.Rotation.ParseVector3().Negated());
 
@@ -416,7 +416,7 @@ namespace GLOOP.HPL.Loading
 
             int attempted = 0, success = 0;
             var failed = new List<string>();
-            var instances = new List<HPLEntity>();
+            var instances = new List<HPLModelLoader>();
             Console.WriteLine();
             Console.Write("Loading Details");
             foreach (var section in detailMeshes.meshes.sections) {
@@ -428,7 +428,7 @@ namespace GLOOP.HPL.Loading
                         var fullPath = Path.Combine(Constants.SOMARoot, detailMesh.FilePath);
 
                         if (true) {
-                            var model = new HPLEntity(fullPath, assimp, material);
+                            var model = new HPLModelLoader(fullPath, assimp, material);
                             var positions = detailMesh.GetPositions().ToArray();
                             var rotations = detailMesh.GetRotations().ToArray();
 

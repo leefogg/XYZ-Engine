@@ -12,7 +12,7 @@ namespace HelloTest
     public class HelloTest : Window
     {
         private Camera Camera;
-        private Entity duck;
+        private ModelLoader duck;
 
         public HelloTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -30,7 +30,7 @@ namespace HelloTest
             var assimp = new Assimp.AssimpContext();
             var shader = new FullbrightShader();
             var material = new FullbrightMaterial(shader);
-            duck = new Entity("assets/models/duck.dae", assimp, material);
+            duck = new ModelLoader("assets/models/duck.dae", assimp, material);
             duck.Models[0].Transform.Scale *= 0.01f;
             duck.Models[0].Material.SetTextures(TextureCache.Get("assets/textures/duck.bmp"), null, null, null);
         }

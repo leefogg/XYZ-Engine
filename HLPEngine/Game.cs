@@ -1250,11 +1250,11 @@ namespace GLOOP.HPL
                 debugLights = !debugLights;
 
             if (input.IsKeyDown(Keys.X))
-                HPLEntity.Offset.X += 0.01f;
+                HPLModelLoader.Offset.X += 0.01f;
             if (input.IsKeyDown(Keys.Y))
-                HPLEntity.Offset.Y += 0.01f;
+                HPLModelLoader.Offset.Y += 0.01f;
             if (input.IsKeyDown(Keys.Z))
-                HPLEntity.Offset.Z += 0.01f;
+                HPLModelLoader.Offset.Z += 0.01f;
 
             if (input.IsKeyPressed(Keys.D0))
                 debugGBufferTexture = -1;

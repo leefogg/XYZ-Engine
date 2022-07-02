@@ -12,9 +12,9 @@ namespace TextureArrayTest
     public class TextureArrayTest : Window
     {
         private Camera Camera;
-        private Entity Plane1;
-        private Entity Plane2;
-        private Entity Plane3;
+        private ModelLoader Plane1;
+        private ModelLoader Plane2;
+        private ModelLoader Plane3;
 
         public TextureArrayTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -60,7 +60,7 @@ namespace TextureArrayTest
 
             var assimp = new Assimp.AssimpContext();
             var shader = new TextureArrayShader();
-            Plane1 = new Entity("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
+            Plane1 = new ModelLoader("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
             {
                 TextureArray = textureArray,
                 Slice = 0
@@ -68,14 +68,14 @@ namespace TextureArrayTest
             Plane1.Models[0].Transform.Scale *= 100f;
             Plane1.Models[0].Transform.Position.X = -1.5f;
 
-            Plane2 = new Entity("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
+            Plane2 = new ModelLoader("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
             {
                 TextureArray = textureArray,
                 Slice = 1
             });
             Plane2.Models[0].Transform.Scale *= 100f;
 
-            Plane3 = new Entity("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
+            Plane3 = new ModelLoader("assets/models/plane.dae", assimp, new TextureArrayMaterial(shader)
             {
                 TextureArray = textureArray,
                 Slice = 2

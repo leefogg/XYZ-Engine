@@ -48,10 +48,10 @@ namespace GLOOP.HPL.Loading
             }
         }
 
-        public HPLEntity Load(AssimpContext context, DeferredRenderingGeoMaterial shader) {
+        public HPLModelLoader Load(AssimpContext context, DeferredRenderingGeoMaterial shader) {
             var SOMAHome = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
             var fullPath = Path.Combine(SOMAHome, Model.Mesh.FileName);
-            var entity = new HPLEntity(fullPath, context, shader);
+            var entity = new HPLModelLoader(fullPath, context, shader);
 
             if (bool.TryParse(Variables.First(v => v.Name == "ShowMesh")?.Value, out var visible) && !visible)
                 throw new System.Exception("Entity not visible (hack)");

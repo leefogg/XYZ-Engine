@@ -6,11 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GLOOP\GLOOP.csproj" />
+    <Compile Remove="assets\shaders\**" />
+    <EmbeddedResource Remove="assets\shaders\**" />
+    <None Remove="assets\shaders\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="assets\shaders\" />
+    <ProjectReference Include="..\GLOOP\GLOOP.csproj" />
   </ItemGroup>
 
   <ItemGroup>

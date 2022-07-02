@@ -10,7 +10,7 @@ using System.Text;
 
 namespace GLOOP.Rendering
 {
-    public class Entity
+    public class ModelLoader
     {
         public Transform Transform = Transform.Default;
         public bool IsStatic = false;
@@ -37,15 +37,15 @@ namespace GLOOP.Rendering
 
         public List<Model> Models = new List<Model>();
 
-        public Entity(List<Model> renderables, Box3 boundingBox) 
+        public ModelLoader(List<Model> renderables, Box3 boundingBox) 
             : this(renderables, Transform.Default, boundingBox) { }
-        protected Entity(List<Model> renderables, Transform transform, Box3 originalBoundingBox)
+        protected ModelLoader(List<Model> renderables, Transform transform, Box3 originalBoundingBox)
         {
             Models = renderables;
             Transform = transform;
             OriginalBoundingBox = originalBoundingBox;
         }
-        public Entity(string path, Assimp.AssimpContext assimp, Material material)
+        public ModelLoader(string path, Assimp.AssimpContext assimp, Material material)
         {
             if (Path.GetExtension(path).ToLower() == ".fbx")
                 throw new NotSupportedException("FBX files not supported yet");
@@ -193,6 +193,6 @@ namespace GLOOP.Rendering
                 renderable.Render();
         }
 
-        public Entity Clone() => new Entity(Models, Transform, OriginalBoundingBox);
+        public ModelLoader Clone() => new ModelLoader(Models, Transform, OriginalBoundingBox);
     }
 }

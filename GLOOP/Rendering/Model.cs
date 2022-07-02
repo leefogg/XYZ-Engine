@@ -9,9 +9,9 @@ using System.Text;
 
 namespace GLOOP.Rendering
 {
-    public class Model
+    public class Model : Entity
     {
-        public Transform Transform = Transform.Default;
+        public override Transform Transform { get; set; } = Transform.Default;
         public VirtualVAO VAO { get; set; }
         public Material Material { get; }
         public bool IsStatic = false;
