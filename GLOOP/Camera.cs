@@ -1,5 +1,4 @@
 ﻿using GLOOP.Extensions;
-using GLOOP.Rendering;
 using GLOOP.Rendering.Debugging;
 using GLOOP.Util;
 using GLOOP.Util.Structures;
@@ -134,7 +133,7 @@ namespace GLOOP
             return visible;
         }
 
-        public bool IsInsideFrustum(in Box3 boundingBox, in Transform modelTransform)
+        public bool IsInsideFrustum(in Box3 boundingBox, in DynamicTransform modelTransform)
         {
             var position = boundingBox.Center + modelTransform.Position;
             var size = boundingBox.Size * modelTransform.Scale;

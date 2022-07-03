@@ -177,8 +177,8 @@ namespace GLOOP.HPL.Loading
         }
 
         public HPLModelLoader(List<Model> renderables, Box3 boundingBox) 
-            : this(renderables.Select(r => r.Clone()).ToList(), Transform.Default, boundingBox) { }
-        private HPLModelLoader(List<Model> renderables, Transform transform, Box3 originalBoundingBox) 
+            : this(renderables.Select(r => r.Clone()).ToList(), DynamicTransform.Default, boundingBox) { }
+        private HPLModelLoader(List<Model> renderables, DynamicTransform transform, Box3 originalBoundingBox) 
             : base(renderables.Select(r => r.Clone()).ToList(), transform, originalBoundingBox) { 
         }
     }

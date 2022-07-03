@@ -12,7 +12,7 @@ namespace GLOOP.Rendering
 {
     public class ModelLoader
     {
-        public Transform Transform = Transform.Default;
+        public DynamicTransform Transform = DynamicTransform.Default;
         public bool IsStatic = false;
         public bool IsOccluder = false;
         public readonly Box3 OriginalBoundingBox = new Box3();
@@ -38,8 +38,8 @@ namespace GLOOP.Rendering
         public List<Model> Models = new List<Model>();
 
         public ModelLoader(List<Model> renderables, Box3 boundingBox) 
-            : this(renderables, Transform.Default, boundingBox) { }
-        protected ModelLoader(List<Model> renderables, Transform transform, Box3 originalBoundingBox)
+            : this(renderables, DynamicTransform.Default, boundingBox) { }
+        protected ModelLoader(List<Model> renderables, DynamicTransform transform, Box3 originalBoundingBox)
         {
             Models = renderables;
             Transform = transform;

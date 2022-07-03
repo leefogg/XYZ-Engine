@@ -21,7 +21,7 @@ namespace GLOOP
         public static int FPS;
 
         private static readonly DateTime GameStartTime = DateTime.Now;
-        public static float GameMillisecondsElapsed => (DateTime.Now - GameStartTime).Milliseconds;
+        public static double GameMillisecondsElapsed => (DateTime.Now - GameStartTime).TotalMilliseconds;
         private static DateTime FrameStartMs;
         public static float FrameMillisecondsElapsed => (float)(DateTime.Now - FrameStartMs).TotalMilliseconds;
 

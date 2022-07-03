@@ -1,5 +1,4 @@
-﻿using GLOOP.Rendering;
-using OpenTK.Mathematics;
+﻿using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -18,7 +17,7 @@ namespace GLOOP.Util.Structures
             Radius = radius;
         }
 
-        public SphereBounds(Box3 boundingBox, Transform objectTransform)
+        public SphereBounds(Box3 boundingBox, DynamicTransform objectTransform)
         {
             Position = boundingBox.Center + objectTransform.Position;
             var size = boundingBox.Size * objectTransform.Scale;

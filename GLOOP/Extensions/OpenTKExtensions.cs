@@ -195,7 +195,7 @@ namespace GLOOP.Extensions
             return new SphereBounds(self.Center, self.HalfSize.Length);
         }
 
-        public static Box3 Transform(this Box3 self, Rendering.Transform transform)
+        public static Box3 Transform(this Box3 self, DynamicTransform transform)
             => Transform(self, transform.Position, transform.Scale);
         public static Box3 Transform(this Box3 self, Vector3 position, Vector3 scale)
         {

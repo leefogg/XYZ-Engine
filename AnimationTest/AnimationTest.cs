@@ -1,4 +1,5 @@
 ﻿using GLOOP;
+using GLOOP.Animation;
 using GLOOP.Rendering;
 using GLOOP.Rendering.Materials;
 using ImGuiNET;
@@ -16,7 +17,8 @@ namespace AnimationTest
     {
         private readonly ImGuiController ImGuiController;
         private Camera Camera;
-        private ModelLoader Model;
+        private Model Model;
+        private TransformTimeline Timeline;
 
         public AnimationTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -27,6 +29,13 @@ namespace AnimationTest
             };
 
             ImGuiController = new ImGuiController(ClientSize.X, ClientSize.Y);
+
+            Timeline = new TransformTimeline();
+            Timeline.AddKeyframe(0000, new DynamicTransform(new Vector3(-1, -1, 0), new Vector3(2), new Quaternion()));
+            Timeline.AddKeyframe(1000, new DynamicTransform(new Vector3(-1, 1, 0), Vector3.One, new Quaternion()));
+            Timeline.AddKeyframe(2000, new DynamicTransform(new Vector3(1, -1, 0), new Vector3(2), new Quaternion()));
+            Timeline.Loop = true;
+
         }
 
         protected override void OnLoad()
@@ -36,19 +45,20 @@ namespace AnimationTest
             var assimp = new Assimp.AssimpContext();
             var shader = new FullbrightShader();
             var material = new FullbrightMaterial(shader);
-            Model = new ModelLoader("assets/models/model.dae", assimp, material);
-            Model.Models[0].Transform.Scale *= 0.1f;
-            Model.Models[0].Transform.Rotation = new Quaternion(90, 0, 0);
-            Model.Models[0].Material.SetTextures(TextureCache.Get("assets/textures/diffuse.png"), null, null, null);
+            Model = new ModelLoader("assets/models/model.dae", assimp, material).Models[0];
+            Model.Transform.Scale *= 0.1f;
+            Model.Transform.Rotation = new Quaternion(90, 0, 0);
+            Model.Material.SetTextures(TextureCache.Get("assets/textures/diffuse.png"), null, null, null);
         }
 
         public override void Render()
         {
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
 
+            Model.Transform.Position = Timeline.GetPositionAtTime((float)GameMillisecondsElapsed);
             Model.Render();
 
-            RenderImGui();
+            //RenderImGui();
         }
 
 
