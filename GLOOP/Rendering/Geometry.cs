@@ -15,13 +15,17 @@ namespace GLOOP.Rendering
         public List<Vector2> UVs;
         public List<Vector3> Normals;
         public List<Vector3> Tangents;
+        public List<Vector3> BoneIds;
+        public List<Vector3> BoneWeights;
         public List<uint> Indicies;
-        public VAO.VAOShape Shape => new VAO.VAOShape(true, UVs?.Any() ?? false, Normals?.Any() ?? false, Tangents?.Any() ?? false);
+
+        public VAO.VAOShape Shape => new VAO.VAOShape(this);
 
         public bool HasUVs => UVs?.Any() ?? false;
         public bool HasNormals => Normals?.Any() ?? false;
         public bool HasTangents => Tangents?.Any() ?? false;
         public bool IsIndexed => Indicies?.Any() ?? false;
+        public bool HasBones => (BoneIds?.Any() ?? false) && (BoneWeights?.Any() ?? false);
 
         public void NormalizeScale()
         {
@@ -67,7 +71,7 @@ namespace GLOOP.Rendering
 
         public void CalculateTangents()
         {
-            Tangents = new List<Vector3>();
+            Tangents = new List<Vector3>(Indicies.Count * 3);
             for (var v=0; v < Indicies.Count;) {
                 var a = (int)Indicies[v++];
                 var b = (int)Indicies[v++];
@@ -173,6 +177,8 @@ namespace GLOOP.Rendering
                 UVs,
                 Normals,
                 Tangents,
+                BoneIds,
+                BoneWeights,
                 containerOverride
             );
             vao.BoundingBox = GetBoundingBox();

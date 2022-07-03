@@ -85,6 +85,8 @@ namespace GLOOP.Rendering
             IEnumerable<Vector2> vertexUVs,
             IEnumerable<Vector3> vertexNormals,
             IEnumerable<Vector3> vertexTangents,
+            IEnumerable<Vector3> vertexBoneIds,
+            IEnumerable<Vector3> vertexBoneWeights,
             VAOContainer containerOverride = null)
         {
             var numIndicies = vertexIndicies.Count();
@@ -108,7 +110,9 @@ namespace GLOOP.Rendering
                 vertexPositions,
                 vertexUVs,
                 vertexNormals,
-                vertexTangents
+                vertexTangents,
+                vertexBoneIds,
+                vertexBoneWeights
             );
             Debug.Assert(estimatedNumIndicies == usedIndiciesBytes);
             Debug.Assert(estimatedNumVertcies == usedVertciesBytes);

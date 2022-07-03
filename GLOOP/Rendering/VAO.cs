@@ -3,6 +3,7 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
 
@@ -12,10 +13,12 @@ namespace GLOOP.Rendering
     {
         public class VAOShape
         {
-            public bool IsIndexed;
-            public bool HasUVs;
-            public bool HasNormals;
-            public bool HasTangets;
+            public readonly bool IsIndexed;
+            public readonly bool HasUVs;
+            public readonly bool HasNormals;
+            public readonly bool HasTangets;
+            public readonly bool HasBones;
+
             public int NumElements
             {
                 get
@@ -27,11 +30,14 @@ namespace GLOOP.Rendering
                         numElements += 3;
                     if (HasTangets)
                         numElements += 3;
+                    if (HasBones)
+                        numElements += 4 + 4;
 
                     return numElements;
                 }
             }
-            public byte AsBits { 
+            public byte AsBits 
+            { 
                 get
                 {
                     byte bits = 0b00000011;
@@ -41,17 +47,20 @@ namespace GLOOP.Rendering
                         bits |= 1 << 3;
                     if (HasTangets)
                         bits |= 1 << 4;
+                    if (HasBones)
+                        bits |= 1 << 5;
 
                     return bits;
                 }
             }
 
-            public VAOShape(bool isIndexed, bool hasUVs, bool hasNormals, bool hasTangets)
+            public VAOShape(bool isIndexed, bool hasUVs, bool hasNormals, bool hasTangets, bool hasBones)
             {
                 IsIndexed = isIndexed;
                 HasUVs = hasUVs;
                 HasNormals = hasNormals;
                 HasTangets = hasTangets;
+                HasBones = hasBones;
             }
             public VAOShape(Geometry geometry)
             {
@@ -59,6 +68,7 @@ namespace GLOOP.Rendering
                 HasUVs = geometry.HasUVs;
                 HasNormals = geometry.HasNormals;
                 HasTangets = geometry.HasTangents;
+                HasBones = geometry.HasBones;
             }
         }
 
@@ -142,7 +152,9 @@ namespace GLOOP.Rendering
                 geometry.Positions,
                 geometry.UVs, 
                 geometry.Normals,
-                geometry.Tangents
+                geometry.Tangents,
+                geometry.BoneIds,
+                geometry.BoneWeights
             );
         }
 
@@ -153,27 +165,23 @@ namespace GLOOP.Rendering
             IEnumerable<Vector3> vertexPositions,
             IEnumerable<Vector2> vertexUVs,
             IEnumerable<Vector3> vertexNormals, 
-            IEnumerable<Vector3> vertexTangents)
+            IEnumerable<Vector3> vertexTangents,
+            IEnumerable<Vector3> vertexBoneIds,
+            IEnumerable<Vector3> vertexBoneWeights)
         {
+            // Creae EBO
             var indicies = vertexIndicies.Select(x => (ushort)x).ToArray();
-            /*
-            var type = getSmallestDataFormat((uint)vertexIndicies.Max()).ToString();
-            switch (type)
-            {
-                case "System.Byte": byteSize++; break;
-                case "System.UInt16": shortSize++; break;
-                case "System.UInt32": intSize++; break;
-                default: break;
-            }
-            */
             var indiciesSize = indicies.SizeInBytes();
             GL.NamedBufferSubData(EBO, (IntPtr)firstIndex, indiciesSize, indicies);
 
+            // Create and fill VBO
             var positions = vertexPositions.GetFloats().ToArray();
             var uvs = vertexUVs?.GetFloats().ToArray();
             var normals = vertexNormals?.GetFloats().ToArray() ?? new float[0];
             var tangents = vertexTangents?.GetFloats().ToArray() ?? new float[0];
-            var verts = createVertexArray(positions, uvs, normals, tangents);
+            var boneIds = vertexBoneIds?.GetFloats().ToArray() ?? new float[0];
+            var boneWeights = vertexBoneWeights?.GetFloats().ToArray() ?? new float[0];
+            var verts = createVertexArray(positions, uvs, normals, tangents, boneIds, boneWeights);
             var vertciesSize = verts.SizeInBytes();
             GL.NamedBufferSubData(VBO, (IntPtr)firstVertex, vertciesSize, verts);
 
@@ -198,20 +206,33 @@ namespace GLOOP.Rendering
             return typeof(byte);
         }
 
-        private float[] createVertexArray(float[] positions, float[] uvs, float[] normals, float[] tangents)
+        private float[] createVertexArray(float[] positions, float[] uvs, float[] normals, float[] tangents, float[] boneIds, float[] boneWeights)
         {
-            // TODO: Precalculate list size
-            var verts = new List<float>();
-
+            var posIndex = 0;
             var uvIndex = 0;
             var normalIndex = 0;
             var tangentIndex = 0;
+            var boneIdIndex = 0;
+            var boneWeightIndex = 0;
 
-            bool hasUVs = uvs != null && uvs.Length > 0;
-            bool hasNormals = normals != null && normals.Length > 0;
-            bool hasTangents = tangents != null && tangents.Length > 0;
+            bool hasUVs = uvs?.Any() ?? false;
+            bool hasNormals = normals?.Any() ?? false;
+            bool hasTangents = tangents?.Any() ?? false;
+            bool hasBones = (boneIds?.Any() ?? false) && (boneWeights?.Any() ?? false);
 
-            for (var posIndex = 0; posIndex < positions.Length;)
+            int stride = 3;
+            if (hasUVs)
+                stride += 2;
+            if (hasNormals)
+                stride += 3;
+            if (hasTangents)
+                stride += 3;
+            if (hasBones)
+                stride += 4 + 4;
+            var estimatedNumFloats = stride * (positions.Length / 3);
+            var verts = new List<float>(estimatedNumFloats);
+
+            while (posIndex < positions.Length)
             {
                 verts.Add(positions[posIndex++]);
                 verts.Add(positions[posIndex++]);
@@ -236,7 +257,23 @@ namespace GLOOP.Rendering
                     verts.Add(tangents[tangentIndex++]);
                     verts.Add(tangents[tangentIndex++]);
                 }
+
+                if (hasBones)
+                {
+                    verts.Add(boneIds[boneIdIndex++]);
+                    verts.Add(boneIds[boneIdIndex++]);
+                    verts.Add(boneIds[boneIdIndex++]);
+                    verts.Add(boneIds[boneIdIndex++]);
+
+                    verts.Add(boneWeights[boneWeightIndex++]);
+                    verts.Add(boneWeights[boneWeightIndex++]);
+                    verts.Add(boneWeights[boneWeightIndex++]);
+                    verts.Add(boneWeights[boneWeightIndex++]);
+                }
             }
+
+            Debug.Assert(verts.Count == estimatedNumFloats, "Incorrect estimation");
+            Debug.Assert(posIndex == positions.Length, "Spare vertcies not uploaded");
 
             return verts.ToArray();
         }
