@@ -6,7 +6,7 @@ using System.Text;
 
 namespace GLOOP.Rendering
 {
-    public class VirtualVAO
+    public class VirtualVAO : IDrawable
     {
         public readonly DrawElementsIndirectData Description;
         public readonly VAO Container;
@@ -18,7 +18,7 @@ namespace GLOOP.Rendering
             Container = container;
         }
 
-        public void Draw(PrimitiveType renderMode = PrimitiveType.Triangles)
+        public void Draw(PrimitiveType renderMode = PrimitiveType.Triangles, int numInstances = 1)
         {
             Container.Bind();
 
@@ -27,7 +27,7 @@ namespace GLOOP.Rendering
                 (int)Description.NumIndexes,
                 DrawElementsType.UnsignedShort,
                 (IntPtr)Description.FirstIndex,
-                (int)Description.NumInstances,
+                numInstances,
                 (int)Description.BaseVertex,
                 (int)Description.BaseInstance
             );

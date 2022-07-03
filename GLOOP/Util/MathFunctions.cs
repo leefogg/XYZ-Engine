@@ -103,18 +103,22 @@ namespace GLOOP.Util
         }
 
         public static double Map(double x, double in_min, double in_max, double out_min, double out_max)
-        {
-            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-        }
-
+            => (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
         public static Vector3 Map(double x, double in_min, double in_max, Vector3 out_min, Vector3 out_max)
+        {
+            var percent = (float)((x - in_min) / (in_max - in_min));
+            return Tween(out_min, out_max, percent);
+        }
+        public static Quaternion Map(double x, double in_min, double in_max, Quaternion out_min, Quaternion out_max)
         {
             var percent = (float)((x - in_min) / (in_max - in_min));
             return Tween(out_min, out_max, percent);
         }
 
         public static float Tween(float start, float end, float percent) 
-            => start * (1 - percent) + end * percent;
+            => start * (1f - percent) + end * percent;
+        public static Quaternion Tween(Quaternion start, Quaternion end, float percent)
+            => start * (1f - percent) + end * percent;
         public static Vector3 Tween(Vector3 start, Vector3 end, float percent)
             => Tween(start, end, new Vector3(percent));
         public static Vector3 Tween(Vector3 start, Vector3 end, Vector3 percent) 

@@ -12,17 +12,17 @@ namespace GLOOP.Rendering
 {
     public static class Primitives
     {
-        private static VAO _quad;
-        public static VAO Quad => _quad ??= CreateQuad();
+        private static VirtualVAO _quad;
+        public static VirtualVAO Quad => _quad ??= CreateQuad();
 
-        private static VAO _sphere;
-        public static VAO Sphere => _sphere ??= loadSimpleModel("assets/models/icosphere.obj", "Internal_Sphere");
+        private static VirtualVAO _sphere;
+        public static VirtualVAO Sphere => _sphere ??= loadSimpleModel("assets/models/icosphere.obj", "Internal_Sphere");
 
-        private static VAO _cube;
-        public static VAO Cube => _cube ??= loadSimpleModel("assets/models/cube.obj", "Internal_Cube");
+        private static VirtualVAO _cube;
+        public static VirtualVAO Cube => _cube ??= loadSimpleModel("assets/models/cube.obj", "Internal_Cube");
 
-        private static VAO _wireframeCube;
-        public static VAO WireframeCube
+        private static VirtualVAO _wireframeCube;
+        public static VirtualVAO WireframeCube
         {
             get
             {
@@ -37,15 +37,15 @@ namespace GLOOP.Rendering
                         {
                             0,4,4,6,6,7,7,3,3,2,2,0,0,1,1,5,5,4,4,6,6,2,2,3,3,1,1,5,5,7
                         }
-                    }.ToVAO("_internal_wireframeCube");
+                    }.ToVirtualVAO("_internal_wireframeCube");
                 }
 
                 return _wireframeCube;
             }
         }
 
-        private static VAO _frustum;
-        public static VAO Frustum
+        private static VirtualVAO _frustum;
+        public static VirtualVAO Frustum
         {
             get
             {
@@ -70,14 +70,14 @@ namespace GLOOP.Rendering
                             2,4,1, // Front 1
                             2,3,4, // Front 2
                         }
-                    }.ToVAO("_internal_frustum");
+                    }.ToVirtualVAO("_internal_frustum");
                 }
 
                 return _frustum;
             }
         }
 
-        private static VAO loadSimpleModel(string path, string VAOName)
+        private static VirtualVAO loadSimpleModel(string path, string VAOName)
         {
             var assimp = new AssimpContext();
             var scene = assimp.ImportFile(path, PostProcessSteps.GenerateNormals | PostProcessSteps.CalculateTangentSpace);
@@ -95,7 +95,7 @@ namespace GLOOP.Rendering
             geo.NormalizeScale();
             bb = geo.GetBoundingBox();
 
-            return geo.ToVAO(VAOName);
+            return geo.ToVirtualVAO(VAOName);
         }
 
         public static Geometry CreatePlane(Vector2 TLCorner, Vector2[] uvs)
@@ -175,7 +175,7 @@ namespace GLOOP.Rendering
             return geo;
         }
 
-        public static VAO CreateQuad()
+        public static VirtualVAO CreateQuad()
         {
             var geo = new Geometry()
             {
@@ -200,7 +200,7 @@ namespace GLOOP.Rendering
                 }
             };
 
-            return geo.ToVAO("Internal_Quad");
+            return geo.ToVirtualVAO("Internal_Quad");
 
         }
     }

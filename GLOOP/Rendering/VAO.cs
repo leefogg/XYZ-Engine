@@ -8,7 +8,7 @@ using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
 
 namespace GLOOP.Rendering
 {
-    public class VAO : IDisposable
+    public class VAO : IDrawable, IDisposable
     {
         public class VAOShape
         {
@@ -200,6 +200,7 @@ namespace GLOOP.Rendering
 
         private float[] createVertexArray(float[] positions, float[] uvs, float[] normals, float[] tangents)
         {
+            // TODO: Precalculate list size
             var verts = new List<float>();
 
             var uvIndex = 0;
@@ -240,6 +241,7 @@ namespace GLOOP.Rendering
             return verts.ToArray();
         }
 
+        public void Draw(PrimitiveType renderMode = PrimitiveType.Triangles) => Draw(renderMode, 1);
         public void Draw(PrimitiveType renderMode = PrimitiveType.Triangles, int numInstances = 1)
         {
             Bind();
@@ -300,5 +302,6 @@ namespace GLOOP.Rendering
         {
             GL.DeleteBuffer(Handle);
         }
+
     }
 }
