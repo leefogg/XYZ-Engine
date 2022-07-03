@@ -38,7 +38,7 @@ void main()
 	vec2 vMax = max(vBlurColor.xy, vec2(vBlurColor.z, 0.001));
 	vBlurColor *= dot(vBlurColor.xyz / max(vMax.x, vMax.y), vec3(0.3, 0.58, 0.12));
 
-	float dirtOverlay = 1.0 - texture(dirtMap, texCoord  / 0.4).r;
+	float dirtOverlay = 1.0 - texture(dirtMap, texCoord * 2).r;
 
 	vec4 diffuse = texture(diffuseMap, texCoord - crackOffset);
 	

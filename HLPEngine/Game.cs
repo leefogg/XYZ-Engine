@@ -42,6 +42,7 @@ namespace GLOOP.HPL
                 Weight = weight;
                 Offset = offset;
             }
+            public override string ToString() => $"Weight:{Weight}, Offset:{Offset}";
         }
         private readonly struct MapSetup
         {
@@ -124,6 +125,7 @@ namespace GLOOP.HPL
         private float WeightScalar = 1.75f;
         private float BlurWidthPercent = 5f, BlurPixelOffset = 0.75f;
         private int NumBlurSamples = 6;
+        private int BlurStrideElements;
 #if DEBUG
         private float DirtHighlightScalar = 0.5f;
         private float DirtGeneralScalar = 0.01f;
@@ -861,10 +863,12 @@ namespace GLOOP.HPL
                 }
                 while (sizeOfStruct * structs.Count % Globals.UniformBufferOffsetAlignment != 0)
                     structs.Add(new BlurData(0, 0));
+                if (y == 0)
+                    BlurStrideElements = structs.Count;
             }
 
             if (bloomBuffer == null)
-                bloomBuffer = new Buffer<BlurData>(sizeOfStruct * MaxSamples, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
+                bloomBuffer = new Buffer<BlurData>(sizeOfStruct * structs.Count, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
 
             bloomBuffer.Update(structs.Elements, structs.Count, 0);
 
@@ -1009,7 +1013,7 @@ namespace GLOOP.HPL
                             shader.Set("NumSamples", NumBlurSamples);
                             BloomBuffers[i].Use();
 
-                            bloomBuffer.Bind(3, NumBlurSamples, NumBlurSamples * i);
+                            bloomBuffer.Bind(3, NumBlurSamples, BlurStrideElements * i);
 
                             DoPostEffect(shader, previousTexture);
 

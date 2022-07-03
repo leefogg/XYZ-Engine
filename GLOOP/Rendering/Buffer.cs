@@ -102,7 +102,9 @@ namespace GLOOP.Rendering
         public void Bind(int index, int numElements, int startElement = 0)
         {
             var startByte = ItemSize * startElement;
-            Debug.Assert(startByte < SizeInBytes, $"{nameof(startByte)} must be less than {SizeInBytes - ItemSize}");
+            if (Type == BufferTarget.UniformBuffer)
+                Debug.Assert(startByte % Globals.UniformBufferOffsetAlignment == 0, "Binding UBO out of alignment.");
+            Debug.Assert(startByte <= SizeInBytes, $"{nameof(startByte)} must be less than {SizeInBytes - ItemSize}");
             var endByte = (startElement + numElements) * ItemSize;
             var length = ItemSize * numElements;
             Debug.Assert(endByte <= SizeInBytes, $"Wrote {endByte - SizeInBytes} bytes to unmanaged memory");
