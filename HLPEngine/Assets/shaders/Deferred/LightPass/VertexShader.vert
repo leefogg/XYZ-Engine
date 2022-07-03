@@ -1,4 +1,4 @@
-#version 420
+#version 460
 #define MAX_LIGHTS 512
 
 layout (location = 0) in vec3 Position;
