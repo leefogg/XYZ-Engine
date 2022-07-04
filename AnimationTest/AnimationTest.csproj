@@ -6,12 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="assets\shaders\**" />
-    <EmbeddedResource Remove="assets\shaders\**" />
-    <None Remove="assets\shaders\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\GLOOP\GLOOP.csproj" />
   </ItemGroup>
 
@@ -22,9 +16,19 @@
     <None Update="assets\models\worker_medium_infected.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="assets\shaders\SkinWeights\FragmentShader.frag">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="assets\shaders\SkinWeights\VertexShader.vert">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="assets\textures\diffuse.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="assets\shaders\" />
   </ItemGroup>
 
 </Project>

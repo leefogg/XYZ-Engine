@@ -85,8 +85,8 @@ namespace GLOOP.Rendering
             IEnumerable<Vector2> vertexUVs,
             IEnumerable<Vector3> vertexNormals,
             IEnumerable<Vector3> vertexTangents,
-            IEnumerable<Vector3> vertexBoneIds,
-            IEnumerable<Vector3> vertexBoneWeights,
+            IEnumerable<Vector4> vertexBoneIds,
+            IEnumerable<Vector4> vertexBoneWeights,
             VAOContainer containerOverride = null)
         {
             var numIndicies = vertexIndicies.Count();

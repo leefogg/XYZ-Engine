@@ -11,7 +11,7 @@ namespace GLOOP.Animation
     {
         public bool Loop = false;
 
-        internal class Keyframe
+        private class Keyframe
         {
             public float Time;
             public DynamicTransform Transform;
@@ -55,6 +55,7 @@ namespace GLOOP.Animation
             var index = FindKeyframeAfterTime(timeMs);
             if (index == -1)
                 return Vector3.Zero;
+
             var currentPos = Keyframes[index].Transform.Position;
             if (index == Keyframes.Count - 1)
                 return Loop ? GetPositionAtTime(timeMs % Keyframes[^1].Time) : currentPos;
@@ -74,6 +75,7 @@ namespace GLOOP.Animation
             var index = FindKeyframeAfterTime(timeMs);
             if (index == -1)
                 return Vector3.Zero;
+
             var currentScale = Keyframes[index].Transform.Scale;
             if (index == Keyframes.Count - 1)
                 return Loop ? GetScaleAtTime(timeMs % Keyframes[^1].Time) : currentScale;
@@ -93,6 +95,7 @@ namespace GLOOP.Animation
             var index = FindKeyframeAfterTime(timeMs);
             if (index == -1)
                 return new Quaternion();
+
             var currentRot = Keyframes[index].Transform.Rotation;
             if (index == Keyframes.Count - 1)
                 return Loop ? GetRotationAtTime(timeMs % Keyframes[^1].Time) : currentRot;
@@ -106,6 +109,43 @@ namespace GLOOP.Animation
                 nextRot
             );
             return result;
+        }
+
+        public DynamicTransform GetTransformAtTime(float timeMs)
+        {
+            var index = FindKeyframeAfterTime(timeMs);
+            if (index == -1)
+                return DynamicTransform.Default;
+
+            var transform = Keyframes[index].Transform;
+            if (index == Keyframes.Count - 1)
+                return Loop ? GetTransformAtTime(timeMs % Keyframes[^1].Time) : transform;
+
+            var nextTransform = Keyframes[index + 1].Transform;
+
+            var pos = MathFunctions.Map(
+                timeMs,
+                Keyframes[index].Time,
+                Keyframes[index + 1].Time,
+                transform.Position,
+                nextTransform.Position
+            );
+            var scale = MathFunctions.Map(
+                timeMs,
+                Keyframes[index].Time,
+                Keyframes[index + 1].Time,
+                transform.Scale,
+                nextTransform.Scale
+             );
+            var rot = MathFunctions.Map(
+                timeMs,
+                Keyframes[index].Time,
+                Keyframes[index + 1].Time,
+                transform.Rotation,
+                nextTransform.Rotation
+            );
+
+            return new DynamicTransform(pos, scale, rot);
         }
 
         private int FindKeyframeAfterTime(float timeMs) => Keyframes.FindLastIndex(keyframe => timeMs > keyframe.Time);

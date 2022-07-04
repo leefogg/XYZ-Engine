@@ -15,8 +15,8 @@ namespace GLOOP.Rendering
         public List<Vector2> UVs;
         public List<Vector3> Normals;
         public List<Vector3> Tangents;
-        public List<Vector3> BoneIds;
-        public List<Vector3> BoneWeights;
+        public List<Vector4> BoneIds;
+        public List<Vector4> BoneWeights;
         public List<uint> Indicies;
 
         public VAO.VAOShape Shape => new VAO.VAOShape(this);
@@ -160,16 +160,8 @@ namespace GLOOP.Rendering
 
             return new VAO(this, vboName, vaoName);
         }
-        public VirtualVAO ToVirtualVAO(string vaoName, VAOManager.VAOContainer containerOverride = null)
+        public VirtualVAO ToVirtualVAO(VAOManager.VAOContainer containerOverride = null)
         {
-            var vboName = vaoName + "VBO";
-            if (vboName.Length > Globals.MaxLabelLength)
-                vboName = vboName[^Globals.MaxLabelLength..];
-            var eboName = vaoName + "EBO";
-            if (eboName.Length > Globals.MaxLabelLength)
-                eboName = eboName[^Globals.MaxLabelLength..];
-            //CalculateFaceNormals();
-
             var vao = VAOManager.Get(
                 Shape,
                 Indicies,

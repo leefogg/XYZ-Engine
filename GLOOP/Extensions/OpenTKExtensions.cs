@@ -107,6 +107,36 @@ namespace GLOOP.Extensions
             return floats;
         }
 
+        public static IEnumerable<Vector4> ToVec4s(this IEnumerable<float> floats)
+        {
+            int component = 0;
+            var result = new Vector4();
+            foreach (var f in floats)
+            {
+                result[component++] = f;
+                if (component == 4)
+                {
+                    yield return result;
+                    component = 0;
+                }
+            }
+        }
+
+        public static IEnumerable<Vector4i> ToVec4s(this IEnumerable<int> floats)
+        {
+            int component = 0;
+            var result = new Vector4i();
+            foreach (var i in floats)
+            {
+                result[component++] = i;
+                if (component == 4)
+                {
+                    yield return result;
+                    component = 0;
+                }
+            }
+        }
+
         public static void RotateAround(this List<Vector3> self, Quaternion rotation, Vector3 origin)
         {
             for (var i=0; i<self.Count; i++)

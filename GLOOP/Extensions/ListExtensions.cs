@@ -10,6 +10,16 @@ namespace GLOOP.Extensions
 {
     public static class ListExtensions
     {
+        public static IEnumerable<float> GetFloats(this IEnumerable<Vector4> self)
+        {
+            foreach (var vector in self)
+            {
+                yield return vector.X;
+                yield return vector.Y;
+                yield return vector.Z;
+                yield return vector.W;
+            }
+        }
         public static IEnumerable<float> GetFloats(this IEnumerable<Vector3> self)
         {
             foreach (var vector in self)
@@ -21,6 +31,35 @@ namespace GLOOP.Extensions
         }
 
         public static IEnumerable<float> GetFloats(this IEnumerable<Vector2> self)
+        {
+            foreach (var vector in self)
+            {
+                yield return vector.X;
+                yield return vector.Y;
+            }
+        }
+
+        public static IEnumerable<int> GetIntegers(this IEnumerable<Vector4i> self)
+        {
+            foreach (var vector in self)
+            {
+                yield return vector.X;
+                yield return vector.Y;
+                yield return vector.Z;
+                yield return vector.W;
+            }
+        }
+        public static IEnumerable<int> GetIntegers(this IEnumerable<Vector3i> self)
+        {
+            foreach (var vector in self)
+            {
+                yield return vector.X;
+                yield return vector.Y;
+                yield return vector.Z;
+            }
+        }
+
+        public static IEnumerable<int> GetIntegers(this IEnumerable<Vector2i> self)
         {
             foreach (var vector in self)
             {

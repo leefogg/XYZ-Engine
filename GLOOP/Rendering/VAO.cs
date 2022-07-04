@@ -130,6 +130,18 @@ namespace GLOOP.Rendering
             {
                 GL.VertexAttribPointer(3, 3, VertexAttribPointerType.Float, false, sizeof(float) * numElements, offset * sizeof(float));
                 GL.EnableVertexAttribArray(3);
+                offset += 3;
+            }
+
+            if (shape.HasBones)
+            {
+                // Bone IDs
+                GL.VertexAttribPointer(4, 4, VertexAttribPointerType.Float, false, sizeof(float) * numElements, offset * sizeof(float));
+                GL.EnableVertexAttribArray(4);
+                offset += 4;
+                // Bone Weights
+                GL.VertexAttribPointer(5, 4, VertexAttribPointerType.Float, false, sizeof(float) * numElements, offset * sizeof(float));
+                GL.EnableVertexAttribArray(5);
             }
 
             ResourceManager.Add(this);
@@ -166,8 +178,8 @@ namespace GLOOP.Rendering
             IEnumerable<Vector2> vertexUVs,
             IEnumerable<Vector3> vertexNormals, 
             IEnumerable<Vector3> vertexTangents,
-            IEnumerable<Vector3> vertexBoneIds,
-            IEnumerable<Vector3> vertexBoneWeights)
+            IEnumerable<Vector4> vertexBoneIds,
+            IEnumerable<Vector4> vertexBoneWeights)
         {
             // Creae EBO
             var indicies = vertexIndicies.Select(x => (ushort)x).ToArray();

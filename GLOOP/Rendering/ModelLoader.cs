@@ -121,19 +121,19 @@ namespace GLOOP.Rendering
                 if (!VAOCache.Get(vaoName, out vao))
                 {
                     var geo = new Geometry();
-                    geo.Positions = mesh.Vertices.Select(v => new Vector3(v.X, v.Y, v.Z)).ToList();
+                    geo.Positions = mesh.Vertices.Select(v => v.ToOpenTK()).ToList();
                     if (!mesh.HasTextureCoords(0))
                         throw new Exception("No texture coords");
                     geo.UVs = mesh.TextureCoordinateChannels[0].Select(uv => new Vector2(uv.X, uv.Y)).ToList();
                     geo.Indicies = mesh.GetIndices().Cast<uint>().ToList();
-                    geo.Normals = mesh.Normals.Select(n => new Vector3(n.X, n.Y, n.Z)).ToList();
+                    geo.Normals = mesh.Normals.Select(n => n.ToOpenTK()).ToList();
                     if (mesh.HasTangentBasis)
-                        geo.Tangents = mesh.Tangents.Select(n => new Vector3(n.X, n.Y, n.Z)).ToList();
+                        geo.Tangents = mesh.Tangents.Select(n => n.ToOpenTK()).ToList();
                     else
                         geo.CalculateTangents();
                     //geo.Scale(new Vector3(Transform.Scale.X, Transform.Scale.Y, Transform.Scale.Z));
 
-                    vao = geo.ToVirtualVAO(vaoName);
+                    vao = geo.ToVirtualVAO();
                     VAOCache.Put(vao, vaoName);
                 }
 

@@ -14,6 +14,12 @@ namespace GLOOP
         public Vector3 Scale;
         public Quaternion Rotation;
 
+        public DynamicTransform(Matrix4 matrix)
+        {
+            Position = matrix.ExtractTranslation();
+            Rotation = matrix.ExtractRotation();
+            Scale = matrix.ExtractScale();
+        }
         public DynamicTransform(Vector3 position, Vector3 scale, Quaternion rotation) 
         {
             Position = position;

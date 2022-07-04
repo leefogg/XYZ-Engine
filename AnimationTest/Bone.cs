@@ -1,4 +1,5 @@
 ﻿using Assimp;
+using GLOOP;
 using GLOOP.Animation;
 using GLOOP.Extensions;
 using OpenTK.Mathematics;
@@ -13,11 +14,11 @@ namespace AnimationTest
     public class Bone
     {
         public string Name { get; set; }
+        public int ID { get; set; }
         public List<Bone> Children { get; private set; } = new List<Bone>();
         public TransformTimeline Timeline { get; private set; } = new TransformTimeline(true);
-        public int[] BoundVerts { get; private set; }
-        public float[] VertexWeights { get; private set; }
-        public Matrix4 InitialTransform { get; internal set; }
+        public DynamicTransform InvBindPose { get; internal set; }
+        public DynamicTransform CurrentTransform { get; private set; }
 
         public Bone(string name)
         {
@@ -37,7 +38,7 @@ namespace AnimationTest
 
                 Timeline.AddKeyframe(
                     (float)(timeline.PositionKeys[i].Time * 1000f * ticksPerSecond),
-                    new GLOOP.DynamicTransform(
+                    new DynamicTransform(
                         timeline.PositionKeys[i].Value.ToOpenTK(),
                         timeline.ScalingKeys[i].Value.ToOpenTK(),
                         timeline.RotationKeys[i].Value.ToOpenTK()
@@ -47,13 +48,14 @@ namespace AnimationTest
             }
         }
 
-        public void AssignVertexWeights(List<VertexWeight> vertexWeights)
+        public void UpdateTransforms(float timeMs, ref Matrix4[] boneTransforms, in Matrix4 parentTransform)
         {
-            var sortedWeights = vertexWeights.OrderBy(w => w.Weight).Take(3);
-            BoundVerts = sortedWeights.Select(w => w.VertexID).ToArray();
-            var weights = sortedWeights.Select(w => w.Weight).ToArray();
-            var v = new Vector3(weights[0], weights[1], weights[2]).Normalized();
-            VertexWeights = new float[] { v.X, v.Y, v.Z };
+            var localTransform = Timeline.GetTransformAtTime(timeMs).Matrix;
+            var currentTransform = localTransform;
+            currentTransform *= parentTransform;
+            foreach (var child in Children)
+                child.UpdateTransforms(timeMs, ref boneTransforms, currentTransform);
+            boneTransforms[ID] = localTransform * InvBindPose.Matrix;
         }
 
         public override string ToString() => Name;

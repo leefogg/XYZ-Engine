@@ -128,11 +128,11 @@ namespace GLOOP.HPL.Loading
 
                     // Put all terrain in own VAO
                     vaoContainer ??= VAOManager.Create(
-                        new VAO.VAOShape(true, true, true, false),
+                        new VAO.VAOShape(true, true, true, false, false),
                         chunk.Indicies.Count * totalChunks,
                         chunk.Positions.Count * totalChunks
                     );
-                    var vao = chunk.ToVirtualVAO($"HeightMap[{x},{z}]", vaoContainer);
+                    var vao = chunk.ToVirtualVAO(vaoContainer);
 
                     var material = new DeferredSplatTerrainMaterial(terrainShader)
                     {
@@ -368,7 +368,7 @@ namespace GLOOP.HPL.Loading
                         var geo = Rendering.Primitives.CreatePlane(scale, uvs);
                         //var rot = prim.Rotation.ParseVector3().Negated();
                         //geo.Rotate(-MathHelper.RadiansToDegrees(rot.X), -MathHelper.RadiansToDegrees(rot.Y), -MathHelper.RadiansToDegrees(rot.Z));
-                        var vao = geo.ToVirtualVAO(prim.Name);
+                        var vao = geo.ToVirtualVAO();
 
                         HPLModelLoader.getTextures(
                             mat.Textures?.Diffuse?.Path,

@@ -37,7 +37,7 @@ namespace GLOOP.Rendering
                         {
                             0,4,4,6,6,7,7,3,3,2,2,0,0,1,1,5,5,4,4,6,6,2,2,3,3,1,1,5,5,7
                         }
-                    }.ToVirtualVAO("_internal_wireframeCube");
+                    }.ToVirtualVAO();
                 }
 
                 return _wireframeCube;
@@ -70,7 +70,7 @@ namespace GLOOP.Rendering
                             2,4,1, // Front 1
                             2,3,4, // Front 2
                         }
-                    }.ToVirtualVAO("_internal_frustum");
+                    }.ToVirtualVAO();
                 }
 
                 return _frustum;
@@ -95,7 +95,7 @@ namespace GLOOP.Rendering
             geo.NormalizeScale();
             bb = geo.GetBoundingBox();
 
-            return geo.ToVirtualVAO(VAOName);
+            return geo.ToVirtualVAO();
         }
 
         public static Geometry CreatePlane(Vector2 TLCorner, Vector2[] uvs)
@@ -200,7 +200,7 @@ namespace GLOOP.Rendering
                 }
             };
 
-            return geo.ToVirtualVAO("Internal_Quad");
+            return geo.ToVirtualVAO();
 
         }
     }
