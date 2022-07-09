@@ -157,11 +157,24 @@ namespace GLOOP.Rendering
 
             return new VAO(this, vboName, vaoName);
         }
-        public void UpdateVAO(VAO container)
+        public void UpdateVAO(VirtualVAO virtualVAO)
         {
-            container.FillSubData(
-                0,
-                0,
+            var firstIndex = 0;
+            var firstVertex = 0;
+            if (IsIndexed)
+            {
+                var desc = (DrawElementsIndirectData)virtualVAO.Description;
+                firstIndex = (int)desc.FirstIndex;
+                firstVertex = (int)desc.BaseVertex;
+            }
+            else
+            {
+                var desc = (DrawArraysIndirectData)virtualVAO.Description;
+                firstVertex = (int)desc.First;
+            }
+            virtualVAO.Container.FillSubData(
+                firstIndex,
+                firstVertex,
                 Indicies,
                 Positions,
                 UVs,

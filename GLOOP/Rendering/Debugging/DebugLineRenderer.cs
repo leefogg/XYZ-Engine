@@ -11,46 +11,34 @@ namespace GLOOP.Rendering.Debugging
     public class DebugLineRenderer
     {
         private static StaticPixelShader PointsShader;
+        private static VAOManager.VAOContainer VAOPool = VAOManager.Create(VAO.VAOShape.Lines, 0, sizeof(float) * 3 * 2 * 1024 * 128); // 128k lines
 
-        private FastList<Vector3> Positions;
-        private VAO EmptyVAO;
-        private Buffer<Vector3> GPUBuffer;
+        private Geometry Geometry = new Geometry();
+        private VirtualVAO VirtualVAO;
 
-        public DebugLineRenderer(int maxPoints)
+        static DebugLineRenderer()
         {
-            EmptyVAO = new VAO(GL.GenVertexArray(), 0,0);
-            Positions = new FastList<Vector3>(maxPoints);
-            GPUBuffer = new Buffer<Vector3>(maxPoints, BufferTarget.ShaderStorageBuffer, BufferUsageHint.DynamicDraw, "Debug Line Points");
-
             PointsShader = new StaticPixelShader("assets/shaders/line/shader.vert", "assets/shaders/line/shader.frag", null, null);
+        }
+
+        public DebugLineRenderer(int maxLines)
+        {
+            Geometry.Positions = Enumerable.Repeat(Vector3.Zero, maxLines * 2).ToList();
+            VirtualVAO = Geometry.ToVirtualVAO(VAOPool); // Put all LineRenderers in same VAO
         }
 
         public void AddLine(Vector3 start, Vector3 end)
         {
-            Positions.Add(start);
-            Positions.Add(end);
+            Geometry.Positions.Add(start);
+            Geometry.Positions.Add(end);
         }
-        //public void AddLine(Vector4 start, Vector4 end)
-        //{
-        //    Positions.Add(start);
-        //    Positions.Add(end);
-        //}
 
         public void Render()
         {
-            //GPUBuffer.Update(Positions.Elements, Positions.Count, 0);
-            //GPUBuffer.Bind(1);
-
             PointsShader.Use();
-            //EmptyVAO.NumIndicies = Positions.Count;
-            //EmptyVAO.Draw(PrimitiveType.Lines);
-
-            new Geometry()
-            {
-                Positions = Positions.Elements.ToList()
-            }.ToVAO("test").Draw(PrimitiveType.Lines);
-
-            Positions.Clear();
+            Geometry.UpdateVAO(VirtualVAO);
+            VirtualVAO.Draw(PrimitiveType.Lines);
+            Geometry.Positions.Clear();
         }
     }
 }

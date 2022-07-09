@@ -13,6 +13,10 @@ namespace GLOOP.Rendering
     {
         public class VAOShape
         {
+            public static readonly VAOShape DeferredMesh = new VAOShape(true, true, true, true, false);
+            public static readonly VAOShape SkinnedDeferredMesh = new VAOShape(true, true, true, true, true);
+            public static readonly VAOShape Lines = new VAOShape(true, false, false, false, false);
+
             public readonly bool IsIndexed;
             public readonly bool HasUVs;
             public readonly bool HasNormals;
@@ -78,7 +82,7 @@ namespace GLOOP.Rendering
         public int NumIndicies { get; set; }
         public int NumVertcies { get; set; }
 
-        private readonly VAOShape Shape;
+        public readonly VAOShape Shape;
         private readonly int VBOHandle, EBOHandle;
 
         public VAO(int handle, int numIndicies, int numVertcies)
@@ -173,8 +177,8 @@ namespace GLOOP.Rendering
         }
 
         public (int, int, int) FillSubData(
-            int firstIndex,
-            int firstVertex,
+            int firstIndexByte,
+            int firstVertexByte,
             IEnumerable<uint> vertexIndicies, 
             IEnumerable<Vector3> vertexPositions,
             IEnumerable<Vector2> vertexUVs,
@@ -184,13 +188,13 @@ namespace GLOOP.Rendering
             IEnumerable<Vector4> vertexBoneWeights)
         {
             var numIndicies = vertexIndicies?.Count() ?? 0;
-            var indiciesSize = numIndicies * sizeof(ushort);
+            var indiciesSizeBytes = numIndicies * sizeof(ushort);
             if (numIndicies > 0)
             {
                 Debug.Assert(EBOHandle != 0, "Created VBO with different shape then provided data for.");
                 // Create EBO
                 var indicies = vertexIndicies.Select(x => (ushort)x).ToArray();
-                GL.NamedBufferSubData(EBOHandle, (IntPtr)firstIndex, indiciesSize, indicies);
+                GL.NamedBufferSubData(EBOHandle, (IntPtr)firstIndexByte, indiciesSizeBytes, indicies);
             }
 
             // Create and fill VBO
@@ -201,10 +205,10 @@ namespace GLOOP.Rendering
             var boneIds = vertexBoneIds?.GetFloats().ToArray() ?? new float[0];
             var boneWeights = vertexBoneWeights?.GetFloats().ToArray() ?? new float[0];
             var verts = createVertexArray(positions, uvs, normals, tangents, boneIds, boneWeights);
-            var vertciesSize = verts.SizeInBytes();
-            GL.NamedBufferSubData(VBOHandle, (IntPtr)firstVertex, vertciesSize, verts);
+            var vertciesSizeBytes = verts.SizeInBytes();
+            GL.NamedBufferSubData(VBOHandle, (IntPtr)firstVertexByte, vertciesSizeBytes, verts);
 
-            return (numIndicies, indiciesSize, vertciesSize);
+            return (numIndicies, indiciesSizeBytes, vertciesSizeBytes);
         }
 
         public void Allocate(int sizeOfIndicies, int sizeOfVertcies)
@@ -249,49 +253,49 @@ namespace GLOOP.Rendering
             if (hasBones)
                 stride += 4 + 4;
             var estimatedNumFloats = stride * (positions.Length / 3);
-            var verts = new List<float>(estimatedNumFloats);
+            var verts = new float[estimatedNumFloats];
+            var i = 0;
 
             while (posIndex < positions.Length)
             {
-                verts.Add(positions[posIndex++]);
-                verts.Add(positions[posIndex++]);
-                verts.Add(positions[posIndex++]);
+                verts[i++] = positions[posIndex++];
+                verts[i++] = positions[posIndex++];
+                verts[i++] = positions[posIndex++];
 
                 if (hasUVs)
                 {
-                    verts.Add(uvs[uvIndex++]);
-                    verts.Add(uvs[uvIndex++]);
+                    verts[i++] = uvs[uvIndex++];
+                    verts[i++] = uvs[uvIndex++];
                 }
 
                 if (hasNormals)
                 {
-                    verts.Add(normals[normalIndex++]);
-                    verts.Add(normals[normalIndex++]);
-                    verts.Add(normals[normalIndex++]);
+                    verts[i++] = normals[normalIndex++];
+                    verts[i++] = normals[normalIndex++];
+                    verts[i++] = normals[normalIndex++];
                 }
 
                 if (hasTangents)
                 {
-                    verts.Add(tangents[tangentIndex++]);
-                    verts.Add(tangents[tangentIndex++]);
-                    verts.Add(tangents[tangentIndex++]);
+                    verts[i++] = tangents[tangentIndex++];
+                    verts[i++] = tangents[tangentIndex++];
+                    verts[i++] = tangents[tangentIndex++];
                 }
 
                 if (hasBones)
                 {
-                    verts.Add(boneIds[boneIdIndex++]);
-                    verts.Add(boneIds[boneIdIndex++]);
-                    verts.Add(boneIds[boneIdIndex++]);
-                    verts.Add(boneIds[boneIdIndex++]);
+                    verts[i++] = boneIds[boneIdIndex++];
+                    verts[i++] = boneIds[boneIdIndex++];
+                    verts[i++] = boneIds[boneIdIndex++];
+                    verts[i++] = boneIds[boneIdIndex++];
 
-                    verts.Add(boneWeights[boneWeightIndex++]);
-                    verts.Add(boneWeights[boneWeightIndex++]);
-                    verts.Add(boneWeights[boneWeightIndex++]);
-                    verts.Add(boneWeights[boneWeightIndex++]);
+                    verts[i++] = boneWeights[boneWeightIndex++];
+                    verts[i++] = boneWeights[boneWeightIndex++];
+                    verts[i++] = boneWeights[boneWeightIndex++];
+                    verts[i++] = boneWeights[boneWeightIndex++];
                 }
             }
 
-            Debug.Assert(verts.Count == estimatedNumFloats, "Incorrect estimation");
             Debug.Assert(posIndex == positions.Length, "Spare vertcies not uploaded");
 
             return verts.ToArray();
@@ -302,13 +306,16 @@ namespace GLOOP.Rendering
         {
             Bind();
 
-            if (numInstances > 1)
-                GL.DrawElementsInstanced(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0, numInstances);
-            else
-                if (NumIndicies > 0)
-                    GL.DrawElements(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0);
+            if (NumIndicies > 0) // Indexed
+                if (numInstances > 1) // Instanced
+                    GL.DrawElementsInstanced(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0, numInstances);
                 else
+                    GL.DrawElements(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0);
+            else
+                if (numInstances > 1) // Instanced
                     GL.DrawArrays(renderMode, 0, NumVertcies);
+                else
+                    GL.DrawArraysInstanced(renderMode, 0, NumVertcies, numInstances);
         }
 
         public void Bind()

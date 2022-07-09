@@ -19,7 +19,7 @@ namespace GLOOP.Rendering
             public int UsedVertciesBytes;
 #if DEBUG
             public float IndiciesPercentageFilled => (UsedIndiciesBytes / ReservedIndiciesBytes) * 100f;
-            public float VertciesPercentageFilled => (ReservedVertciesBytes/ ReservedVertciesBytes) * 100f;
+            public float VertciesPercentageFilled => (UsedVertciesBytes / ReservedVertciesBytes) * 100f;
 #endif
         }
         private static int Total;
@@ -92,7 +92,8 @@ namespace GLOOP.Rendering
             var numIndicies = vertexIndicies?.Count() ?? 0;
             Debug.Assert(numIndicies < ushort.MaxValue, "Model with more than UI16 indicies");
             var estimatedNumIndicies = numIndicies * sizeof(ushort);
-            var estimatedNumVertcies = shape.NumElements * sizeof(float) * vertexPositions.Count();
+            int numVertcies = vertexPositions.Count();
+            var estimatedNumVertcies = shape.NumElements * sizeof(float) * numVertcies;
             var container = containerOverride ?? GetOrCreateContainer(
                 shape, 
                 estimatedNumIndicies,
@@ -101,8 +102,8 @@ namespace GLOOP.Rendering
             Debug.Assert(container.UsedIndiciesBytes + estimatedNumIndicies <= container.ReservedIndiciesBytes, "VAO IBO overflow.");
             Debug.Assert(container.UsedVertciesBytes + estimatedNumVertcies <= container.ReservedVertciesBytes, "VAO EBO overflow.");
 
-            var numIndiciesBefore = container.UsedIndiciesBytes;
-            var numVertciesBefore = container.UsedVertciesBytes;
+            var indexBytesBefore = container.UsedIndiciesBytes;
+            var vertciesBytesBefore = container.UsedVertciesBytes;
             (int indiciesCount, int usedIndiciesBytes, int usedVertciesBytes) = container.vao.FillSubData(
                 container.UsedIndiciesBytes,
                 container.UsedVertciesBytes,
@@ -117,21 +118,30 @@ namespace GLOOP.Rendering
             Debug.Assert(estimatedNumIndicies == usedIndiciesBytes);
             Debug.Assert(estimatedNumVertcies == usedVertciesBytes);
 
-            var vao = new VirtualVAO(
-                new DrawElementsIndirectData(
-                    (uint)indiciesCount,
-                    (uint)numIndiciesBefore,
-                    (uint)numVertciesBefore / ((uint)shape.NumElements * sizeof(float)),
+            IDrawIndirectData indirectData;
+            if (shape.IsIndexed)
+                indirectData = new DrawElementsIndirectData(
+                        (uint)indiciesCount,
+                        (uint)indexBytesBefore,
+                        (uint)vertciesBytesBefore / ((uint)shape.NumElements * sizeof(float)),
+                        1,
+                        0
+                    );
+            else
+                indirectData = new DrawArraysIndirectData(
+                    (uint)numVertcies,
                     1,
+                    (uint)vertciesBytesBefore / ((uint)shape.NumElements * sizeof(float)),
                     0
-                ),
+                );
+            var vao = new VirtualVAO(
+                indirectData,
                 container.vao
             );
 
-
             container.UsedIndiciesBytes += usedIndiciesBytes;
             container.UsedVertciesBytes += usedVertciesBytes;
-            if (container.UsedIndiciesBytes - numIndiciesBefore != estimatedNumIndicies || container.UsedVertciesBytes - numVertciesBefore != estimatedNumVertcies)
+            if (container.UsedIndiciesBytes - indexBytesBefore != estimatedNumIndicies || container.UsedVertciesBytes - vertciesBytesBefore != estimatedNumVertcies)
                 Console.WriteLine("Incorrect estimate");
 
             return vao;

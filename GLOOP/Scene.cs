@@ -335,12 +335,12 @@ namespace GLOOP
                         new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs)
                     ));
 
-                    var command = model.VAO.Description;
+                    var command = (DrawElementsIndirectData)model.VAO.Description;
                     drawIndirectDest.Add(new DrawElementsIndirectData(
-                        command.NumIndexes,
+                        command.Count,
                         command.FirstIndex / sizeof(ushort),
                         command.BaseVertex,
-                        command.NumInstances,
+                        command.InstanceCount,
                         (uint)drawIndirectDest.Count
                     ));
                 }
