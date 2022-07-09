@@ -315,7 +315,7 @@ namespace GLOOP
         {
             var mat1 = (DeferredRenderingGeoMaterial)a.Material;
             var mat2 = (DeferredRenderingGeoMaterial)b.Material;
-            return a.VAO.Container.Handle == b.VAO.Container.Handle
+            return a.VAO.Container.VAOHandle == b.VAO.Container.VAOHandle
                 && a.Material.Shader.Handle == b.Material.Shader.Handle
                 && mat1.SameTextures(mat2);
         }

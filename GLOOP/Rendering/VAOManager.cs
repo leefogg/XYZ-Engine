@@ -89,9 +89,9 @@ namespace GLOOP.Rendering
             IEnumerable<Vector4> vertexBoneWeights,
             VAOContainer containerOverride = null)
         {
-            var numIndicies = vertexIndicies.Count();
+            var numIndicies = vertexIndicies?.Count() ?? 0;
             Debug.Assert(numIndicies < ushort.MaxValue, "Model with more than UI16 indicies");
-            var estimatedNumIndicies = vertexIndicies.Count() * sizeof(ushort);
+            var estimatedNumIndicies = numIndicies * sizeof(ushort);
             var estimatedNumVertcies = shape.NumElements * sizeof(float) * vertexPositions.Count();
             var container = containerOverride ?? GetOrCreateContainer(
                 shape, 

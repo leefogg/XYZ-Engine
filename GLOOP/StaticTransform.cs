@@ -12,9 +12,12 @@ namespace GLOOP
 
         public Matrix4 Matrix { get; private set; }
 
+        public StaticTransform(Matrix4 matrix) => Matrix = matrix;
+
         public StaticTransform(Vector3 position, Vector3 scale, Quaternion rotation)
+            : this(MathFunctions.CreateModelMatrix(position, rotation, scale))
         {
-            Matrix = MathFunctions.CreateModelMatrix(position, rotation, scale);
         }
+
     }
 }

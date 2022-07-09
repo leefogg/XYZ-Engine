@@ -148,17 +148,28 @@ namespace GLOOP.Rendering
             return normal;
         }
 
-        internal VAO ToVAO(string vaoName)
+        public VAO ToVAO(string vaoName)
         {
             var vboName = vaoName + "VBO";
             if (vboName.Length > Globals.MaxLabelLength)
                 vboName = vboName[^Globals.MaxLabelLength..];
-            var eboName = vaoName + "EBO";
-            if (eboName.Length > Globals.MaxLabelLength)
-                eboName = eboName[^Globals.MaxLabelLength..];
             //CalculateFaceNormals();
 
             return new VAO(this, vboName, vaoName);
+        }
+        public void UpdateVAO(VAO container)
+        {
+            container.FillSubData(
+                0,
+                0,
+                Indicies,
+                Positions,
+                UVs,
+                Normals,
+                Tangents,
+                BoneIds,
+                BoneWeights
+            );
         }
         public VirtualVAO ToVirtualVAO(VAOManager.VAOContainer containerOverride = null)
         {

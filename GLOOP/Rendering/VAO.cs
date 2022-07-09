@@ -74,36 +74,39 @@ namespace GLOOP.Rendering
 
         private static int CurrentlyBoundHandle;
 
-        public int Handle { get; set; }
+        public int VAOHandle { get; set; }
         public int NumIndicies { get; set; }
+        public int NumVertcies { get; set; }
 
         private readonly VAOShape Shape;
-        private readonly int VBO, EBO;
+        private readonly int VBOHandle, EBOHandle;
 
-        public VAO(int handle, int numIndicies)
+        public VAO(int handle, int numIndicies, int numVertcies)
         {
-            Handle = handle;
+            VAOHandle = handle;
             NumIndicies = numIndicies;
+            NumVertcies = numVertcies;
         }
 
         public VAO(VAOShape shape, string vboName, string eboName)
         {
             Shape = shape;
+            VAOHandle = GL.GenVertexArray();
 
-            Handle = GL.GenVertexArray();
+            GL.BindVertexArray(VAOHandle);
 
-            VBO = GL.GenBuffer();
-            EBO = GL.GenBuffer();
-
-            GL.BindVertexArray(Handle);
-
+            VBOHandle = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ArrayBuffer, VBOHandle);
             vboName = vboName.TrimLabelLength();
-            GL.BindBuffer(BufferTarget.ArrayBuffer, VBO);
-            GL.ObjectLabel(ObjectLabelIdentifier.Buffer, VBO, vboName.Length, vboName);
+            GL.ObjectLabel(ObjectLabelIdentifier.Buffer, VBOHandle, vboName.Length, vboName);
 
-            eboName = eboName.TrimLabelLength();
-            GL.BindBuffer(BufferTarget.ElementArrayBuffer, EBO);
-            GL.ObjectLabel(ObjectLabelIdentifier.Buffer, EBO, eboName.Length, eboName);
+            if (shape.IsIndexed)
+            {
+                EBOHandle = GL.GenBuffer();
+                GL.BindBuffer(BufferTarget.ElementArrayBuffer, EBOHandle);
+                eboName = eboName.TrimLabelLength();
+                GL.ObjectLabel(ObjectLabelIdentifier.Buffer, EBOHandle, eboName.Length, eboName);
+            }
 
             // Calculate size
             var numElements = shape.NumElements;
@@ -152,14 +155,13 @@ namespace GLOOP.Rendering
             string vboName, string eboName)
             : this(new VAOShape(geometry), vboName, eboName)
         {
-            NumIndicies = geometry.Indicies.Count();
+            NumIndicies = geometry.Indicies?.Count() ?? 0;
+            NumVertcies = geometry.Positions.Count;
 
             Allocate(NumIndicies * sizeof(ushort), Shape.NumElements * sizeof(float) * geometry.Positions.Count());
-            var indiciesOffset = 0;
-            var vertciesOffset = 0;
             FillSubData(
-                indiciesOffset,
-                vertciesOffset,
+                0,
+                0,
                 geometry.Indicies, 
                 geometry.Positions,
                 geometry.UVs, 
@@ -181,10 +183,15 @@ namespace GLOOP.Rendering
             IEnumerable<Vector4> vertexBoneIds,
             IEnumerable<Vector4> vertexBoneWeights)
         {
-            // Creae EBO
-            var indicies = vertexIndicies.Select(x => (ushort)x).ToArray();
-            var indiciesSize = indicies.SizeInBytes();
-            GL.NamedBufferSubData(EBO, (IntPtr)firstIndex, indiciesSize, indicies);
+            var numIndicies = vertexIndicies?.Count() ?? 0;
+            var indiciesSize = numIndicies * sizeof(ushort);
+            if (numIndicies > 0)
+            {
+                Debug.Assert(EBOHandle != 0, "Created VBO with different shape then provided data for.");
+                // Create EBO
+                var indicies = vertexIndicies.Select(x => (ushort)x).ToArray();
+                GL.NamedBufferSubData(EBOHandle, (IntPtr)firstIndex, indiciesSize, indicies);
+            }
 
             // Create and fill VBO
             var positions = vertexPositions.GetFloats().ToArray();
@@ -195,17 +202,17 @@ namespace GLOOP.Rendering
             var boneWeights = vertexBoneWeights?.GetFloats().ToArray() ?? new float[0];
             var verts = createVertexArray(positions, uvs, normals, tangents, boneIds, boneWeights);
             var vertciesSize = verts.SizeInBytes();
-            GL.NamedBufferSubData(VBO, (IntPtr)firstVertex, vertciesSize, verts);
+            GL.NamedBufferSubData(VBOHandle, (IntPtr)firstVertex, vertciesSize, verts);
 
-            return (indicies.Count(), indiciesSize, vertciesSize);
+            return (numIndicies, indiciesSize, vertciesSize);
         }
 
         public void Allocate(int sizeOfIndicies, int sizeOfVertcies)
         {
-            GL.NamedBufferData(EBO, sizeOfIndicies, (IntPtr)0, BufferUsageHint.StaticDraw);
+            GL.NamedBufferData(EBOHandle, sizeOfIndicies, (IntPtr)0, BufferUsageHint.StaticDraw);
             Metrics.ModelsIndiciesBytesUsed += (ulong)sizeOfIndicies;
 
-            GL.NamedBufferData(VBO, sizeOfVertcies, (IntPtr)0, BufferUsageHint.StaticDraw);
+            GL.NamedBufferData(VBOHandle, sizeOfVertcies, (IntPtr)0, BufferUsageHint.StaticDraw);
             Metrics.ModelsVertciesBytesUsed += (ulong)sizeOfVertcies;
         }
 
@@ -298,44 +305,15 @@ namespace GLOOP.Rendering
             if (numInstances > 1)
                 GL.DrawElementsInstanced(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0, numInstances);
             else
-                GL.DrawElements(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0);
-
-            //GL.DrawElementsBaseVertex(
-            //    renderMode,
-            //    (int)NumIndicies,
-            //    DrawElementsType.UnsignedInt,
-            //    (IntPtr)0,
-            //    0
-            //);
-            //GL.DrawElementsInstancedBaseVertexBaseInstance(
-            //    renderMode,
-            //    NumIndicies,
-            //    DrawElementsType.UnsignedInt,
-            //    (IntPtr)0,
-            //    1,
-            //    0,
-            //    0
-            //);
-            //var data = new DrawElementsIndirectData(
-            //    NumIndicies,
-            //    1,
-            //    0,
-            //    0,
-            //    0
-            //);
-            //var draws = new[] { data };
-
-            //var DIB = GL.GenBuffer();
-            //GL.BindBuffer(BufferTarget.DrawIndirectBuffer, DIB);
-            //GL.BufferData(BufferTarget.DrawIndirectBuffer, sizeof(uint) * 5 * draws.Length, draws, BufferUsageHint.StaticDraw);
-
-            //GL.DrawElementsIndirect(renderMode, DrawElementsType.UnsignedInt, (IntPtr)0);
-            //GL.MultiDrawElementsIndirect(renderMode, DrawElementsType.UnsignedInt, (IntPtr)0, 1, sizeof(uint) * 5);
+                if (NumIndicies > 0)
+                    GL.DrawElements(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0);
+                else
+                    GL.DrawArrays(renderMode, 0, NumVertcies);
         }
 
         public void Bind()
         {
-            Bind(Handle);
+            Bind(VAOHandle);
         }
 
         public static void Bind(int Handle)
@@ -349,8 +327,7 @@ namespace GLOOP.Rendering
 
         public void Dispose()
         {
-            GL.DeleteBuffer(Handle);
+            GL.DeleteBuffer(VAOHandle);
         }
-
     }
 }

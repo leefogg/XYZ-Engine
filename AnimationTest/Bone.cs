@@ -17,8 +17,9 @@ namespace AnimationTest
         public int ID { get; set; }
         public List<Bone> Children { get; private set; } = new List<Bone>();
         public TransformTimeline Timeline { get; private set; } = new TransformTimeline(true);
-        public DynamicTransform InvBindPose { get; internal set; }
-        public DynamicTransform CurrentTransform { get; private set; }
+        public StaticTransform InvBindPose { get; internal set; }
+        public StaticTransform OffsetToParent { get; internal set; }
+        public Matrix4 CurrentTransform { get; private set; }
 
         public Bone(string name)
         {
@@ -48,14 +49,19 @@ namespace AnimationTest
             }
         }
 
-        public void UpdateTransforms(float timeMs, ref Matrix4[] boneTransforms, in Matrix4 parentTransform)
+        public void UpdateTransforms(float timeMs, Span<Matrix4> boneTransforms, Matrix4 parentTransform)
         {
-            var localTransform = Timeline.GetTransformAtTime(timeMs).Matrix;
-            var currentTransform = localTransform;
-            currentTransform *= parentTransform;
+            var localTransform = Matrix4.Identity;
+            CurrentTransform = localTransform;
+            CurrentTransform = OffsetToParent.Matrix;
+            CurrentTransform += parentTransform;
             foreach (var child in Children)
-                child.UpdateTransforms(timeMs, ref boneTransforms, currentTransform);
-            boneTransforms[ID] = localTransform * InvBindPose.Matrix;
+                child.UpdateTransforms(timeMs, boneTransforms, CurrentTransform);
+            //CurrentTransform += InvBindPose.Matrix;
+
+            CurrentTransform.ClearScale();
+            CurrentTransform.ClearRotation();
+            boneTransforms[ID] = CurrentTransform;
         }
 
         public override string ToString() => Name;
