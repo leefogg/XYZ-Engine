@@ -37,7 +37,7 @@ namespace AnimationTest
         public AnimationTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
         {
-            Camera = new Camera(new Vector3(-0.34869373f, 0.5f, 21.04657f), new Vector3(), 90)
+            Camera = new Camera(new Vector3(0.29292658f, 1.9000003f, 9.04043f), new Vector3(), 90)
             {
                 CameraController = new PCCameraController()
             };
@@ -114,8 +114,8 @@ namespace AnimationTest
                 VAO = geo.ToVirtualVAO();
                 Model = new Model(VAO, material);
                 BoneWeightsShader = new DynamicPixelShader(
-                    "assets/shaders/SkinWeights/VertexShader.vert",
-                    "assets/shaders/SkinWeights/FragmentShader.frag",
+                    "assets/shaders/AnimatedModel/VertexShader.vert",
+                    "assets/shaders/AnimatedModel/FragmentShader.frag",
                     null,
                     "BoneWeights"
                 );
@@ -201,7 +201,7 @@ namespace AnimationTest
             // Validation
             foreach (var mat in boneTransforms)
             {
-                //Debug.Assert(mat != Matrix4.Identity, "Bone transform not set");
+                Debug.Assert(mat != Matrix4.Identity, "Bone transform not set");
             }
 
             BonePosesUBO.Update(boneTransforms);
@@ -221,11 +221,10 @@ namespace AnimationTest
                 Sphere.Transform.Scale = new Vector3(0.1f);
                 Sphere.Render();
             }
+            LineRenderer.Render();
             GL.Enable(EnableCap.DepthTest);
 
             RenderImGui();
-
-            LineRenderer.Render();
         }
 
 
@@ -242,7 +241,6 @@ namespace AnimationTest
             ImGuiController.Render();
         }
 
-        Random r = new Random();
         private void DisplayBone(Bone parentNode)
         {
             if (ImGui.TreeNodeEx($"{parentNode.Name} {parentNode.OffsetToParent.Matrix.ExtractTranslation()} {parentNode.CurrentTransform.ExtractTranslation()}", ImGuiTreeNodeFlags.DefaultOpen))
@@ -254,13 +252,6 @@ namespace AnimationTest
                 }
                 ImGui.TreePop();
             }
-        }
-
-        private void DisplayFolder(string folder)
-        {
-            if (ImGui.TreeNodeEx(folder[folder.LastIndexOf("\\")..]))
-                foreach (var subFolder in Directory.EnumerateDirectories(folder))
-                    DisplayFolder(subFolder);
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)

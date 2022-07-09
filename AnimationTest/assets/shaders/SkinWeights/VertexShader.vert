@@ -13,46 +13,20 @@ layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 ViewMatrix;
 	mat4 ViewProjectionMatrix;
 };
-layout (std140, binding = 2) uniform BonePoses {
-	mat4[64] BoneTransforms;
-};
 
-out vec2 uv;
+out float weightStrength;
 
 void main(void)
 {
-	/*
-	mat4 bone1 = BoneTransforms[aBoneIds[0]] * aBoneWeights[0];
-	mat4 bone2 = BoneTransforms[aBoneIds[1]] * aBoneWeights[1];
-	mat4 bone3 = BoneTransforms[aBoneIds[2]] * aBoneWeights[2];
-	mat boneTransform = bone1 * bone2 * bone3;
-    vec4 worldspacePos = boneTransform * ModelMatrix * vec4(aPosition, 1.0);
-	gl_Position =  ViewProjectionMatrix * worldspacePos;
-	*/
-	
-	vec4 totalLocalPos = vec4(0.0);
-	vec4 totalNormal = vec4(0.0);
-	for(int i=0; i<4; i++){
-		mat4 jointTransform = BoneTransforms[int(aBoneIds[i])];
-		vec4 posePosition = jointTransform * vec4(aPosition, 1.0);
-		totalLocalPos += posePosition * aBoneWeights[i];
-		
-		vec4 worldNormal = jointTransform * vec4(aNormals, 0.0);
-		totalNormal += worldNormal * aBoneWeights[i];
-	}
-	
-	gl_Position = ViewProjectionMatrix * ModelMatrix * totalLocalPos;
-
-	uv = aTexCoord;
-	
-	/*
-	int desiredBone = 0;
-	weightStrength = 0;
+	int desiredBone = 3;
+	weightStrength = 0.1;
 	for(int i=0; i<4; i++) {
 		if (aBoneIds[i] == desiredBone) {
 			weightStrength = aBoneWeights[i];
 			break;
 		}
 	}
-	*/
+
+	vec4 worldspacePos = ModelMatrix * vec4(aPosition, 1.0);
+	gl_Position = ViewProjectionMatrix * worldspacePos;
 }
