@@ -35,6 +35,9 @@ namespace GLOOP.Rendering.Debugging
 
         public void Render()
         {
+            // Hack to avoid redrawing previous frame's lines
+            Geometry.Positions.AddRange(Enumerable.Repeat(Vector3.Zero, Geometry.Positions.Capacity - Geometry.Positions.Count));
+
             PointsShader.Use();
             Geometry.UpdateVAO(VirtualVAO);
             VirtualVAO.Draw(PrimitiveType.Lines);
