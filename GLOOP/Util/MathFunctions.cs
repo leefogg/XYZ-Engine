@@ -123,5 +123,7 @@ namespace GLOOP.Util
             => Tween(start, end, new Vector3(percent));
         public static Vector3 Tween(Vector3 start, Vector3 end, Vector3 percent) 
             => start * (Vector3.One - percent) + (end * percent);
+        public static Matrix4 Tween(Matrix4 start, Matrix4 end, float percent)
+            => start * (1f - percent) + (end * percent);
     }
 }

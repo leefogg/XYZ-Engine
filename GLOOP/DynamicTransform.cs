@@ -8,7 +8,7 @@ namespace GLOOP
 {
     public class DynamicTransform : Transform
     {
-        public static DynamicTransform Default => new DynamicTransform(Vector3.Zero, Vector3.One, new Quaternion());
+        public static DynamicTransform Default => new DynamicTransform(Matrix4.Identity);
 
         public Vector3 Position;
         public Vector3 Scale;

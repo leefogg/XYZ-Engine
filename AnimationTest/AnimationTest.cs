@@ -106,6 +106,7 @@ namespace AnimationTest
 
             for (int i = 0; i < nodes.Count; i++)
                 Debug.Assert(AllBones[nodes[i].Name].ID == i, "Mismatched IDs");
+
             int j = 0;
             var jointOrder = new[] { "Torso", "Chest", "Neck", "Head", "Upper_Arm_L", "Lower_Arm_L", "Hand_L", "Upper_Arm_R", "Lower_Arm_R", "Hand_R", "Upper_Leg_L", "Lower_Leg_L", "Foot_L", "Upper_Leg_R", "Lower_Leg_R", "Foot_R" };
             foreach (var bone in AllBones.Values)
@@ -221,6 +222,11 @@ namespace AnimationTest
 
             //RenderOtherTest();
             RenderNormalTest();
+
+            //GL.Disable(EnableCap.DepthTest);
+            //DrawSkeleton(RootNode, boneTransforms);
+            //LineRenderer.Render();
+            //GL.Enable(EnableCap.DepthTest);
         }
 
         private void RenderOtherTest()
@@ -240,28 +246,23 @@ namespace AnimationTest
         private void RenderNormalTest()
         {
             //var rotation = (float)GameMillisecondsElapsed / 1000f;
-            var rotation = 0;
-            var modelMatrix = MathFunctions.CreateModelMatrix(new Vector3(0), new Quaternion(rotation * 0.0174533f, 0, 0), new Vector3(1f));
+            var rotation = 45;
+            var modelMatrix = MathFunctions.CreateModelMatrix(new Vector3(0,0,0), new Quaternion(rotation * 0.0174533f, 0, 0), new Vector3(1f));
             boneTransforms = new Matrix4[AllBones.Count];
-            RootNode.UpdateTransforms((float)GameMillisecondsElapsed, boneTransforms, modelMatrix);
+            RootNode.UpdateTransforms((float)GameMillisecondsElapsed / 10, boneTransforms, modelMatrix);
 
             // Validation
             foreach (var mat in boneTransforms)
-                Debug.Assert(mat != Matrix4.Identity, "Bone transform not set");
+                //Debug.Assert(mat != Matrix4.Identity, "Bone transform not set");
 
             BonePosesUBO.Update(boneTransforms);
-
+            
             //OrignalModel.Render();
 
             SkeletonShader.Use();
             SkeletonShader.Set("ModelMatrix", modelMatrix);
             AlbedoTexture.Use();
             SkinnedMesh.Draw();
-
-            GL.Disable(EnableCap.DepthTest);
-            DrawSkeleton(RootNode, boneTransforms);
-            LineRenderer.Render();
-            GL.Enable(EnableCap.DepthTest);
 
             RenderImGui();
         }

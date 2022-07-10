@@ -2,6 +2,7 @@
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -123,6 +124,8 @@ namespace GLOOP.Animation
 
             var nextTransform = Keyframes[index + 1].Transform;
 
+            //return new DynamicTransform(transform.Matrix);
+
             var pos = MathFunctions.Map(
                 timeMs,
                 Keyframes[index].Time,
@@ -145,7 +148,11 @@ namespace GLOOP.Animation
                 nextTransform.Rotation
             );
 
-            return new DynamicTransform(pos, scale, rot);
+            var percent = (float)MathFunctions.Map(timeMs, Keyframes[index].Time, Keyframes[index + 1].Time, 0, 1);
+
+            Debug.Assert(percent > 0 && percent < 1);
+
+            return new DynamicTransform(MathFunctions.Tween(transform.Matrix, nextTransform.Matrix, percent));
         }
 
         private int FindKeyframeAfterTime(float timeMs) => Keyframes.FindLastIndex(keyframe => timeMs > keyframe.Time);

@@ -2,6 +2,7 @@
 using GLOOP;
 using GLOOP.Animation;
 using GLOOP.Extensions;
+using GLOOP.Util;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -62,14 +63,14 @@ namespace AnimationTest
 
         public void UpdateTransforms(float timeMs, Span<Matrix4> boneTransforms, Matrix4 parentTransform)
         {
-            var currentLocalTransform = Timeline.GetTransformAtTime(0).Matrix;
-            var currentTransform = currentLocalTransform * OffsetFromParent;
+            var currentLocalTransform = Timeline.GetTransformAtTime(timeMs).Matrix;
+            var currentTransform = MathFunctions.Tween(currentLocalTransform, currentLocalTransform * OffsetFromParent, 0f);
             currentTransform *= parentTransform;
             foreach (var child in Children)
                 child.UpdateTransforms(timeMs, boneTransforms, currentTransform);
 
-            CurrentTransform = currentTransform * ModelToBone;
-            boneTransforms[ID] = CurrentTransform;
+            CurrentTransform = currentTransform;
+            boneTransforms[ID] = ModelToBone * CurrentTransform;
             //CurrentTransform.ClearScale();
             //CurrentTransform.ClearRotation();
         }
