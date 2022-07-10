@@ -17,13 +17,16 @@ namespace AnimationTest
         public int ID { get; set; }
         public List<Bone> Children { get; private set; } = new List<Bone>();
         public TransformTimeline Timeline { get; private set; } = new TransformTimeline(true);
-        public StaticTransform InvBindPose { get; internal set; }
-        public StaticTransform OffsetToParent { get; internal set; }
+        public Matrix4 ModelToBone { get; internal set; }
+        private Matrix4 InverseBindPose;
+        public Matrix4 OffsetFromParent { get; internal set; }
         public Matrix4 CurrentTransform { get; private set; }
 
-        public Bone(string name)
+        public Bone(string name, int id, Matrix4 offsetFromParent)
         {
             Name = name;
+            ID = id;
+            OffsetFromParent = offsetFromParent;
         }
 
         public void AddAnimation(NodeAnimationChannel timeline, float ticksPerSecond)
@@ -49,19 +52,26 @@ namespace AnimationTest
             }
         }
 
+        public void CalcInvBindPose(Matrix4 parentBindTransform)
+        {
+            var bindTransform = parentBindTransform * ModelToBone;
+            InverseBindPose = bindTransform.Inverted();
+            foreach (var child in Children)
+                child.CalcInvBindPose(bindTransform);
+        }
+
         public void UpdateTransforms(float timeMs, Span<Matrix4> boneTransforms, Matrix4 parentTransform)
         {
-            var localTransform = Matrix4.Identity;
-            CurrentTransform = localTransform;
-            CurrentTransform = OffsetToParent.Matrix;
-            CurrentTransform += parentTransform;
+            var currentLocalTransform = Timeline.GetTransformAtTime(0).Matrix;
+            var currentTransform = currentLocalTransform * OffsetFromParent;
+            currentTransform *= parentTransform;
             foreach (var child in Children)
-                child.UpdateTransforms(timeMs, boneTransforms, CurrentTransform);
-            //CurrentTransform += InvBindPose.Matrix;
+                child.UpdateTransforms(timeMs, boneTransforms, currentTransform);
 
-            CurrentTransform.ClearScale();
-            CurrentTransform.ClearRotation();
+            CurrentTransform = currentTransform * ModelToBone;
             boneTransforms[ID] = CurrentTransform;
+            //CurrentTransform.ClearScale();
+            //CurrentTransform.ClearRotation();
         }
 
         public override string ToString() => Name;
