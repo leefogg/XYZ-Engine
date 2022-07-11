@@ -85,6 +85,7 @@ namespace AnimationTest
             var skeleton = scene.RootNode.Children.First(child => child.Name == "Armature");
             var nodes = new List<Assimp.Node>();
             GetAll(nodes, skeleton);
+            var rot = new DynamicTransform(nodes[1].Transform.ToOpenTK());
             nodes = nodes.Skip(1).ToList();
 
             AllBones = new Dictionary<string, Bone>();
@@ -96,7 +97,7 @@ namespace AnimationTest
                 var modelToBone = bone.OffsetMatrix.ToOpenTK();
 
                 var newBone = new Bone(bone.Name, i, offsetFromParent);
-                newBone.ModelToBone = modelToBone;
+                newBone.ModelToBoneSpace = modelToBone;
 
                 newBone.AddAnimation(anim.NodeAnimationChannels.First(c => c.NodeName == bone.Name), (float)anim.TicksPerSecond);
                 AllBones.Add(newBone.Name, newBone);
@@ -223,10 +224,9 @@ namespace AnimationTest
             //RenderOtherTest();
             RenderNormalTest();
 
-            //GL.Disable(EnableCap.DepthTest);
-            //DrawSkeleton(RootNode, boneTransforms);
-            //LineRenderer.Render();
-            //GL.Enable(EnableCap.DepthTest);
+            GL.Disable(EnableCap.DepthTest);
+            LineRenderer.Render();
+            GL.Enable(EnableCap.DepthTest);
         }
 
         private void RenderOtherTest()
@@ -246,38 +246,45 @@ namespace AnimationTest
         private void RenderNormalTest()
         {
             //var rotation = (float)GameMillisecondsElapsed / 1000f;
-            var rotation = 45;
-            var modelMatrix = MathFunctions.CreateModelMatrix(new Vector3(0,0,0), new Quaternion(rotation * 0.0174533f, 0, 0), new Vector3(1f));
+            var rotation = 90;
+            var modelMatrix = MathFunctions.CreateModelMatrix(
+                new Vector3(0,0,0),
+                new Quaternion(rotation * 0.0174533f, 0, 0), 
+                new Vector3(1f)
+            );
             boneTransforms = new Matrix4[AllBones.Count];
-            RootNode.UpdateTransforms((float)GameMillisecondsElapsed / 10, boneTransforms, modelMatrix);
+            RootNode.UpdateTransforms((float)GameMillisecondsElapsed / 40f, boneTransforms, Matrix4.Identity);
 
             // Validation
             foreach (var mat in boneTransforms)
-                //Debug.Assert(mat != Matrix4.Identity, "Bone transform not set");
+                Debug.Assert(mat != Matrix4.Identity, "Bone transform not set");
 
             BonePosesUBO.Update(boneTransforms);
             
-            //OrignalModel.Render();
+            OrignalModel.Render();
 
             SkeletonShader.Use();
             SkeletonShader.Set("ModelMatrix", modelMatrix);
             AlbedoTexture.Use();
             SkinnedMesh.Draw();
 
+            DrawSkeleton(RootNode, modelMatrix, modelMatrix);
+
             RenderImGui();
         }
 
-        void DrawSkeleton(Bone bone, Matrix4[] pose)
+        void DrawSkeleton(Bone bone, Matrix4 parentTransform, Matrix4 modelMatrix)
         {
-            var pos = pose[bone.ID].ExtractTranslation();
-            Sphere.Transform.Position = pos;
-            Sphere.Render();
+            var thisBoneMSTransform = bone.ModelSpaceTransform * modelMatrix;
+            LineRenderer.AddLine(parentTransform.ExtractTranslation(), thisBoneMSTransform.ExtractTranslation());
+            renderAxisHelper(LineRenderer, thisBoneMSTransform);
+
+            //Sphere.Transform.Position = thisBone.ExtractTranslation();
+            //Sphere.Render();
 
             foreach (var child in bone.Children)
             {
-                LineRenderer.AddLine(pos, pose[child.ID].ExtractTranslation());
-                //renderAxisHelper(LineRenderer, pose[bone.ID]);
-                DrawSkeleton(child, pose);
+                DrawSkeleton(child, thisBoneMSTransform, modelMatrix);
             }
         }
 
@@ -331,7 +338,7 @@ namespace AnimationTest
 
         private void DisplayBone(Bone parentNode)
         {
-            if (ImGui.TreeNodeEx($"{parentNode.Name} {parentNode.OffsetFromParent.ExtractTranslation()} {parentNode.CurrentTransform.ExtractTranslation()}", ImGuiTreeNodeFlags.DefaultOpen))
+            if (ImGui.TreeNodeEx($"{parentNode.Name} {parentNode.OffsetFromParent.ExtractTranslation()} {parentNode.ModelSpaceTransform.ExtractTranslation()}", ImGuiTreeNodeFlags.DefaultOpen))
             {
                 foreach (var child in parentNode.Children)
                 {

@@ -18,10 +18,10 @@ namespace AnimationTest
         public int ID { get; set; }
         public List<Bone> Children { get; private set; } = new List<Bone>();
         public TransformTimeline Timeline { get; private set; } = new TransformTimeline(true);
-        public Matrix4 ModelToBone { get; internal set; }
+        public Matrix4 ModelToBoneSpace { get; internal set; }
         private Matrix4 InverseBindPose;
         public Matrix4 OffsetFromParent { get; internal set; }
-        public Matrix4 CurrentTransform { get; private set; }
+        public Matrix4 ModelSpaceTransform { get; private set; }
 
         public Bone(string name, int id, Matrix4 offsetFromParent)
         {
@@ -55,24 +55,21 @@ namespace AnimationTest
 
         public void CalcInvBindPose(Matrix4 parentBindTransform)
         {
-            var bindTransform = parentBindTransform * ModelToBone;
+            var bindTransform = parentBindTransform * ModelToBoneSpace;
             InverseBindPose = bindTransform.Inverted();
             foreach (var child in Children)
                 child.CalcInvBindPose(bindTransform);
         }
 
-        public void UpdateTransforms(float timeMs, Span<Matrix4> boneTransforms, Matrix4 parentTransform)
+        public void UpdateTransforms(float timeMs, Span<Matrix4> boneTransforms, Matrix4 parentTransformMS)
         {
-            var currentLocalTransform = Timeline.GetTransformAtTime(timeMs).Matrix;
-            var currentTransform = MathFunctions.Tween(currentLocalTransform, currentLocalTransform * OffsetFromParent, 0f);
-            currentTransform *= parentTransform;
+            var animationTransformMS = Timeline.GetTransformAtTime(timeMs);
+            var msTransform = animationTransformMS.Matrix * parentTransformMS;
             foreach (var child in Children)
-                child.UpdateTransforms(timeMs, boneTransforms, currentTransform);
+                child.UpdateTransforms(timeMs, boneTransforms, msTransform);
 
-            CurrentTransform = currentTransform;
-            boneTransforms[ID] = ModelToBone * CurrentTransform;
-            //CurrentTransform.ClearScale();
-            //CurrentTransform.ClearRotation();
+            ModelSpaceTransform = msTransform;
+            boneTransforms[ID] = ModelToBoneSpace * msTransform;
         }
 
         public override string ToString() => Name;
