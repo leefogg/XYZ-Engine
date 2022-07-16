@@ -86,8 +86,6 @@ namespace AnimationTest
                 var newBone = new Bone(bone.Name, i, offsetFromParent, modelToBone);
 
                 var anim = animations.NodeAnimationChannels.FirstOrDefault(c => c.NodeName == bone.Name);
-                if (anim != null)
-                    newBone.AddAnimation(anim, (float)animations.TicksPerSecond);
                 AllBones.Add(newBone.Name, newBone);
             }
             RootNode = CreateSkeleton(AllBones, assimpSkeleton.Children[0]);
@@ -229,9 +227,11 @@ namespace AnimationTest
                 new Vector3(1f)
             );
             float timeMs = (float)GameMillisecondsElapsed;
-            var modelSpaceTransforms = skeleton.GetModelSpaceTransforms(skeleton.Animations[0], timeMs);
-            var boneSpaceTransforms = skeleton.GetBoneSpaceTransforms(modelSpaceTransforms);
-            RootNode.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
+            var modelSpaceTransforms = new Matrix4[skeleton.TotalBones];
+            var boneSpaceTransforms = new Matrix4[skeleton.TotalBones];
+            skeleton.GetModelSpaceTransforms(skeleton.Animations[0], timeMs, modelSpaceTransforms);
+            skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
+            //RootNode.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
             //RootNode.UpdateTransforms(timeMs, boneSpaceTransforms, modelSpaceTransforms, Matrix4.Identity);
 
             // Validation

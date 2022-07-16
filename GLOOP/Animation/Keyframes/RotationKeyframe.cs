@@ -18,11 +18,9 @@ namespace GLOOP.Animation.Keyframes
             Rotation = rotation;
         }
 
-        public override Quaternion Tween(Keyframe<Quaternion> other, float timeMs)
+        public override Quaternion Tween(Keyframe<Quaternion> other, float percent)
         {
             var otherBone = other as RotationKeyframe;
-
-            var percent = (float)MathFunctions.Map(timeMs, TimeMs, other.TimeMs, 0, 1);
             return MathFunctions.Tween(Rotation, otherBone.Rotation, percent);
         }
     }

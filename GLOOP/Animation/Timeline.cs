@@ -43,6 +43,8 @@ namespace GLOOP.Animation
         {
             if (Loop)
                 timeMs %= LengthMs;
+            else if (timeMs >= LengthMs)
+                timeMs = LengthMs;
 
             var index = FindKeyframeAfterTime(timeMs);
             if (index == -1)
@@ -51,7 +53,11 @@ namespace GLOOP.Animation
             var keyframe = Keyframes[index];
             var nextKeyframe = Keyframes[(index + 1) % Keyframes.Count];
 
-            return keyframe.Tween(nextKeyframe, timeMs);
+            var percent = (float)MathFunctions.Map(timeMs, keyframe.TimeMs, nextKeyframe.TimeMs, 0, 1);
+
+            Debug.Assert(percent >= 0 && percent <= 1, "Percent is out of range.");
+
+            return keyframe.Tween(nextKeyframe, percent);
         }
 
         private int FindKeyframeAfterTime(float timeMs) => Keyframes.FindLastIndex(keyframe => timeMs >= keyframe.TimeMs);

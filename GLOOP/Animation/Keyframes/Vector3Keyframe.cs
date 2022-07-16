@@ -17,11 +17,9 @@ namespace GLOOP.Animation.Keyframes
             Vector = vector;
         }
 
-        public override Vector3 Tween(Keyframe<Vector3> other, float timeMs)
+        public override Vector3 Tween(Keyframe<Vector3> other, float percent)
         {
             var otherBone = other as Vector3Keyframe;
-
-            var percent = (float)MathFunctions.Map(timeMs, TimeMs, other.TimeMs, 0, 1);
             return MathFunctions.Tween(Vector, otherBone.Vector, percent);
         }
     }

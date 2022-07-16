@@ -15,6 +15,6 @@ namespace GLOOP.Animation
 
         public abstract OutputType Value { get; }
 
-        public abstract OutputType Tween(Keyframe<OutputType> other, float timeMs);
+        public abstract OutputType Tween(Keyframe<OutputType> other, float percent);
     }
 }

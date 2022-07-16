@@ -20,11 +20,9 @@ namespace GLOOP.Animation.Keyframes
 
         public override string ToString() => TimeMs.ToString();
 
-        public override Matrix4 Tween(Keyframe<Matrix4> other, float timeMs)
+        public override Matrix4 Tween(Keyframe<Matrix4> other, float percent)
         {
             var otherBone = other as BoneKeyframe;
-
-            var percent = (float)MathFunctions.Map(timeMs, TimeMs, other.TimeMs, 0, 1);
             return MathFunctions.Tween(Transform.Matrix, otherBone.Transform.Matrix, percent);
         }
     }

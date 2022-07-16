@@ -7,7 +7,10 @@ namespace GLOOP.Animation
 {
     public class Skeleton
     {
-        public readonly Bone RootBone;
+        private readonly Bone RootBone;
+
+        private int? totalBones;
+        public int TotalBones => totalBones ??= RootBone.TotalBones;
 
         public List<SkeletonAnimation> Animations = new List<SkeletonAnimation>(4);
 
@@ -18,22 +21,18 @@ namespace GLOOP.Animation
 
         public void AddAnimation(SkeletonAnimation anim) => Animations.Add(anim);
 
-        public Matrix4[] GetModelSpaceTransforms(SkeletonAnimation anim, float timeMs)
+        public void GetModelSpaceTransforms(SkeletonAnimation anim, float timeMs, Span<Matrix4> modelSpaceTransforms)
         {
-            var modelSpaceTransforms = new Matrix4[RootBone.TotalBones];
+            Span<Matrix4> boneTransforms = stackalloc Matrix4[modelSpaceTransforms.Length];
 
-            RootBone.GetModelSpaceTransforms(anim, timeMs, modelSpaceTransforms);
+            anim.GetBoneTransforms(boneTransforms, timeMs);
 
-            return modelSpaceTransforms;
+            RootBone.GetModelSpaceTransforms(boneTransforms, modelSpaceTransforms);
         }
 
-        public Matrix4[] GetBoneSpaceTransforms(Span<Matrix4> modelSpaceTransforms)
+        public void GetBoneSpaceTransforms(Span<Matrix4> modelSpaceTransforms, Span<Matrix4> boneSpaceTransforms)
         {
-            var boneSpaceTransforms = new Matrix4[modelSpaceTransforms.Length];
-
             RootBone.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
-
-            return boneSpaceTransforms;
         }
     }
 }
