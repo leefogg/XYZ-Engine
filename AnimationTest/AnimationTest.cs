@@ -30,9 +30,9 @@ namespace AnimationTest
         private Buffer<Matrix4> BonePosesUBO;
         private Dictionary<string, Bone> AllBones;
         private Bone RootNode;
+        private Skeleton skeleton;
         private Model Sphere;
         private Texture2D AlbedoTexture;
-        private Matrix4[] boneTransforms;
         private Bone TestSkeleton;
 
         public AnimationTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
@@ -51,20 +51,6 @@ namespace AnimationTest
         {
             base.OnLoad();
             OnLoad1();
-            OnLoad2();
-        }
-
-        private void OnLoad2()
-        {
-            int counter = 0;
-            Bone bone = null;
-            do
-            {
-                var newBone = new Bone(counter.ToString(), counter, Matrix4.CreateTranslation(0, 1, 0) * Matrix4.CreateRotationX(.1f));
-                bone?.Children.Add(newBone);
-                TestSkeleton ??= newBone;
-                bone = newBone;
-            } while (++counter < 20);
         }
 
         private void OnLoad1()
@@ -81,10 +67,10 @@ namespace AnimationTest
                 | Assimp.PostProcessSteps.Triangulate;
             var scene = assimp.ImportFile(path, steps);
 
-            var anim = scene.Animations[0];
-            var skeleton = scene.RootNode.Children.First(child => child.Name == "Armature");
+            var animations = scene.Animations[0];
+            var assimpSkeleton = scene.RootNode.Children.First(child => child.Name == "Armature");
             var nodes = new List<Assimp.Node>();
-            GetAll(nodes, skeleton);
+            GetAll(nodes, assimpSkeleton);
             var rot = new DynamicTransform(nodes[1].Transform.ToOpenTK());
             nodes = nodes.Skip(1).ToList();
 
@@ -92,21 +78,25 @@ namespace AnimationTest
             for (int i = 0; i < scene.Meshes[0].BoneCount; i++)
             {
                 var bone = scene.Meshes[0].Bones[i];
+                var node = nodes[i];
 
-                var offsetFromParent = nodes[i].Transform.ToOpenTK();
+                var offsetFromParent = node.Transform.ToOpenTK();
                 var modelToBone = bone.OffsetMatrix.ToOpenTK();
 
-                var newBone = new Bone(bone.Name, i, offsetFromParent);
-                newBone.ModelToBoneSpace = modelToBone;
+                var newBone = new Bone(bone.Name, i, offsetFromParent, modelToBone);
 
-                newBone.AddAnimation(anim.NodeAnimationChannels.First(c => c.NodeName == bone.Name), (float)anim.TicksPerSecond);
+                var anim = animations.NodeAnimationChannels.FirstOrDefault(c => c.NodeName == bone.Name);
+                if (anim != null)
+                    newBone.AddAnimation(anim, (float)animations.TicksPerSecond);
                 AllBones.Add(newBone.Name, newBone);
             }
-            RootNode = CreateSkeleton(AllBones, skeleton.Children[0]);
-            RootNode.CalcInvBindPose(Matrix4.Identity);
+            RootNode = CreateSkeleton(AllBones, assimpSkeleton.Children[0]);
+
+            skeleton = new Skeleton(RootNode);
+            skeleton.Animations.Add(new SkeletonAnimation(animations.NodeAnimationChannels, animations.Name, (float)animations.TicksPerSecond));
 
             for (int i = 0; i < nodes.Count; i++)
-                Debug.Assert(AllBones[nodes[i].Name].ID == i, "Mismatched IDs");
+                Debug.Assert(AllBones[nodes[i].Name].Index == i, "Mismatched IDs");
 
             int j = 0;
             var jointOrder = new[] { "Torso", "Chest", "Neck", "Head", "Upper_Arm_L", "Lower_Arm_L", "Hand_L", "Upper_Arm_R", "Lower_Arm_R", "Hand_R", "Upper_Leg_L", "Lower_Leg_L", "Foot_L", "Upper_Leg_R", "Lower_Leg_R", "Foot_R" };
@@ -229,20 +219,6 @@ namespace AnimationTest
             GL.Enable(EnableCap.DepthTest);
         }
 
-        private void RenderOtherTest()
-        {
-            var modelMatrix = Matrix4.Identity;
-            boneTransforms = new Matrix4[20];
-            TestSkeleton.UpdateTransforms((float)GameMillisecondsElapsed, boneTransforms, modelMatrix);
-
-            for (int i = 0; i < 20 - 1;)
-            {
-                LineRenderer.AddLine(boneTransforms[i].ExtractTranslation(), boneTransforms[++i].ExtractTranslation());
-            }
-
-            LineRenderer.Render();
-        }
-
         private void RenderNormalTest()
         {
             //var rotation = (float)GameMillisecondsElapsed / 1000f;
@@ -252,30 +228,33 @@ namespace AnimationTest
                 new Quaternion(rotation * 0.0174533f, 0, 0), 
                 new Vector3(1f)
             );
-            boneTransforms = new Matrix4[AllBones.Count];
-            RootNode.UpdateTransforms((float)GameMillisecondsElapsed / 40f, boneTransforms, Matrix4.Identity);
+            float timeMs = (float)GameMillisecondsElapsed;
+            var modelSpaceTransforms = skeleton.GetModelSpaceTransforms(skeleton.Animations[0], timeMs);
+            var boneSpaceTransforms = skeleton.GetBoneSpaceTransforms(modelSpaceTransforms);
+            RootNode.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
+            //RootNode.UpdateTransforms(timeMs, boneSpaceTransforms, modelSpaceTransforms, Matrix4.Identity);
 
             // Validation
-            foreach (var mat in boneTransforms)
+            foreach (var mat in boneSpaceTransforms)
                 Debug.Assert(mat != Matrix4.Identity, "Bone transform not set");
 
-            BonePosesUBO.Update(boneTransforms);
+            BonePosesUBO.Update(boneSpaceTransforms);
             
-            OrignalModel.Render();
+            //OrignalModel.Render();
 
             SkeletonShader.Use();
             SkeletonShader.Set("ModelMatrix", modelMatrix);
             AlbedoTexture.Use();
             SkinnedMesh.Draw();
 
-            DrawSkeleton(RootNode, modelMatrix, modelMatrix);
+            DrawSkeleton(RootNode, modelSpaceTransforms, modelMatrix, modelMatrix);
 
-            RenderImGui();
+            RenderImGui(modelSpaceTransforms);
         }
 
-        void DrawSkeleton(Bone bone, Matrix4 parentTransform, Matrix4 modelMatrix)
+        void DrawSkeleton(Bone bone, Span<Matrix4> modelSpaceTransforms, Matrix4 parentTransform, Matrix4 modelMatrix)
         {
-            var thisBoneMSTransform = bone.ModelSpaceTransform * modelMatrix;
+            var thisBoneMSTransform = modelSpaceTransforms[bone.Index] * modelMatrix;
             LineRenderer.AddLine(parentTransform.ExtractTranslation(), thisBoneMSTransform.ExtractTranslation());
             renderAxisHelper(LineRenderer, thisBoneMSTransform);
 
@@ -283,9 +262,7 @@ namespace AnimationTest
             //Sphere.Render();
 
             foreach (var child in bone.Children)
-            {
-                DrawSkeleton(child, thisBoneMSTransform, modelMatrix);
-            }
+                DrawSkeleton(child, modelSpaceTransforms, thisBoneMSTransform, modelMatrix);
         }
 
         void renderAxisHelper(DebugLineRenderer lineRenderer, Matrix4 modelMatrix)
@@ -300,14 +277,12 @@ namespace AnimationTest
             lineRenderer.AddLine(O, Z);
         }
 
-        void RenderImGui()
+        void RenderImGui(Matrix4[] modelSpaceTransforms)
         {
             ImGuiController?.Update(this, (float)(1000f/30f));
 
             ImGui.Begin("Window");
-            ImGui.BeginChild("Scene");
-            DisplayBone(RootNode);
-            ImGui.EndChild();
+            DisplayBone(RootNode, modelSpaceTransforms);
             ImGui.End();
 
             ImGuiController.Render();
@@ -336,13 +311,13 @@ namespace AnimationTest
             renderer.AddLine(offset + bottomLeft, offset + bottomRight);
         }
 
-        private void DisplayBone(Bone parentNode)
+        private void DisplayBone(Bone parentNode, Span<Matrix4> modelSpaceTransforms)
         {
-            if (ImGui.TreeNodeEx($"{parentNode.Name} {parentNode.OffsetFromParent.ExtractTranslation()} {parentNode.ModelSpaceTransform.ExtractTranslation()}", ImGuiTreeNodeFlags.DefaultOpen))
+            if (ImGui.TreeNodeEx($"{parentNode.Name} {parentNode.OffsetFromParent.ExtractTranslation()} {modelSpaceTransforms[parentNode.Index].ExtractTranslation()}", ImGuiTreeNodeFlags.DefaultOpen))
             {
                 foreach (var child in parentNode.Children)
                 {
-                    DisplayBone(child);
+                    DisplayBone(child, modelSpaceTransforms);
                 }
                 ImGui.TreePop();
             }

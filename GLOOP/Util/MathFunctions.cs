@@ -44,8 +44,7 @@ namespace GLOOP.Util
 
         public static Matrix4 CreateViewMatrix(Vector3 position, Vector3 rotationDegrees)
         {
-            var output = new Matrix4();
-            ToIdentity(ref output);
+            var output = Matrix4.Identity;
             Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotationDegrees.X), RIGHT);
             Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotationDegrees.Y), UP);
             Rotate(output, ref output, (float)MathHelper.DegreesToRadians(rotationDegrees.Z), IN);
@@ -58,9 +57,7 @@ namespace GLOOP.Util
 
         public static Matrix4 CreateModelMatrix(Vector3 position, Quaternion rotation, Vector3 scale)
         {
-            var output = new Matrix4();
-            ToIdentity(ref output);
-
+            var output = Matrix4.Identity;
             Translate(output, ref output, position);
             Multiply(output, ToRotationMatrix(rotation), ref output);
             Scale(output, ref output, scale);
@@ -70,8 +67,7 @@ namespace GLOOP.Util
 
         public static Matrix4 ToRotationMatrix(Quaternion self)
         {
-            var matrix = new Matrix4();
-            ToIdentity(ref matrix);
+            var matrix = Matrix4.Identity;
 
             float xy = self.X * self.Y;
             float xz = self.X * self.Z;
@@ -118,7 +114,7 @@ namespace GLOOP.Util
         public static float Tween(float start, float end, float percent) 
             => start * (1f - percent) + end * percent;
         public static Quaternion Tween(Quaternion start, Quaternion end, float percent)
-            => start * (1f - percent) + end * percent;
+            => Quaternion.Slerp(start, end, percent);
         public static Vector3 Tween(Vector3 start, Vector3 end, float percent)
             => Tween(start, end, new Vector3(percent));
         public static Vector3 Tween(Vector3 start, Vector3 end, Vector3 percent) 
