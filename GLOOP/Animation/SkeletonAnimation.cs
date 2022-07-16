@@ -28,15 +28,15 @@ namespace GLOOP.Animation
             Name = name;
         }
 
-        public SkeletonAnimation(IEnumerable<Assimp.NodeAnimationChannel> boneAnims, string name, float ticksPerSecond = 1f)
-            : this(boneAnims.Select(anim => new BoneAnimation(anim, ticksPerSecond)).ToArray(), name)
+        public SkeletonAnimation(IEnumerable<Assimp.NodeAnimationChannel> boneAnims, IDictionary<string, Bone> bones, string name, float ticksPerSecond = 1f)
+            : this(boneAnims.Select(anim => new BoneAnimation(bones[anim.NodeName].Index, anim, ticksPerSecond)).ToArray(), name)
         {
         }
 
         public void GetBoneTransforms(Span<Matrix4> boneTransforms, float timeMs)
         {
-            for (int i = 0; i < Bones.Length; i++)
-                boneTransforms[i] = Bones[i].GetTransformAtTime(timeMs);
+            foreach (var boneAnim in Bones)
+                boneTransforms[boneAnim.BoneIndex] = boneAnim.GetTransformAtTime(timeMs);
         }
     }
 }

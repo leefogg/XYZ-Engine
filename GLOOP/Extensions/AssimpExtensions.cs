@@ -1,7 +1,9 @@
-﻿using OpenTK.Mathematics;
+﻿using Assimp;
+using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Quaternion = OpenTK.Mathematics.Quaternion;
 
 namespace GLOOP.Extensions
 {
@@ -30,6 +32,31 @@ namespace GLOOP.Extensions
             );
             result.Transpose();
             return result;
+        }
+
+        public static Node Find(this Node self, Func<Node, bool> critera)
+        {
+            if (critera(self))
+                return self;
+
+            foreach (var child in self.Children)
+            {
+                Assimp.Node foundChild = child.Find(critera);
+                if (foundChild!= null)
+                    return foundChild;
+            }
+
+            return null;
+        }
+
+        public static Matrix4 Copy(this Matrix4 self, Matrix4 other)
+        {
+            self.Row0 = other.Row0;
+            self.Row1 = other.Row1;
+            self.Row2 = other.Row2;
+            self.Row3 = other.Row3;
+
+            return self;
         }
     }
 }

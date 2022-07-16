@@ -25,15 +25,11 @@ namespace AnimationTest
         private readonly DebugLineRenderer LineRenderer;
         private Camera Camera;
         private VirtualVAO SkinnedMesh;
-        private Model OrignalModel;
         private DynamicPixelShader SkeletonShader;
         private Buffer<Matrix4> BonePosesUBO;
-        private Dictionary<string, Bone> AllBones;
         private Bone RootNode;
         private Skeleton skeleton;
-        private Model Sphere;
         private Texture2D AlbedoTexture;
-        private Bone TestSkeleton;
 
         public AnimationTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -67,42 +63,12 @@ namespace AnimationTest
                 | Assimp.PostProcessSteps.Triangulate;
             var scene = assimp.ImportFile(path, steps);
 
-            var animations = scene.Animations[0];
-            var assimpSkeleton = scene.RootNode.Children.First(child => child.Name == "Armature");
-            var nodes = new List<Assimp.Node>();
-            GetAll(nodes, assimpSkeleton);
-            var rot = new DynamicTransform(nodes[1].Transform.ToOpenTK());
-            nodes = nodes.Skip(1).ToList();
+            var mesh = scene.Meshes[0];
+            var boneNames = mesh.Bones.Select(b => b.Name).ToArray();
+            var assimpRootNode = scene.RootNode.Find(n => boneNames.Contains(n.Name));
 
-            AllBones = new Dictionary<string, Bone>();
-            for (int i = 0; i < scene.Meshes[0].BoneCount; i++)
-            {
-                var bone = scene.Meshes[0].Bones[i];
-                var node = nodes[i];
-
-                var offsetFromParent = node.Transform.ToOpenTK();
-                var modelToBone = bone.OffsetMatrix.ToOpenTK();
-
-                var newBone = new Bone(bone.Name, i, offsetFromParent, modelToBone);
-
-                var anim = animations.NodeAnimationChannels.FirstOrDefault(c => c.NodeName == bone.Name);
-                AllBones.Add(newBone.Name, newBone);
-            }
-            RootNode = CreateSkeleton(AllBones, assimpSkeleton.Children[0]);
-
-            skeleton = new Skeleton(RootNode);
-            skeleton.Animations.Add(new SkeletonAnimation(animations.NodeAnimationChannels, animations.Name, (float)animations.TicksPerSecond));
-
-            for (int i = 0; i < nodes.Count; i++)
-                Debug.Assert(AllBones[nodes[i].Name].Index == i, "Mismatched IDs");
-
-            int j = 0;
-            var jointOrder = new[] { "Torso", "Chest", "Neck", "Head", "Upper_Arm_L", "Lower_Arm_L", "Hand_L", "Upper_Arm_R", "Lower_Arm_R", "Hand_R", "Upper_Leg_L", "Lower_Leg_L", "Foot_L", "Upper_Leg_R", "Lower_Leg_R", "Foot_R" };
-            foreach (var bone in AllBones.Values)
-                Debug.Assert(bone.Name == jointOrder[j++]);
-
-            Sphere = new Model(Primitives.Sphere, new SingleColorMaterial(new SingleColorShader3D()) { Color = new Vector4(1, 0, 0, 1) });
-            Sphere.Transform.Scale = new Vector3(0.05f);
+            // Add animations
+            skeleton = new Skeleton(assimpRootNode, mesh.Bones, scene.Animations);
 
             var pairs = CreateVertexWeights(scene.Meshes[0].Bones, scene.Meshes[0].VertexCount);
             var ids = pairs.SelectMany(p => p.Item1).Cast<float>().ToVec4s();
@@ -110,7 +76,6 @@ namespace AnimationTest
 
             {
                 var geo = new Geometry();
-                var mesh = scene.Meshes[0];
                 geo.Positions = mesh.Vertices.Select(v => v.ToOpenTK()).ToList();
                 geo.UVs = mesh.TextureCoordinateChannels[0].Select(uv => new Vector2(uv.X, uv.Y)).ToList();
                 geo.Indicies = mesh.GetIndices().Cast<uint>().ToList();
@@ -119,9 +84,7 @@ namespace AnimationTest
                 geo.BoneWeights = weights.ToList();
 
                 AlbedoTexture = TextureCache.Get("assets/textures/diffuse.png");
-                material.diffuse = AlbedoTexture;
                 SkinnedMesh = geo.ToVirtualVAO();
-                OrignalModel = new Model(SkinnedMesh, material);
                 SkeletonShader = new DynamicPixelShader(
                     "assets/shaders/AnimatedModel/VertexShader.vert",
                     "assets/shaders/AnimatedModel/FragmentShader.frag",
@@ -129,7 +92,6 @@ namespace AnimationTest
                     "BoneWeights"
                 );
 
-                //var IdentityPoses = AllBones.Select(b => b.Value.BindPose.Matrix).ToArray();
                 BonePosesUBO = new Buffer<Matrix4>(64, BufferTarget.UniformBuffer, BufferUsageHint.DynamicDraw, "Bone Poses");
                 BonePosesUBO.Bind(2);
             }
@@ -188,26 +150,13 @@ namespace AnimationTest
                 GetAll(children, child);
         }
 
-        public Bone CreateSkeleton(IDictionary<string, Bone> allBones, Assimp.Node node)
-        {
-            var bone = allBones[node.Name];
-            foreach (var child in node.Children)
-                CreateSkeleton(allBones, child);
-            foreach (var child in node.Children)
-                bone.Children.Add(allBones[child.Name]);
-
-            return bone;
-        }
-
         public override void Render()
         {
             updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
 
-            LineRenderer.AddLine(Vector3.Zero, Vector3.UnitX);
-            LineRenderer.AddLine(Vector3.Zero, Vector3.UnitY);
-            LineRenderer.AddLine(Vector3.Zero, Vector3.UnitZ);
+            LineRenderer.AddAxisHelper(Matrix4.Identity);
 
-            //DrawPlane(LineRenderer, 100, 100, 100, 100);
+            //LineRenderer.DrawPlane(100, 100, 100, 100);
 
             //RenderOtherTest();
             RenderNormalTest();
@@ -219,108 +168,25 @@ namespace AnimationTest
 
         private void RenderNormalTest()
         {
-            //var rotation = (float)GameMillisecondsElapsed / 1000f;
-            var rotation = 90;
-            var modelMatrix = MathFunctions.CreateModelMatrix(
-                new Vector3(0,0,0),
-                new Quaternion(rotation * 0.0174533f, 0, 0), 
-                new Vector3(1f)
-            );
             float timeMs = (float)GameMillisecondsElapsed;
             var modelSpaceTransforms = new Matrix4[skeleton.TotalBones];
             var boneSpaceTransforms = new Matrix4[skeleton.TotalBones];
             skeleton.GetModelSpaceTransforms(skeleton.Animations[0], timeMs, modelSpaceTransforms);
             skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
-            //RootNode.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
-            //RootNode.UpdateTransforms(timeMs, boneSpaceTransforms, modelSpaceTransforms, Matrix4.Identity);
-
-            // Validation
-            foreach (var mat in boneSpaceTransforms)
-                Debug.Assert(mat != Matrix4.Identity, "Bone transform not set");
-
             BonePosesUBO.Update(boneSpaceTransforms);
-            
-            //OrignalModel.Render();
 
+            var rotation = 90;
+            var modelMatrix = MathFunctions.CreateModelMatrix(
+                Vector3.Zero,
+                new Quaternion(rotation * 0.0174533f, 0, 0), 
+                Vector3.One
+            );
             SkeletonShader.Use();
             SkeletonShader.Set("ModelMatrix", modelMatrix);
             AlbedoTexture.Use();
             SkinnedMesh.Draw();
 
-            DrawSkeleton(RootNode, modelSpaceTransforms, modelMatrix, modelMatrix);
-
-            RenderImGui(modelSpaceTransforms);
-        }
-
-        void DrawSkeleton(Bone bone, Span<Matrix4> modelSpaceTransforms, Matrix4 parentTransform, Matrix4 modelMatrix)
-        {
-            var thisBoneMSTransform = modelSpaceTransforms[bone.Index] * modelMatrix;
-            LineRenderer.AddLine(parentTransform.ExtractTranslation(), thisBoneMSTransform.ExtractTranslation());
-            renderAxisHelper(LineRenderer, thisBoneMSTransform);
-
-            //Sphere.Transform.Position = thisBone.ExtractTranslation();
-            //Sphere.Render();
-
-            foreach (var child in bone.Children)
-                DrawSkeleton(child, modelSpaceTransforms, thisBoneMSTransform, modelMatrix);
-        }
-
-        void renderAxisHelper(DebugLineRenderer lineRenderer, Matrix4 modelMatrix)
-        {
-            var O = (new Vector4(0, 0, 0, 1) * modelMatrix).Xyz;
-            var Y = (new Vector4(1, 0, 0, 1) * modelMatrix).Xyz;
-            var X = (new Vector4(0, 1, 0, 1) * modelMatrix).Xyz;
-            var Z = (new Vector4(0, 0, 1, 1) * modelMatrix).Xyz;
-
-            lineRenderer.AddLine(O, X);
-            lineRenderer.AddLine(O, Y);
-            lineRenderer.AddLine(O, Z);
-        }
-
-        void RenderImGui(Matrix4[] modelSpaceTransforms)
-        {
-            ImGuiController?.Update(this, (float)(1000f/30f));
-
-            ImGui.Begin("Window");
-            DisplayBone(RootNode, modelSpaceTransforms);
-            ImGui.End();
-
-            ImGuiController.Render();
-        }
-
-        public void DrawPlane(DebugLineRenderer renderer, int width, int depth, int rows, int columns, Vector3 offset = default)
-        {
-            var topLeft = new Vector3(-width / 2, 0, -depth / 2);
-            var topRight = new Vector3(width / 2, 0, -depth / 2);
-            {
-                var zStep = (float)depth / rows;
-                var hLine = new Vector3(0, 0, zStep);
-                for (float row = 0; row < rows; row++)
-                    renderer.AddLine(offset + topLeft + hLine * row, offset + topRight + hLine * row);
-            }
-            var bottomLeft = new Vector3(-width / 2, 0, depth / 2);
-            var bottomRight = new Vector3(width / 2, 0, depth / 2);
-            {
-                var xStep = (float)width / columns;
-                var yLine = new Vector3(xStep, 0, 0);
-                for (float column = 0; column < columns; column++)
-                    renderer.AddLine(offset + bottomLeft + yLine * column, offset + topLeft + yLine * column);
-            }
-
-            renderer.AddLine(offset + topRight, offset + bottomRight);
-            renderer.AddLine(offset + bottomLeft, offset + bottomRight);
-        }
-
-        private void DisplayBone(Bone parentNode, Span<Matrix4> modelSpaceTransforms)
-        {
-            if (ImGui.TreeNodeEx($"{parentNode.Name} {parentNode.OffsetFromParent.ExtractTranslation()} {modelSpaceTransforms[parentNode.Index].ExtractTranslation()}", ImGuiTreeNodeFlags.DefaultOpen))
-            {
-                foreach (var child in parentNode.Children)
-                {
-                    DisplayBone(child, modelSpaceTransforms);
-                }
-                ImGui.TreePop();
-            }
+            skeleton.Render(LineRenderer, modelSpaceTransforms, modelMatrix);
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)

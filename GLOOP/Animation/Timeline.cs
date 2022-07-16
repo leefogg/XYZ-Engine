@@ -60,6 +60,7 @@ namespace GLOOP.Animation
             return keyframe.Tween(nextKeyframe, percent);
         }
 
+        // TODO: Add cache for LastIndex
         private int FindKeyframeAfterTime(float timeMs) => Keyframes.FindLastIndex(keyframe => timeMs >= keyframe.TimeMs);
     }
 }

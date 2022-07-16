@@ -43,5 +43,40 @@ namespace GLOOP.Rendering.Debugging
             VirtualVAO.Draw(PrimitiveType.Lines);
             Geometry.Positions.Clear();
         }
+
+        public void AddAxisHelper(Matrix4 modelMatrix)
+        {
+            var O = (new Vector4(0, 0, 0, 1) * modelMatrix).Xyz;
+            var Y = (new Vector4(1, 0, 0, 1) * modelMatrix).Xyz;
+            var X = (new Vector4(0, 1, 0, 1) * modelMatrix).Xyz;
+            var Z = (new Vector4(0, 0, 1, 1) * modelMatrix).Xyz;
+
+            AddLine(O, X);
+            AddLine(O, Y);
+            AddLine(O, Z);
+        }
+
+        public void DrawPlane(int width, int depth, int rows, int columns, Vector3 offset = default)
+        {
+            var topLeft = new Vector3(-width / 2, 0, -depth / 2);
+            var topRight = new Vector3(width / 2, 0, -depth / 2);
+            {
+                var zStep = (float)depth / rows;
+                var hLine = new Vector3(0, 0, zStep);
+                for (float row = 0; row < rows; row++)
+                    AddLine(offset + topLeft + hLine * row, offset + topRight + hLine * row);
+            }
+            var bottomLeft = new Vector3(-width / 2, 0, depth / 2);
+            var bottomRight = new Vector3(width / 2, 0, depth / 2);
+            {
+                var xStep = (float)width / columns;
+                var yLine = new Vector3(xStep, 0, 0);
+                for (float column = 0; column < columns; column++)
+                    AddLine(offset + bottomLeft + yLine * column, offset + topLeft + yLine * column);
+            }
+
+            AddLine(offset + topRight, offset + bottomRight);
+            AddLine(offset + bottomLeft, offset + bottomRight);
+        }
     }
 }

@@ -12,15 +12,18 @@ namespace GLOOP.Animation
     {
         private readonly Timeline<RotationKeyframe, Quaternion> RotationKeyframes;
         private readonly Timeline<Vector3Keyframe,  Vector3>    PositionKeyframes;
+        public readonly int BoneIndex;
 
-        public BoneAnimation(int numRotationKeys, int numPositionKeys)
+        public BoneAnimation(int boneIndex, int numRotationKeys, int numPositionKeys)
         {
             RotationKeyframes = new Timeline<RotationKeyframe, Quaternion>(numRotationKeys);
             PositionKeyframes = new Timeline<Vector3Keyframe, Vector3>(numPositionKeys);
+
+            BoneIndex = boneIndex;
         }
 
-        public BoneAnimation(Assimp.NodeAnimationChannel bone, float ticksPerSecond = 1f) 
-            : this(bone.RotationKeyCount, bone.PositionKeyCount)
+        public BoneAnimation(int boneIndex, Assimp.NodeAnimationChannel bone, float ticksPerSecond = 1f) 
+            : this(boneIndex, bone.RotationKeyCount, bone.PositionKeyCount)
         {
             foreach (var position in bone.PositionKeys)
                 AddPositionKeyframe((float)(position.Time * 1000 * ticksPerSecond), position.Value.ToOpenTK());

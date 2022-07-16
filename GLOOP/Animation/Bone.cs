@@ -16,7 +16,7 @@ namespace GLOOP.Animation
     {
         public string Name { get; private set; }
         public int Index { get; private set; }
-        public List<Bone> Children { get; private set; } = new List<Bone>();
+        public List<Bone> Children { get; private set; } = new List<Bone>(1);
         public Matrix4 ModelToBoneSpace { get; private set; }
         public Matrix4 OffsetFromParent { get; private set; }
 
@@ -62,6 +62,17 @@ namespace GLOOP.Animation
                 child.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
 
             boneSpaceTransforms[Index] = ModelToBoneSpace * modelSpaceTransforms[Index];
+        }
+
+        public void Render(Rendering.Debugging.DebugLineRenderer lineRenderer, Span<Matrix4> modelSpaceTransforms, Matrix4 modelMatrix)
+            => Render(lineRenderer, modelSpaceTransforms, modelMatrix, Matrix4.Identity);
+        private void Render(Rendering.Debugging.DebugLineRenderer lineRenderer, Span<Matrix4> modelSpaceTransforms, Matrix4 modelMatrix, Matrix4 parentMatrix)
+        {
+            var thisBoneMSTransform = modelSpaceTransforms[Index] * modelMatrix;
+            lineRenderer.AddLine(thisBoneMSTransform.ExtractTranslation(), parentMatrix.ExtractTranslation());
+
+            foreach (var child in Children)
+                child.Render(lineRenderer, modelSpaceTransforms, modelMatrix, thisBoneMSTransform);
         }
 
         public override string ToString() => Name;
