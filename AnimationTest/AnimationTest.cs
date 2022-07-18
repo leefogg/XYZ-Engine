@@ -27,14 +27,13 @@ namespace AnimationTest
         private VirtualVAO SkinnedMesh;
         private DynamicPixelShader SkeletonShader;
         private Buffer<Matrix4> BonePosesUBO;
-        private Bone RootNode;
         private Skeleton skeleton;
         private Texture2D AlbedoTexture;
 
         public AnimationTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
         {
-            Camera = new Camera(new Vector3(-3.7229528f, 2.800001f, 8.501869f), new Vector3(), 90)
+            Camera = new Camera(new Vector3(-0.97707474f, 0.70000046f, 2.388693f), new Vector3(), 90)
             {
                 CameraController = new PCCameraController()
             };
@@ -52,65 +51,86 @@ namespace AnimationTest
         private void OnLoad1()
         {
             var assimp = new Assimp.AssimpContext();
-            var shader = new FullbrightShader();
-            var material = new FullbrightMaterial(shader);
-            var path = "assets/models/model.dae";
-
-            var steps = Assimp.PostProcessSteps.FlipUVs
-                | Assimp.PostProcessSteps.GenerateNormals
-                | Assimp.PostProcessSteps.CalculateTangentSpace
-                | Assimp.PostProcessSteps.LimitBoneWeights
-                | Assimp.PostProcessSteps.Triangulate;
-            var scene = assimp.ImportFile(path, steps);
-
-            var mesh = scene.Meshes[0];
-            var boneNames = mesh.Bones.Select(b => b.Name).ToArray();
-            var assimpRootNode = scene.RootNode.Find(n => boneNames.Contains(n.Name));
-
-            // Add animations
-            skeleton = new Skeleton(assimpRootNode, mesh.Bones, scene.Animations);
-
-            var pairs = CreateVertexWeights(scene.Meshes[0].Bones, scene.Meshes[0].VertexCount);
-            var ids = pairs.SelectMany(p => p.Item1).Cast<float>().ToVec4s();
-            var weights = pairs.SelectMany(p => p.Item2).ToVec4s();
-
+            var geo = new Geometry();
+            List<Assimp.Bone> bones;
+            Assimp.Node assimpRootNode;
             {
-                var geo = new Geometry();
+                var path = "assets/models/maintenance_carl.dae";
+                var steps = Assimp.PostProcessSteps.FlipUVs
+                    | Assimp.PostProcessSteps.GenerateNormals
+                    | Assimp.PostProcessSteps.CalculateTangentSpace
+                    | Assimp.PostProcessSteps.LimitBoneWeights
+                    | Assimp.PostProcessSteps.Triangulate;
+                var scene = assimp.ImportFile(path, steps);
+                var mesh = scene.Meshes[0];
+                bones = mesh.Bones;
                 geo.Positions = mesh.Vertices.Select(v => v.ToOpenTK()).ToList();
                 geo.UVs = mesh.TextureCoordinateChannels[0].Select(uv => new Vector2(uv.X, uv.Y)).ToList();
-                geo.Indicies = mesh.GetIndices().Cast<uint>().ToList();
+                geo.Indicies = mesh.GetUnsignedIndices().ToList();
                 geo.Normals = mesh.Normals.Select(n => n.ToOpenTK()).ToList();
-                geo.BoneIds = ids.ToList();
-                geo.BoneWeights = weights.ToList();
 
-                AlbedoTexture = TextureCache.Get("assets/textures/diffuse.png");
-                SkinnedMesh = geo.ToVirtualVAO();
-                SkeletonShader = new DynamicPixelShader(
-                    "assets/shaders/AnimatedModel/VertexShader.vert",
-                    "assets/shaders/AnimatedModel/FragmentShader.frag",
-                    null,
-                    "BoneWeights"
-                );
+                //bones = mesh.Bones;
+                var boneNames = mesh.Bones.Select(b => b.Name).ToArray();
+                assimpRootNode = scene.RootNode.Find(n => boneNames.Contains(n.Name));
 
-                BonePosesUBO = new Buffer<Matrix4>(64, BufferTarget.UniformBuffer, BufferUsageHint.DynamicDraw, "Bone Poses");
-                BonePosesUBO.Bind(2);
             }
+            {
+                var shader = new FullbrightShader();
+                var material = new FullbrightMaterial(shader);
+                var path = "assets/animations/idle.dae";
+                var steps = Assimp.PostProcessSteps.LimitBoneWeights;
+                var scene = assimp.ImportFile(path, steps);
+                {
+
+                    var mesh = scene.Meshes[0];
+                    //bones = mesh.Bones;
+                    var boneNames = mesh.Bones.Select(b => b.Name).ToArray();
+
+                    // Add animations
+                    //skeleton = new Skeleton(assimpRootNode, bones, scene.Animations);
+                    skeleton = new Skeleton(assimpRootNode, bones, scene.Animations);
+                    skeleton.MergeAnims("Merged anim");
+                }
+            }
+
+            var pairs = CreateVertexWeights(bones, geo.Positions.Count);
+            var ids = pairs.SelectMany(p => p.Item1).ToVec4s();
+            var weights = pairs.SelectMany(p => p.Item2).ToVec4s();
+
+            geo.BoneIds = ids.ToList();
+            geo.BoneWeights = weights.ToList();
+
+            AlbedoTexture = TextureCache.Get("assets/textures/maintenance_carl.png");
+            SkinnedMesh = geo.ToVirtualVAO();
+            SkeletonShader = new DynamicPixelShader(
+                "assets/shaders/AnimatedModel/VertexShader.vert",
+                "assets/shaders/AnimatedModel/FragmentShader.frag",
+                null,
+                "BoneWeights"
+            );
+
+            BonePosesUBO = new Buffer<Matrix4>(128, BufferTarget.UniformBuffer, BufferUsageHint.DynamicDraw, "Bone Poses");
+            BonePosesUBO.Bind(2);
         }
 
 
-        // TODO: Ids are ints
-        public (float[], float[])[] CreateVertexWeights(IEnumerable<Assimp.Bone> bones, int numVerts)
+        // TODO: Ids are ints not floats
+        public (float[], float[], int)[] CreateVertexWeights(IEnumerable<Assimp.Bone> bones, int numVerts)
         {
+
             const float fillerValue = float.MaxValue;
-            var vertcies = Enumerable.Repeat(fillerValue, numVerts)
+            var vertcies = Enumerable.Range(0, numVerts)
                 .Select(i => (
-                    ids:     Enumerable.Repeat(i, 4).ToArray(),
-                    weights: Enumerable.Repeat(i, 4).ToArray()
+                    ids:     Enumerable.Repeat(fillerValue, 4).ToArray(),
+                    weights: Enumerable.Repeat(fillerValue, 4).ToArray(),
+                    index: i
                 )
             ).ToArray();
             int boneIdx = 0;
             foreach (var bone in bones)
             {
+                Debug.Assert(bone.HasVertexWeights);
+
                 foreach (var weight in bone.VertexWeights)
                 {
                     var nextBlankSlot = vertcies[weight.VertexID].ids.IndexOf(fillerValue);
@@ -121,13 +141,13 @@ namespace AnimationTest
                 boneIdx++;
             }
 
-            foreach (var (ids, weights) in vertcies)
+            foreach (var vert in vertcies)
             {
-                var sum = weights.Where(x => x != fillerValue).Sum();
-                Debug.Assert(sum > 0.99999f && sum < 1.0001);
+                var sum = vert.weights.Where(x => x != fillerValue).Sum();
+                ///Debug.Assert(sum > 0.99999f && sum < 1.0001);
                 for (int i = 0; i < 4; i++)
-                    if (weights[i] != float.MaxValue)
-                        Debug.Assert(ids[i] != float.MaxValue, "weight linking to no bone");
+                    if (vert.weights[i] != float.MaxValue)
+                        Debug.Assert(vert.ids[i] != float.MaxValue, "weight linking to no bone");
             }
 
             // Cleanup
@@ -141,13 +161,6 @@ namespace AnimationTest
             }
 
             return vertcies;
-        }
-
-        public void GetAll(List<Assimp.Node> children, Assimp.Node self)
-        {
-            children.Add(self);
-            foreach (var child in self.Children)
-                GetAll(children, child);
         }
 
         public override void Render()
@@ -171,15 +184,15 @@ namespace AnimationTest
             float timeMs = (float)GameMillisecondsElapsed;
             var modelSpaceTransforms = new Matrix4[skeleton.TotalBones];
             var boneSpaceTransforms = new Matrix4[skeleton.TotalBones];
-            skeleton.GetModelSpaceTransforms(skeleton.Animations[0], timeMs, modelSpaceTransforms);
+            skeleton.GetModelSpaceTransforms(skeleton.Animations[^1], timeMs, modelSpaceTransforms);
             skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
             BonePosesUBO.Update(boneSpaceTransforms);
 
-            var rotation = 90;
+            var rotation = 00;
             var modelMatrix = MathFunctions.CreateModelMatrix(
                 Vector3.Zero,
                 new Quaternion(rotation * 0.0174533f, 0, 0), 
-                Vector3.One
+                new Vector3(0.01f)
             );
             SkeletonShader.Use();
             SkeletonShader.Set("ModelMatrix", modelMatrix);

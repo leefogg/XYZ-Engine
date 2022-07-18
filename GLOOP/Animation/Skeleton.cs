@@ -15,6 +15,7 @@ namespace GLOOP.Animation
         public int TotalBones => totalBones ??= RootBone.TotalBones;
 
         public List<SkeletonAnimation> Animations = new List<SkeletonAnimation>(4);
+        private Matrix4[] BindPose;
 
         public Skeleton(Bone rootBone)
         {
@@ -26,13 +27,17 @@ namespace GLOOP.Animation
             var skeletonNodes = new List<Assimp.Node>();
             GetAll(skeletonNodes, rootAssimpNode);
 
+            BindPose = new Matrix4[assimpBones.Count];
+
             var boneDict = new Dictionary<string, Bone>(assimpBones.Count);
             for (int i = 0; i < assimpBones.Count; i++)
             {
                 var bone = assimpBones[i];
                 var node = skeletonNodes[i];
 
-                var newBone = new Bone(bone.Name, i, node.Transform.ToOpenTK(), bone.OffsetMatrix.ToOpenTK());
+                var boneBindPose = node.Transform.ToOpenTK();
+                var newBone = new Bone(bone.Name, i, bone.OffsetMatrix.ToOpenTK());
+                BindPose[i] = boneBindPose;
 
                 boneDict.Add(newBone.Name, newBone);
             }
@@ -55,14 +60,10 @@ namespace GLOOP.Animation
             }
         }
 
-        public void AddAnimation(SkeletonAnimation anim) => Animations.Add(anim);
-
         public void GetModelSpaceTransforms(SkeletonAnimation anim, float timeMs, Span<Matrix4> modelSpaceTransforms)
         {
-            Span<Matrix4> boneTransforms = stackalloc Matrix4[modelSpaceTransforms.Length];
-            var identity = Matrix4.Identity;
-            foreach (var bone in boneTransforms)
-                bone.Copy(identity);
+            var boneTransforms = new Matrix4[BindPose.Length];
+            Array.Copy(BindPose, boneTransforms, BindPose.Length);
             anim.GetBoneTransforms(boneTransforms, timeMs);
 
             RootBone.GetModelSpaceTransforms(boneTransforms, modelSpaceTransforms);
@@ -80,16 +81,29 @@ namespace GLOOP.Animation
 
         private Bone CopyHierarchy(IDictionary<string, Bone> allBones, Assimp.Node node)
         {
-            var bone = allBones[node.Name];
+            if (!allBones.TryGetValue(node.Name, out var self))
+                return null;
+
             foreach (var child in node.Children)
                 CopyHierarchy(allBones, child);
-            foreach (var child in node.Children)
-                bone.Children.Add(allBones[child.Name]);
 
-            return bone;
+            foreach (var child in node.Children)
+                if (allBones.TryGetValue(child.Name, out var bone))
+                    self.Children.Add(bone);
+
+            return self;
         }
 
-        public void GetAll(List<Assimp.Node> children, Assimp.Node self)
+        public void MergeAnims(string name)
+        {
+            var combinedAnim = new SkeletonAnimation(
+                Animations.SelectMany(anim => anim.Bones).ToArray(),
+                name
+            );
+            Animations.Add(combinedAnim);
+        }
+
+        private void GetAll(List<Assimp.Node> children, Assimp.Node self)
         {
             children.Add(self);
             foreach (var child in self.Children)

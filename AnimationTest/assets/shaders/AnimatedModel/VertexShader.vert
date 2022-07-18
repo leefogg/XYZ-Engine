@@ -14,7 +14,7 @@ layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 ViewProjectionMatrix;
 };
 layout (std140, binding = 2) uniform BonePoses {
-	mat4[64] BoneTransforms;
+	mat4[128] BoneTransforms;
 };
 
 out vec2 uv;

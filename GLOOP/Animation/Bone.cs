@@ -18,15 +18,13 @@ namespace GLOOP.Animation
         public int Index { get; private set; }
         public List<Bone> Children { get; private set; } = new List<Bone>(1);
         public Matrix4 ModelToBoneSpace { get; private set; }
-        public Matrix4 OffsetFromParent { get; private set; }
 
-        public int TotalBones => TotalChildren();
+        public int TotalBones => TotalChildren() + 1;
 
-        public Bone(string name, int id, Matrix4 offsetFromParent, Matrix4 modelToBoneSpace)
+        public Bone(string name, int id, Matrix4 modelToBoneSpace)
         {
             Name = name;
             Index = id;
-            OffsetFromParent = offsetFromParent;
             ModelToBoneSpace = modelToBoneSpace;
         }
 

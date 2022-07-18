@@ -49,7 +49,7 @@ namespace GLOOP.Extensions
             return null;
         }
 
-        public static Matrix4 Copy(this Matrix4 self, Matrix4 other)
+        public static Matrix4 Copy(ref Matrix4 self, ref Matrix4 other)
         {
             self.Row0 = other.Row0;
             self.Row1 = other.Row1;
