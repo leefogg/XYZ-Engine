@@ -41,6 +41,16 @@ namespace GLOOP.Animation
                 child.TotalChildren(ref count);
         }
 
+        public IEnumerable<Bone> GetAllChildren()
+        {
+            foreach (var child in Children)
+            {
+                yield return child;
+                foreach (var c in child.GetAllChildren())
+                    yield return c;
+            }
+        }
+
         public void GetModelSpaceTransforms(Span<Matrix4> bonePoses, Span<Matrix4> modelSpaceTransforms)
             => GetModelSpaceTransforms(bonePoses, modelSpaceTransforms, Matrix4.Identity);
         private void GetModelSpaceTransforms(Span<Matrix4> bonePoses, Span<Matrix4> modelSpaceTransforms, Matrix4 parentTransformMS)

@@ -2,6 +2,7 @@
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -10,12 +11,12 @@ namespace GLOOP.Animation
     public class Skeleton
     {
         private readonly Bone RootBone;
-
-        private int? totalBones;
-        public int TotalBones => totalBones ??= RootBone.TotalBones;
-
+        public int TotalBones => BindPose.Length;
         public List<SkeletonAnimation> Animations = new List<SkeletonAnimation>(4);
-        private Matrix4[] BindPose;
+        public readonly Matrix4 ModelMatrix;
+
+        private readonly Matrix4[] BindPose;
+        private int? totalBones;
 
         public Skeleton(Bone rootBone)
         {
@@ -26,6 +27,8 @@ namespace GLOOP.Animation
         {
             var skeletonNodes = new List<Assimp.Node>();
             GetAll(skeletonNodes, rootAssimpNode);
+
+            ModelMatrix = rootAssimpNode.Parent.Transform.ToOpenTK();
 
             BindPose = new Matrix4[assimpBones.Count];
 
@@ -43,6 +46,13 @@ namespace GLOOP.Animation
             }
 
             RootBone = CopyHierarchy(boneDict, rootAssimpNode);
+
+            if ((RootBone.GetAllChildren().Count() - boneDict.Count) > 1)
+            {
+                var allbones = RootBone.GetAllChildren();
+                var missingBones = boneDict.Values.Except(allbones);
+                Debug.Fail("Coudn't find some bones in hierarchy");
+            }
 
             if (animations != null)
             {

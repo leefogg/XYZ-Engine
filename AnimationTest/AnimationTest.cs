@@ -54,13 +54,12 @@ namespace AnimationTest
             var geo = new Geometry();
             List<Assimp.Bone> bones;
             Assimp.Node assimpRootNode;
+            List<Assimp.Animation> baseAnimations;
             {
-                var path = "assets/models/maintenance_carl.dae";
+                var path = "assets/models/leviathan.dae";
                 var steps = Assimp.PostProcessSteps.FlipUVs
-                    | Assimp.PostProcessSteps.GenerateNormals
-                    | Assimp.PostProcessSteps.CalculateTangentSpace
-                    | Assimp.PostProcessSteps.LimitBoneWeights
-                    | Assimp.PostProcessSteps.Triangulate;
+                    | Assimp.PostProcessSteps.Triangulate
+                    | Assimp.PostProcessSteps.ValidateDataStructure;
                 var scene = assimp.ImportFile(path, steps);
                 var mesh = scene.Meshes[0];
                 bones = mesh.Bones;
@@ -72,23 +71,19 @@ namespace AnimationTest
                 //bones = mesh.Bones;
                 var boneNames = mesh.Bones.Select(b => b.Name).ToArray();
                 assimpRootNode = scene.RootNode.Find(n => boneNames.Contains(n.Name));
-
+                baseAnimations = scene.Animations;
             }
             {
                 var shader = new FullbrightShader();
                 var material = new FullbrightMaterial(shader);
-                var path = "assets/animations/idle.dae";
+                var path = "assets/animations/attack.dae";
                 var steps = Assimp.PostProcessSteps.LimitBoneWeights;
                 var scene = assimp.ImportFile(path, steps);
                 {
-
                     var mesh = scene.Meshes[0];
-                    //bones = mesh.Bones;
-                    var boneNames = mesh.Bones.Select(b => b.Name).ToArray();
-
                     // Add animations
                     //skeleton = new Skeleton(assimpRootNode, bones, scene.Animations);
-                    skeleton = new Skeleton(assimpRootNode, bones, scene.Animations);
+                    skeleton = new Skeleton(assimpRootNode, bones, scene.Animations.ToList());
                     skeleton.MergeAnims("Merged anim");
                 }
             }
@@ -100,7 +95,7 @@ namespace AnimationTest
             geo.BoneIds = ids.ToList();
             geo.BoneWeights = weights.ToList();
 
-            AlbedoTexture = TextureCache.Get("assets/textures/maintenance_carl.png");
+            AlbedoTexture = TextureCache.Get("assets/textures/leviathan.png");
             SkinnedMesh = geo.ToVirtualVAO();
             SkeletonShader = new DynamicPixelShader(
                 "assets/shaders/AnimatedModel/VertexShader.vert",
@@ -175,7 +170,7 @@ namespace AnimationTest
             RenderNormalTest();
 
             GL.Disable(EnableCap.DepthTest);
-            LineRenderer.Render();
+            //LineRenderer.Render();
             GL.Enable(EnableCap.DepthTest);
         }
 
@@ -184,15 +179,15 @@ namespace AnimationTest
             float timeMs = (float)GameMillisecondsElapsed;
             var modelSpaceTransforms = new Matrix4[skeleton.TotalBones];
             var boneSpaceTransforms = new Matrix4[skeleton.TotalBones];
-            skeleton.GetModelSpaceTransforms(skeleton.Animations[^1], timeMs, modelSpaceTransforms);
+            skeleton.GetModelSpaceTransforms(skeleton.Animations[0], timeMs, modelSpaceTransforms);
             skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
             BonePosesUBO.Update(boneSpaceTransforms);
 
             var rotation = 00;
-            var modelMatrix = MathFunctions.CreateModelMatrix(
+            var modelMatrix = skeleton.ModelMatrix * MathFunctions.CreateModelMatrix(
                 Vector3.Zero,
-                new Quaternion(rotation * 0.0174533f, 0, 0), 
-                new Vector3(0.01f)
+                new Quaternion(0, 0, rotation * 0.0174533f), 
+                new Vector3(1f)
             );
             SkeletonShader.Use();
             SkeletonShader.Set("ModelMatrix", modelMatrix);
