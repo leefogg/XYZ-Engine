@@ -56,7 +56,7 @@ namespace AnimationTest
             Assimp.Node assimpRootNode;
             List<Assimp.Animation> baseAnimations;
             {
-                var path = "assets/models/leviathan.dae";
+                var path = "assets/models/moray.dae";
                 var steps = Assimp.PostProcessSteps.FlipUVs
                     | Assimp.PostProcessSteps.Triangulate
                     | Assimp.PostProcessSteps.ValidateDataStructure;
@@ -76,7 +76,7 @@ namespace AnimationTest
             {
                 var shader = new FullbrightShader();
                 var material = new FullbrightMaterial(shader);
-                var path = "assets/animations/attack.dae";
+                var path = "assets/animations/moray_charge.dae";
                 var steps = Assimp.PostProcessSteps.LimitBoneWeights;
                 var scene = assimp.ImportFile(path, steps);
                 {
@@ -95,7 +95,7 @@ namespace AnimationTest
             geo.BoneIds = ids.ToList();
             geo.BoneWeights = weights.ToList();
 
-            AlbedoTexture = TextureCache.Get("assets/textures/leviathan.png");
+            AlbedoTexture = TextureCache.Get("assets/textures/moray.png");
             SkinnedMesh = geo.ToVirtualVAO();
             SkeletonShader = new DynamicPixelShader(
                 "assets/shaders/AnimatedModel/VertexShader.vert",
@@ -170,16 +170,20 @@ namespace AnimationTest
             RenderNormalTest();
 
             GL.Disable(EnableCap.DepthTest);
-            //LineRenderer.Render();
+            LineRenderer.Render();
             GL.Enable(EnableCap.DepthTest);
+
+            ImGuiController.Render();
         }
 
+        int animationId = 0;
         private void RenderNormalTest()
         {
-            float timeMs = (float)GameMillisecondsElapsed;
+            float animStart = 8150f;
+            float timeMs = animStart + (float)GameMillisecondsElapsed % (skeleton.Animations[animationId].Bones[0].RotationKeyframes.LengthMs - animStart);
             var modelSpaceTransforms = new Matrix4[skeleton.TotalBones];
             var boneSpaceTransforms = new Matrix4[skeleton.TotalBones];
-            skeleton.GetModelSpaceTransforms(skeleton.Animations[0], timeMs, modelSpaceTransforms);
+            skeleton.GetModelSpaceTransforms(skeleton.Animations[animationId], timeMs, modelSpaceTransforms);
             skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
             BonePosesUBO.Update(boneSpaceTransforms);
 
@@ -195,6 +199,29 @@ namespace AnimationTest
             SkinnedMesh.Draw();
 
             skeleton.Render(LineRenderer, modelSpaceTransforms, modelMatrix);
+
+            renderImGuiWindow(timeMs);
+        }
+
+        private void renderImGuiWindow(float timeMs)
+        {
+            ImGui.Begin("Timeline");
+
+            var bone = skeleton.Animations[animationId].Bones[0];
+            var numSamples = 1000;
+            var samples = new float[numSamples];
+            var lengthMs = bone.RotationKeyframes.LengthMs;
+            var stepSize = lengthMs / numSamples;
+            var sampleTime = 0f;
+            for (int i = 0; i < numSamples; i++, sampleTime += stepSize)
+            {
+                samples[i] = bone.RotationKeyframes.GetValueAtTime(sampleTime).Z;
+            }
+
+            ImGui.PlotLines("Value", ref samples[0], numSamples, 0, string.Empty, samples.Min(), samples.Max(), new System.Numerics.Vector2(1000, 100));
+            ImGui.Text("Length: " + lengthMs);
+            ImGui.Text("Time: " + timeMs);
+            ImGui.End();
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)
@@ -202,6 +229,7 @@ namespace AnimationTest
             base.OnUpdateFrame(args);
 
             Camera.Update(KeyboardState);
+            ImGuiController.Update(this, (float)args.Time);
         }
 
         protected override void OnClosing(CancelEventArgs e)

@@ -4,58 +4,55 @@ using GLOOP.Util;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace GLOOP.Animation
 {
     public class BoneAnimation
     {
-        private readonly Timeline<RotationKeyframe, Quaternion> RotationKeyframes;
-        private readonly Timeline<Vector3Keyframe,  Vector3>    PositionKeyframes;
+        private readonly Timeline<RotationKeyframe, Quaternion> rotationKeyframes;
+        private readonly Timeline<Vector3Keyframe,  Vector3>    positionKeyframes;
+
         public readonly int BoneIndex;
+        public IReadonlyTimeline<RotationKeyframe, Quaternion> RotationKeyframes => rotationKeyframes;
+        public IReadonlyTimeline<Vector3Keyframe,  Vector3> PositionKeyframes => positionKeyframes;
+        public bool Loop
+        {
+            get => rotationKeyframes.Loop;
+            set
+            {
+                rotationKeyframes.Loop = value;
+                positionKeyframes.Loop = value;
+            }
+        }
 
         public BoneAnimation(int boneIndex, int numRotationKeys, int numPositionKeys)
         {
-            RotationKeyframes = new Timeline<RotationKeyframe, Quaternion>(numRotationKeys);
-            PositionKeyframes = new Timeline<Vector3Keyframe, Vector3>(numPositionKeys);
+            rotationKeyframes = new Timeline<RotationKeyframe, Quaternion>(numRotationKeys);
+            positionKeyframes = new Timeline<Vector3Keyframe, Vector3>(numPositionKeys);
 
             BoneIndex = boneIndex;
         }
 
-        public BoneAnimation(int boneIndex, Assimp.NodeAnimationChannel bone, float ticksPerSecond = 1f) 
+        public BoneAnimation(int boneIndex, Assimp.NodeAnimationChannel bone, float ticksPerSecond = 1f)
             : this(boneIndex, bone.RotationKeyCount, bone.PositionKeyCount)
         {
-            foreach (var position in bone.PositionKeys)
-                AddPositionKeyframe((float)(position.Time * 1000 * ticksPerSecond), position.Value.ToOpenTK());
+            BoneIndex = boneIndex;
 
-            foreach (var rot in bone.RotationKeys)
-                AddRotationKeyframe((float)(rot.Time * 1000 * ticksPerSecond), rot.Value.ToOpenTK().Inverted());
-        }
+            positionKeyframes = new Timeline<Vector3Keyframe, Vector3>(
+                bone.PositionKeys.Select(keyframe => new Vector3Keyframe((float)(keyframe.Time * 1000f * ticksPerSecond), keyframe.Value.ToOpenTK()))
+            );
 
-        public bool Loop
-        {
-            get => RotationKeyframes.Loop;
-            set
-            {
-                RotationKeyframes.Loop = value;
-                PositionKeyframes.Loop = value;
-            }
-        }
-
-        public void AddRotationKeyframe(float timeMs, Quaternion rotation)
-        {
-            RotationKeyframes.AddKeyframe(new RotationKeyframe(timeMs, rotation));
-        }
-
-        public void AddPositionKeyframe(float timeMs, Vector3 position)
-        {
-            PositionKeyframes.AddKeyframe(new Vector3Keyframe(timeMs, position));
+            rotationKeyframes = new Timeline<RotationKeyframe, Quaternion>(
+                bone.RotationKeys.Select(keyframe => new RotationKeyframe((float)(keyframe.Time * 1000f * ticksPerSecond), keyframe.Value.ToOpenTK().Inverted()))
+            );
         }
 
         public Matrix4 GetTransformAtTime(float timeMs)
         {
-            var pos = PositionKeyframes.GetValueAtTime(timeMs);
-            var rot = RotationKeyframes.GetValueAtTime(timeMs);
+            var pos = positionKeyframes.GetValueAtTime(timeMs);
+            var rot = rotationKeyframes.GetValueAtTime(timeMs);
             return MathFunctions.CreateModelMatrix(pos, rot, Vector3.One);
         }
     }

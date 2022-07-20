@@ -22,5 +22,7 @@ namespace GLOOP.Animation.Keyframes
             var otherBone = other as Vector3Keyframe;
             return MathFunctions.Tween(Vector, otherBone.Vector, percent);
         }
+
+        public override string ToString() => Value.ToString();
     }
 }

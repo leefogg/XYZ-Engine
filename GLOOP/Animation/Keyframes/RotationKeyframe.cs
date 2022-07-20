@@ -23,5 +23,7 @@ namespace GLOOP.Animation.Keyframes
             var otherBone = other as RotationKeyframe;
             return MathFunctions.Tween(Rotation, otherBone.Rotation, percent);
         }
+
+        public override string ToString() => Value.ToString();
     }
 }

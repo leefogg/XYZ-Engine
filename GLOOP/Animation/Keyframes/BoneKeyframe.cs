@@ -18,12 +18,12 @@ namespace GLOOP.Animation.Keyframes
         }
 
 
-        public override string ToString() => TimeMs.ToString();
-
         public override Matrix4 Tween(Keyframe<Matrix4> other, float percent)
         {
             var otherBone = other as BoneKeyframe;
             return MathFunctions.Tween(Transform.Matrix, otherBone.Transform.Matrix, percent);
         }
+
+        public override string ToString() => Value.ToString();
     }
 }

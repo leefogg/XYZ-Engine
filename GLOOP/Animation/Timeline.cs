@@ -8,23 +8,25 @@ using System.Text;
 
 namespace GLOOP.Animation
 {
-    public class Timeline<KeyframeType, OutputType> where KeyframeType : Keyframe<OutputType>
+    public class Timeline<KeyframeType, OutputType> : IReadonlyTimeline<KeyframeType, OutputType> where KeyframeType : Keyframe<OutputType>
     {
         public bool Loop = true;
 
+        public IReadOnlyList<KeyframeType> Keyframes => keyframes;
+
         public float LengthMs => Keyframes[^1].TimeMs;
 
-        private readonly List<KeyframeType> Keyframes;
+        private readonly List<KeyframeType> keyframes;
 
         public Timeline(bool loop)
         {
             Loop = loop;
-            Keyframes = new List<KeyframeType>();
+            keyframes = new List<KeyframeType>();
         }
 
         public Timeline(int initialKeyframes = 16)
         {
-            Keyframes = new List<KeyframeType>(initialKeyframes);
+            keyframes = new List<KeyframeType>(initialKeyframes);
         }
         public Timeline(Span<KeyframeType> transforms)
             : this(transforms.Length)
@@ -32,11 +34,16 @@ namespace GLOOP.Animation
             for (int i = 0; i < transforms.Length; i++)
                 AddKeyframe(transforms[i]);
         }
+        public Timeline(IEnumerable<KeyframeType> transforms)
+        {
+            keyframes = new List<KeyframeType>();
+            keyframes.AddRange(transforms);
+        }
 
-        
+
         public void AddKeyframe(KeyframeType keyframe)
         {
-            Keyframes.Add(keyframe);
+            keyframes.Add(keyframe);
         }
 
         public OutputType GetValueAtTime(float timeMs)
@@ -61,6 +68,6 @@ namespace GLOOP.Animation
         }
 
         // TODO: Add cache for LastIndex
-        private int FindKeyframeAfterTime(float timeMs) => Keyframes.FindLastIndex(keyframe => timeMs >= keyframe.TimeMs);
+        private int FindKeyframeAfterTime(float timeMs) => keyframes.FindLastIndex(keyframe => timeMs >= keyframe.TimeMs);
     }
 }
