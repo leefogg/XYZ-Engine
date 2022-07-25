@@ -100,6 +100,8 @@ namespace GLOOP.Util
 
         public static double Map(double x, double in_min, double in_max, double out_min, double out_max)
             => (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+        public static float Map(float x, float in_min, float in_max, float out_min, float out_max)
+            => (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
         public static Vector3 Map(double x, double in_min, double in_max, Vector3 out_min, Vector3 out_max)
         {
             var percent = (float)((x - in_min) / (in_max - in_min));

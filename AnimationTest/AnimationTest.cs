@@ -56,7 +56,7 @@ namespace AnimationTest
             Assimp.Node assimpRootNode;
             List<Assimp.Animation> baseAnimations;
             {
-                var path = "assets/models/moray.dae";
+                var path = "assets/models/leviathan.dae";
                 var steps = Assimp.PostProcessSteps.FlipUVs
                     | Assimp.PostProcessSteps.Triangulate
                     | Assimp.PostProcessSteps.ValidateDataStructure;
@@ -76,7 +76,7 @@ namespace AnimationTest
             {
                 var shader = new FullbrightShader();
                 var material = new FullbrightMaterial(shader);
-                var path = "assets/animations/moray_charge.dae";
+                var path = "assets/animations/attack.dae";
                 var steps = Assimp.PostProcessSteps.LimitBoneWeights;
                 var scene = assimp.ImportFile(path, steps);
                 {
@@ -95,7 +95,7 @@ namespace AnimationTest
             geo.BoneIds = ids.ToList();
             geo.BoneWeights = weights.ToList();
 
-            AlbedoTexture = TextureCache.Get("assets/textures/moray.png");
+            AlbedoTexture = TextureCache.Get("assets/textures/leviathan.png");
             SkinnedMesh = geo.ToVirtualVAO();
             SkeletonShader = new DynamicPixelShader(
                 "assets/shaders/AnimatedModel/VertexShader.vert",
@@ -179,8 +179,11 @@ namespace AnimationTest
         int animationId = 0;
         private void RenderNormalTest()
         {
-            float animStart = 8150f;
-            float timeMs = animStart + (float)GameMillisecondsElapsed % (skeleton.Animations[animationId].Bones[0].RotationKeyframes.LengthMs - animStart);
+            float animStartMs = 2200;
+            float? animEndMs = 3833.333f;
+            var timeMs = (float)GameMillisecondsElapsed / 10f;
+            var animLength = (animEndMs ?? skeleton.Animations[animationId].Bones[0].RotationKeyframes.LengthMs) - animStartMs;
+            timeMs = animStartMs + (timeMs % animLength);
             var modelSpaceTransforms = new Matrix4[skeleton.TotalBones];
             var boneSpaceTransforms = new Matrix4[skeleton.TotalBones];
             skeleton.GetModelSpaceTransforms(skeleton.Animations[animationId], timeMs, modelSpaceTransforms);
@@ -190,7 +193,7 @@ namespace AnimationTest
             var rotation = 00;
             var modelMatrix = skeleton.ModelMatrix * MathFunctions.CreateModelMatrix(
                 Vector3.Zero,
-                new Quaternion(0, 0, rotation * 0.0174533f), 
+                new Quaternion(0, 0, rotation * 0.0174533f),
                 new Vector3(1f)
             );
             SkeletonShader.Use();
@@ -200,29 +203,32 @@ namespace AnimationTest
 
             skeleton.Render(LineRenderer, modelSpaceTransforms, modelMatrix);
 
-            renderImGuiWindow(timeMs);
+            renderImGuiWindow(animStartMs, animEndMs, timeMs, animLength);
         }
 
-        private void renderImGuiWindow(float timeMs)
+        private void renderImGuiWindow(float animStartMs, float? animEndMs, float timeMs, float animLength)
         {
-            ImGui.Begin("Timeline");
+            if (!ImGui.Begin("Timeline"))
+                return;
 
             var bone = skeleton.Animations[animationId].Bones[0];
-            var numSamples = 1000;
+            var numSamples = 100;
             var samples = new float[numSamples];
             var lengthMs = bone.RotationKeyframes.LengthMs;
             var stepSize = lengthMs / numSamples;
             var sampleTime = 0f;
             for (int i = 0; i < numSamples; i++, sampleTime += stepSize)
-            {
                 samples[i] = bone.RotationKeyframes.GetValueAtTime(sampleTime).Z;
-            }
+            var chartSize = new System.Numerics.Vector2(1000, 100);
 
-            ImGui.PlotLines("Value", ref samples[0], numSamples, 0, string.Empty, samples.Min(), samples.Max(), new System.Numerics.Vector2(1000, 100));
-            ImGui.Text("Length: " + lengthMs);
-            ImGui.Text("Time: " + timeMs);
+            var windowPos = ImGui.GetWindowPos();
+            windowPos.Y += 25;
+            windowPos.X += 10;
+            ImGuiWidgets.AddTimeline(windowPos, samples, timeMs, animStartMs, animEndMs ?? animLength, lengthMs, chartSize);
+
             ImGui.End();
         }
+
 
         protected override void OnUpdateFrame(FrameEventArgs args)
         {
