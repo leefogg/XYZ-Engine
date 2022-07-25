@@ -170,6 +170,9 @@ namespace GLOOP.Extensions
 
         public static Box3 ToBoundingBox(this IList<Vector3> self)
         {
+            if (self.Count == 0)
+                return new Box3();
+
             var boundingBox = new Box3(self[0], self[0]);
             foreach (var pos in self.Skip(1))
                 boundingBox.Inflate(pos);

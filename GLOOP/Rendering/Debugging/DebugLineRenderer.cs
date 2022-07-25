@@ -25,10 +25,14 @@ namespace GLOOP.Rendering.Debugging
         {
             Geometry.Positions = Enumerable.Repeat(Vector3.Zero, maxLines * 2).ToList();
             VirtualVAO = Geometry.ToVirtualVAO(VAOPool); // Put all LineRenderers in same VAO
+            Geometry.Positions.Clear();
         }
 
         public void AddLine(Vector3 start, Vector3 end)
         {
+            if (Geometry.Positions.Count + 1 >= Geometry.Positions.Capacity)
+                return;
+
             Geometry.Positions.Add(start);
             Geometry.Positions.Add(end);
         }
@@ -41,6 +45,7 @@ namespace GLOOP.Rendering.Debugging
             PointsShader.Use();
             Geometry.UpdateVAO(VirtualVAO);
             VirtualVAO.Draw(PrimitiveType.Lines);
+
             Geometry.Positions.Clear();
         }
 

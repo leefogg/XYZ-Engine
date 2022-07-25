@@ -91,6 +91,7 @@ namespace GLOOP.Rendering
         {
             var numIndicies = vertexIndicies?.Count() ?? 0;
             Debug.Assert(numIndicies < ushort.MaxValue, "Model with more than UI16 indicies");
+            Debug.Assert(vertexPositions.Count() > 0);
             var estimatedNumIndicies = numIndicies * sizeof(ushort);
             int numVertcies = vertexPositions.Count();
             var estimatedNumVertcies = shape.NumElements * sizeof(float) * numVertcies;
