@@ -42,6 +42,7 @@ namespace GLOOP.HPL
                 Weight = weight;
                 Offset = offset;
             }
+            public override string ToString() => $"Weight:{Weight}, Offset:{Offset}";
         }
         private readonly struct MapSetup
         {
@@ -75,7 +76,7 @@ namespace GLOOP.HPL
         private static readonly MapSetup Omicron = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter03\03_02_omicron_inside\03_02_omicron_inside.hpm", new Vector3(-1.0284736f, -2.0497713f, 21.69069f));
         private static readonly MapSetup TauOutside = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_01_tau_outside\04_01_tau_outside.hpm", new Vector3(77.65444f, 315.97113f, -340.09308f));
         private static readonly MapSetup Tau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm", new Vector3(26.263678f, 1.7000114f, 36.090767f));
-        private readonly MapSetup MapToUse = Custom;
+        private readonly MapSetup MapToUse = Phi;
 
         private Camera Camera;
         private Scene scene;
@@ -124,6 +125,7 @@ namespace GLOOP.HPL
         private float WeightScalar = 1.75f;
         private float BlurWidthPercent = 5f, BlurPixelOffset = 0.75f;
         private int NumBlurSamples = 6;
+        private int BlurStrideElements;
 #if DEBUG
         private float DirtHighlightScalar = 0.5f;
         private float DirtGeneralScalar = 0.01f;
@@ -398,7 +400,6 @@ namespace GLOOP.HPL
                     "Frame timing query"
                 );
 
-                Metrics.AssertMetricRanges();
                 Metrics.ResetFrameCounters();
 
                 var frameStart = DateTime.Now;
@@ -528,17 +529,7 @@ namespace GLOOP.HPL
             ImGui.PlotHistogram("CPU", ref values[0], values.Length, 0, null, 0, 1000f / TargetFPS, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
             ImGui.Text($"Average: {average:0.000}ms ({1000f / average:00.00} fps)");
 
-            ImGui.NewLine();
-            ImGui.Text($"Models drawn: {Metrics.ModelsDrawn}");
-            ImGui.Text($"Lights drawn: {Metrics.LightsDrawn}");
-            ImGui.Text($"Render batches: {Metrics.RenderBatches}");
-            ImGui.Text($"Queries dispatched: {Metrics.QueriesPerformed}");
-            ImGui.Text($"Shader binds: {Metrics.ShaderBinds}");
-            ImGui.Text($"Texture set binds: {Metrics.TextureSetBinds}");
-            ImGui.Text($"Buffer binds: {Metrics.BufferBinds}");
-            ImGui.Text($"FrameBuffer binds: {Metrics.FrameBufferBinds}");
-            ImGui.Text($"Buffer reads: {Metrics.BufferReads.ToString("###,##0")} bytes");
-            ImGui.Text($"Buffer writes: {Metrics.BufferWrites.ToString("###,##0")} bytes");
+            Metrics.AddImGuiMetrics();
 
             ImGui.End();
         }
@@ -861,10 +852,12 @@ namespace GLOOP.HPL
                 }
                 while (sizeOfStruct * structs.Count % Globals.UniformBufferOffsetAlignment != 0)
                     structs.Add(new BlurData(0, 0));
+                if (y == 0)
+                    BlurStrideElements = structs.Count;
             }
 
             if (bloomBuffer == null)
-                bloomBuffer = new Buffer<BlurData>(sizeOfStruct * MaxSamples, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
+                bloomBuffer = new Buffer<BlurData>(sizeOfStruct * structs.Count, BufferTarget.UniformBuffer, BufferUsageHint.StreamDraw, "BloomData");
 
             bloomBuffer.Update(structs.Elements, structs.Count, 0);
 
@@ -1009,7 +1002,7 @@ namespace GLOOP.HPL
                             shader.Set("NumSamples", NumBlurSamples);
                             BloomBuffers[i].Use();
 
-                            bloomBuffer.Bind(3, NumBlurSamples, NumBlurSamples * i);
+                            bloomBuffer.Bind(3, NumBlurSamples, BlurStrideElements * i);
 
                             DoPostEffect(shader, previousTexture);
 

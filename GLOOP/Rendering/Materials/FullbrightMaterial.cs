@@ -27,7 +27,7 @@ namespace GLOOP.Rendering.Materials
         {
             shader.Use();
             shader.ModelMatrix = ModelMatrix;
-            diffuse.Use(TextureUnit.Texture0);
+            diffuse.Use();
             shader.DiffuseTexture = TextureUnit.Texture0;
         }
 

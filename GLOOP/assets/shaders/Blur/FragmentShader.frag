@@ -24,7 +24,7 @@ void main()
 	float fWeight = data[0].weight * 0.5;
 	vec3 vAmount = texture(texture0, texCoord + data[0].offset * vOffsetMul).rgb * data[0].weight;
 	
-	for(int i=1; i<NumSamples; i+=1)
+	for(int i=1; i<NumSamples; i++)
 	{	
 		vec2 vOffset = data[i].offset * vOffsetMul;
 

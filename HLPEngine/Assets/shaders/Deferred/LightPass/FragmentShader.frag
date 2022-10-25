@@ -1,4 +1,4 @@
-#version 420
+#version 460
 #define PI 3.141592
 #define POINT 0
 #define SPOT 1

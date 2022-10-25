@@ -1,4 +1,5 @@
 ﻿using GLOOP.Rendering.Debugging;
+using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -30,15 +31,6 @@ namespace GLOOP
         public static ulong BufferReads, BufferWrites;
 
         private static StreamWriter RecordingStream;
-
-        [Conditional("DEBUG")]
-        [Conditional("BETA")]
-        public static void AssertMetricRanges()
-        {
-            Debug.Assert(RenderBatches < 180, "Concerning number of render batches");
-            Debug.Assert(BufferBinds < 13, "Cercerning number of buffer binds");
-            Debug.Assert(ShaderBinds < 150, "Cercerning number of shader binds");
-        }
 
         [Conditional("DEBUG")]
         [Conditional("BETA")]
@@ -146,6 +138,27 @@ namespace GLOOP
                 RecordingStream.Dispose();
                 RecordingStream = null;
             }
+        }
+
+        public static void AddImGuiMetrics()
+        {
+            ImGui.NewLine();
+            ImGui.Text($"Models drawn: {ModelsDrawn}");
+            ImGui.Text($"Lights drawn: {LightsDrawn}");
+            ImGui.PushStyleColor(ImGuiCol.Text, RenderBatches > 180 ? 0xFF0000FF : 0xFFFFFFFF);
+            ImGui.Text($"Render batches: {RenderBatches}");
+            ImGui.PopStyleColor();
+            ImGui.Text($"Queries dispatched: {QueriesPerformed}");
+            ImGui.PushStyleColor(ImGuiCol.Text, ShaderBinds > 150 ? 0xFF0000FF : 0xFFFFFFFF);
+            ImGui.Text($"Shader binds: {ShaderBinds}");
+            ImGui.PopStyleColor();
+            ImGui.Text($"Texture set binds: {TextureSetBinds}");
+            ImGui.PushStyleColor(ImGuiCol.Text, BufferBinds > 13 ? 0xFF0000FF : 0xFFFFFFFF);
+            ImGui.Text($"Buffer binds: {BufferBinds}");
+            ImGui.PopStyleColor();
+            ImGui.Text($"FrameBuffer binds: {FrameBufferBinds}");
+            ImGui.Text($"Buffer reads: {BufferReads.ToString("###,##0")} bytes");
+            ImGui.Text($"Buffer writes: {BufferWrites.ToString("###,##0")} bytes");
         }
     }
 }
