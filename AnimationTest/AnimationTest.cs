@@ -46,6 +46,7 @@ namespace AnimationTest
         {
             base.OnLoad();
             OnLoad1();
+            //Benchmark();
         }
 
         private void OnLoad1()
@@ -56,7 +57,7 @@ namespace AnimationTest
             Assimp.Node assimpRootNode;
             List<Assimp.Animation> baseAnimations;
             {
-                var path = "assets/models/leviathan.dae";
+                var path = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\entities\character\robot\maintenance_infected\maintenance_infected.dae";
                 var steps = Assimp.PostProcessSteps.FlipUVs
                     | Assimp.PostProcessSteps.Triangulate
                     | Assimp.PostProcessSteps.ValidateDataStructure;
@@ -76,11 +77,10 @@ namespace AnimationTest
             {
                 var shader = new FullbrightShader();
                 var material = new FullbrightMaterial(shader);
-                var path = "assets/animations/attack.dae";
+                var path = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\entities\character\robot\maintenance_infected\animations\maintenance_infected_walk.dae";
                 var steps = Assimp.PostProcessSteps.LimitBoneWeights;
                 var scene = assimp.ImportFile(path, steps);
                 {
-                    var mesh = scene.Meshes[0];
                     // Add animations
                     //skeleton = new Skeleton(assimpRootNode, bones, scene.Animations);
                     skeleton = new Skeleton(assimpRootNode, bones, scene.Animations.ToList());
@@ -95,7 +95,7 @@ namespace AnimationTest
             geo.BoneIds = ids.ToList();
             geo.BoneWeights = weights.ToList();
 
-            AlbedoTexture = TextureCache.Get("assets/textures/leviathan.png");
+            AlbedoTexture = TextureCache.Get(@"C:\SOMA Resources\png\maintenance_infected.png");
             SkinnedMesh = geo.ToVirtualVAO();
             SkeletonShader = new DynamicPixelShader(
                 "assets/shaders/AnimatedModel/VertexShader.vert",
@@ -108,6 +108,22 @@ namespace AnimationTest
             BonePosesUBO.Bind(2);
         }
 
+        private void Benchmark()
+        {
+            int iterations = 100000;
+            float progressStep = 1f / iterations;
+            float progress = 0;
+            var timer = Stopwatch.StartNew();
+            for (int i = 0; i < iterations; i++, progress += progressStep)
+            {
+                var modelSpaceTransforms = new Matrix4[skeleton.TotalBones];
+                var boneSpaceTransforms = new Matrix4[skeleton.TotalBones];
+                skeleton.GetModelSpaceTransforms(skeleton.Animations[animationId], progressStep, modelSpaceTransforms);
+                skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
+            }
+            timer.Stop();
+            Console.WriteLine(timer.ElapsedMilliseconds / (float)iterations);
+        }
 
         // TODO: Ids are ints not floats
         public (float[], float[], int)[] CreateVertexWeights(IEnumerable<Assimp.Bone> bones, int numVerts)
@@ -164,7 +180,7 @@ namespace AnimationTest
 
             LineRenderer.AddAxisHelper(Matrix4.Identity);
 
-            //LineRenderer.DrawPlane(100, 100, 100, 100);
+            //LineRenderer.DrawPlane(1000, 1000, 10, 10);
 
             //RenderOtherTest();
             RenderNormalTest();
@@ -179,9 +195,9 @@ namespace AnimationTest
         int animationId = 0;
         private void RenderNormalTest()
         {
-            float animStartMs = 2200;
-            float? animEndMs = 3833.333f;
-            var timeMs = (float)GameMillisecondsElapsed / 10f;
+            float animStartMs = 0;
+            float? animEndMs = null;
+            var timeMs = (float)GameMillisecondsElapsed;
             var animLength = (animEndMs ?? skeleton.Animations[animationId].Bones[0].RotationKeyframes.LengthMs) - animStartMs;
             timeMs = animStartMs + (timeMs % animLength);
             var modelSpaceTransforms = new Matrix4[skeleton.TotalBones];
@@ -201,7 +217,7 @@ namespace AnimationTest
             AlbedoTexture.Use();
             SkinnedMesh.Draw();
 
-            skeleton.Render(LineRenderer, modelSpaceTransforms, modelMatrix);
+            //skeleton.Render(LineRenderer, modelSpaceTransforms, modelMatrix);
 
             renderImGuiWindow(animStartMs, animEndMs, timeMs, animLength);
         }
@@ -212,7 +228,7 @@ namespace AnimationTest
                 return;
 
             var bone = skeleton.Animations[animationId].Bones[0];
-            var numSamples = 100;
+            var numSamples = 1000;
             var samples = new float[numSamples];
             var lengthMs = bone.RotationKeyframes.LengthMs;
             var stepSize = lengthMs / numSamples;
