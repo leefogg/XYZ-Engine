@@ -16,7 +16,6 @@ namespace GLOOP.Animation
         public readonly Matrix4 ModelMatrix;
 
         private readonly Matrix4[] BindPose;
-        private int? totalBones;
 
         public Skeleton(Bone rootBone)
         {
@@ -106,6 +105,9 @@ namespace GLOOP.Animation
 
         public void MergeAnims(string name)
         {
+            if (Animations.Count == 1)
+                return;
+
             var combinedAnim = new SkeletonAnimation(
                 Animations.SelectMany(anim => anim.Bones).ToArray(),
                 name

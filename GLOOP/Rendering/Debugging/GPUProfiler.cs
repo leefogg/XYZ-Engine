@@ -37,10 +37,10 @@ namespace GLOOP.Rendering.Debugging
 
         public class GPUEventTiming : DummyDisposable
         {
+            internal bool Running = false;
 #if !RELEASE
             internal TimestampQuery StartQuery = new TimestampQuery(), EndQuery = new TimestampQuery();
             internal long StartNs, EndNs;
-            internal bool Running = false;
 
             internal void Start()
             {
@@ -66,6 +66,8 @@ namespace GLOOP.Rendering.Debugging
             }
 
             public override string ToString() => $"{StartNs}-{EndNs}";
+#else
+            internal virtual void ReadResult() { }
 #endif
         }
 
