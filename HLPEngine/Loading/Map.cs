@@ -223,8 +223,8 @@ namespace GLOOP.HPL.Loading
                     var entity = entities[instance.Index];
                     if (model != null) {
                         var newInstance = model.Clone();
-                        newInstance.Transform.Position += pos;
-                        newInstance.Transform.Rotation += rot;
+                        newInstance.Transform.Position = pos;
+                        newInstance.Transform.Rotation *= rot;
                         newInstance.Transform.Scale *= scale;
 
                         if (entity != null)
@@ -308,8 +308,8 @@ namespace GLOOP.HPL.Loading
                     var model = files[instance.Index];
                     if (model != null) {
                         var newInstance = model.Clone();
-                        newInstance.Transform.Position += pos;
-                        newInstance.Transform.Rotation += rot;
+                        newInstance.Transform.Position = pos;
+                        newInstance.Transform.Rotation *= rot;
                         newInstance.Transform.Scale *= scale;
 
                         var illumColor = instance.IlluminationColor?.ParseVector3() ?? Vector3.One;
@@ -435,7 +435,7 @@ namespace GLOOP.HPL.Loading
                             for (var i=0; i<detailMesh.NumInstances; i++) {
                                 var newInstance = model.Clone();
                                 newInstance.Transform.Position += positions[i];
-                                newInstance.Transform.Rotation += rotations[i];
+                                newInstance.Transform.Rotation *= rotations[i];
 
                                 instances.Add(newInstance);
                             }
@@ -477,8 +477,8 @@ namespace GLOOP.HPL.Loading
                 foreach (var model in ent.Models)
                 {
                     //model.Transform = ent.Transform;
-                    model.Transform.Position += ent.Transform.Position;
-                    model.Transform.Rotation = ent.Transform.Rotation;
+                    model.Transform.Position = ent.Transform.Position;
+                    model.Transform.Rotation *= ent.Transform.Rotation;
                     model.Transform.Scale *= ent.Transform.Scale;
                     //var multipliedTransform = Matrix4.CreateFromQuaternion(ent.Transform.Rotation) * Matrix4.CreateScale(ent.Transform.Scale) * Matrix4.CreateTranslation(ent.Transform.Position);
                     //model.Transform.Position = multipliedTransform.ExtractTranslation();

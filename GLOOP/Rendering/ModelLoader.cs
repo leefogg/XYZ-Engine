@@ -53,7 +53,7 @@ namespace GLOOP.Rendering
             var steps = Assimp.PostProcessSteps.FlipUVs
                 | Assimp.PostProcessSteps.GenerateNormals
                 | Assimp.PostProcessSteps.CalculateTangentSpace
-                | Assimp.PostProcessSteps.LimitBoneWeights
+                | Assimp.PostProcessSteps.PreTransformVertices
                 | Assimp.PostProcessSteps.Triangulate;
             var startLoadingModel = DateTime.Now;
             var scene = assimp.ImportFile(path, steps);

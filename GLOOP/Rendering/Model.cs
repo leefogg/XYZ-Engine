@@ -11,7 +11,6 @@ namespace GLOOP.Rendering
 {
     public class Model : Entity
     {
-        public override DynamicTransform Transform { get; set; } = DynamicTransform.Default;
         public VirtualVAO VAO { get; set; }
         public Material Material { get; }
         public bool IsStatic = false;

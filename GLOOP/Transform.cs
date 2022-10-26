@@ -5,7 +5,7 @@ using System.Text;
 
 namespace GLOOP
 {
-    public abstract class Transform
+    public interface Transform
     {
         public abstract Matrix4 Matrix { get; }
     }

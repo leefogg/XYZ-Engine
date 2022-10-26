@@ -6,7 +6,7 @@ using System.Text;
 
 namespace GLOOP.Animation
 {
-    public class BoneTransform : Transform
+    public struct BoneTransform : Transform
     {
         public Vector3 Position;
         public Quaternion Rotation;
@@ -22,6 +22,6 @@ namespace GLOOP.Animation
             Rotation = rotation;
         }
 
-        public override Matrix4 Matrix => MathFunctions.CreateModelMatrix(Position, Rotation, Vector3.One);
+        public Matrix4 Matrix => MathFunctions.CreateModelMatrix(Position, Rotation, Vector3.One);
     }
 }

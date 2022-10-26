@@ -6,7 +6,7 @@ using System.Text;
 
 namespace GLOOP
 {
-    public class DynamicTransform : Transform
+    public struct DynamicTransform : Transform
     {
         public static DynamicTransform Default => new DynamicTransform(Matrix4.Identity);
 
@@ -27,6 +27,6 @@ namespace GLOOP
             Rotation = rotation;
         }
 
-        public override Matrix4 Matrix => MathFunctions.CreateModelMatrix(Position, Rotation, Scale);
+        public Matrix4 Matrix => MathFunctions.CreateModelMatrix(Position, Rotation, Scale);
     }
 }
