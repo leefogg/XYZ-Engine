@@ -173,7 +173,7 @@ namespace GLOOP.HPL.Loading
         }
 
         public new HPLModelLoader Clone() {
-            return new HPLModelLoader(Models, Transform, OriginalBoundingBox);
+            return new HPLModelLoader(Models, Transform.Clone(), OriginalBoundingBox);
         }
 
         public HPLModelLoader(List<Model> renderables, Box3 boundingBox) 

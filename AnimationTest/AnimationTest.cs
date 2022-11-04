@@ -27,13 +27,17 @@ namespace AnimationTest
         private VirtualVAO SkinnedMesh;
         private DynamicPixelShader SkeletonShader;
         private Buffer<Matrix4> BonePosesUBO;
-        private Skeleton skeleton;
+        private Skeleton Skeleton;
+        private SkeletonAnimationDriver Driver;
+        private SkeletonAnimationSet Animations;
         private Texture2D AlbedoTexture;
+        int animationId = 0;
+        private ModelLoader LoadedEnt;
 
         public AnimationTest(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
         {
-            Camera = new Camera(new Vector3(-0.97707474f, 0.70000046f, 2.388693f), new Vector3(), 90)
+            Camera = new Camera(new Vector3(0,0,0), new Vector3(), 90)
             {
                 CameraController = new PCCameraController()
             };
@@ -51,52 +55,71 @@ namespace AnimationTest
 
         private void OnLoad1()
         {
+
             var assimp = new Assimp.AssimpContext();
             var geo = new Geometry();
-            List<Assimp.Bone> bones;
+            List<Assimp.Bone> assimpBones;
             Assimp.Node assimpRootNode;
             List<Assimp.Animation> baseAnimations;
+            var modelPath = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\entities\character\robot\spider\spider.dae";
+            var animPath = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\entities\character\robot\spider\animations\idle.dae_anim";
+            AlbedoTexture = TextureCache.Get(@"C:\SOMA Resources\png\spider.png");
+
+            LoadedEnt = new ModelLoader(modelPath, assimp, new SingleColorMaterial(new SingleColorShader3D()));
             {
-                var path = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\entities\character\robot\maintenance_infected\maintenance_infected.dae";
                 var steps = Assimp.PostProcessSteps.FlipUVs
                     | Assimp.PostProcessSteps.Triangulate
                     | Assimp.PostProcessSteps.ValidateDataStructure;
-                var scene = assimp.ImportFile(path, steps);
-                var mesh = scene.Meshes[0];
-                bones = mesh.Bones;
-                geo.Positions = mesh.Vertices.Select(v => v.ToOpenTK()).ToList();
-                geo.UVs = mesh.TextureCoordinateChannels[0].Select(uv => new Vector2(uv.X, uv.Y)).ToList();
-                geo.Indicies = mesh.GetUnsignedIndices().ToList();
-                geo.Normals = mesh.Normals.Select(n => n.ToOpenTK()).ToList();
+                var assimpScene = assimp.ImportFile(modelPath, steps);
+                var assimpMesh = assimpScene.Meshes[0];
+                assimpBones = assimpMesh.Bones;
+                geo.Positions = assimpMesh.Vertices.Select(v => v.ToOpenTK()).ToList();
+                geo.UVs = assimpMesh.TextureCoordinateChannels[0].Select(uv => new Vector2(uv.X, uv.Y)).ToList();
+                geo.Indicies = assimpMesh.GetUnsignedIndices().ToList();
+                geo.Normals = assimpMesh.Normals.Select(n => n.ToOpenTK()).ToList();
 
                 //bones = mesh.Bones;
-                var boneNames = mesh.Bones.Select(b => b.Name).ToArray();
-                assimpRootNode = scene.RootNode.Find(n => boneNames.Contains(n.Name));
-                baseAnimations = scene.Animations;
+                var boneNames = assimpMesh.Bones.Select(b => b.Name).ToArray();
+                assimpRootNode = assimpScene.RootNode.Find(b => boneNames.Contains(b.Name));
+                baseAnimations = assimpScene.Animations;
             }
             {
                 var shader = new FullbrightShader();
                 var material = new FullbrightMaterial(shader);
-                var path = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\entities\character\robot\maintenance_infected\animations\maintenance_infected_walk.dae";
-                var steps = Assimp.PostProcessSteps.LimitBoneWeights;
-                var scene = assimp.ImportFile(path, steps);
+
+                var scene = assimp.ImportFile(animPath, Assimp.PostProcessSteps.LimitBoneWeights);
                 {
                     // Add animations
                     //skeleton = new Skeleton(assimpRootNode, bones, scene.Animations);
-                    skeleton = new Skeleton(assimpRootNode, bones, scene.Animations.ToList());
-                    skeleton.MergeAnims("Merged anim");
+                    Skeleton = new Skeleton(assimpRootNode, assimpBones);
+                    Animations = new SkeletonAnimationSet(4);
+                    foreach (var anim in scene.Animations)
+                    {
+                        var mergedAnim = new SkeletonAnimationSet(4);
+                        mergedAnim.Add(new SkeletonAnimation(
+                            anim.NodeAnimationChannels,
+                            Skeleton.AllBones,
+                            anim.Name,
+                            (float)anim.TicksPerSecond
+                        ));
+                        mergedAnim.MergeAllAs(anim.Name);
+                        Animations.Add(mergedAnim[0]);
+                    }
+                    Driver = new SkeletonAnimationDriver(Skeleton);
                 }
             }
 
-            var pairs = CreateVertexWeights(bones, geo.Positions.Count);
+            var pairs = CreateVertexWeights(assimpBones, geo.Positions.Count);
             var ids = pairs.SelectMany(p => p.Item1).ToVec4s();
             var weights = pairs.SelectMany(p => p.Item2).ToVec4s();
 
             geo.BoneIds = ids.ToList();
             geo.BoneWeights = weights.ToList();
 
-            AlbedoTexture = TextureCache.Get(@"C:\SOMA Resources\png\maintenance_infected.png");
+
             SkinnedMesh = geo.ToVirtualVAO();
+
+
             SkeletonShader = new DynamicPixelShader(
                 "assets/shaders/AnimatedModel/VertexShader.vert",
                 "assets/shaders/AnimatedModel/FragmentShader.frag",
@@ -116,10 +139,10 @@ namespace AnimationTest
             var timer = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++, progress += progressStep)
             {
-                var modelSpaceTransforms = new Matrix4[skeleton.TotalBones];
-                var boneSpaceTransforms = new Matrix4[skeleton.TotalBones];
-                skeleton.GetModelSpaceTransforms(skeleton.Animations[animationId], progressStep, modelSpaceTransforms);
-                skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
+                var modelSpaceTransforms = new Matrix4[Skeleton.TotalBones];
+                var boneSpaceTransforms = new Matrix4[Skeleton.TotalBones];
+                Skeleton.GetModelSpaceTransforms(Animations[animationId], progressStep, modelSpaceTransforms);
+                Skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
             }
             timer.Stop();
             Console.WriteLine(timer.ElapsedMilliseconds / (float)iterations);
@@ -183,7 +206,8 @@ namespace AnimationTest
             //LineRenderer.DrawPlane(1000, 1000, 10, 10);
 
             //RenderOtherTest();
-            RenderNormalTest();
+            //RenderNormalTest();
+            RenderNewTest();
 
             GL.Disable(EnableCap.DepthTest);
             LineRenderer.Render();
@@ -192,22 +216,62 @@ namespace AnimationTest
             ImGuiController.Render();
         }
 
-        int animationId = 0;
+        private void RenderNewTest()
+        {
+            var model = LoadedEnt.Models[0];
+            //var boneSpaceTransforms = model.AnimationDriver.GetTransformsFor(Animations[animationId]).ToArray();
+            //var modelSpaceTransforms = new Matrix4[Skeleton.TotalBones];
+            //var boneSpaceTransforms = new Matrix4[Skeleton.TotalBones];
+            //model.Skeleton.GetModelSpaceTransforms(model.Animations[1], (float)GameMillisecondsElapsed, modelSpaceTransforms);
+            //model.Skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
+            //BonePosesUBO.Update(boneSpaceTransforms);
+            //model.Skeleton.Render(LineRenderer, modelSpaceTransforms, LoadedEnt.Transform.Matrix);
+            var modelspaceTransforms = model.GetModelSpaceBoneTransforms(model.Animations[1], (float)Window.GameMillisecondsElapsed);
+            var bonespaceTransforms = model.GetBoneSpaceBoneTransforms(modelspaceTransforms);
+            model.Skeleton.Render(LineRenderer, modelspaceTransforms, model.Transform.Matrix);
+            BonePosesUBO.Update(bonespaceTransforms.ToArray());
+
+            SkeletonShader.Use();
+            SkeletonShader.Set("ModelMatrix", LoadedEnt.Transform.Matrix);
+            AlbedoTexture.Use();
+            SkinnedMesh.Draw();
+
+            /*
+            model.AnimationDriver.PrepareMatrixes(model.Animations[1]);
+            model.Skeleton.Render(
+                LineRenderer,
+                SkeletonAnimationDriver.GetModelspaceTransforms(model.Skeleton.TotalBones),
+                model.Transform.Matrix
+            );
+            var bonespaceTransforms = SkeletonAnimationDriver.GetBonespaceTransforms(model.Skeleton.TotalBones).ToArray();
+            BonePosesUBO.Update(bonespaceTransforms);
+
+            SkeletonShader.Use();
+            SkeletonShader.Set("ModelMatrix", LoadedEnt.Transform.Matrix);
+            AlbedoTexture.Use();
+            SkinnedMesh.Draw();
+            */
+        }
+
         private void RenderNormalTest()
         {
             float animStartMs = 0;
             float? animEndMs = null;
             var timeMs = (float)GameMillisecondsElapsed;
-            var animLength = (animEndMs ?? skeleton.Animations[animationId].Bones[0].RotationKeyframes.LengthMs) - animStartMs;
+            var animLength = (animEndMs ?? Animations[animationId].Bones[0].RotationKeyframes.LengthMs) - animStartMs;
             timeMs = animStartMs + (timeMs % animLength);
-            var modelSpaceTransforms = new Matrix4[skeleton.TotalBones];
-            var boneSpaceTransforms = new Matrix4[skeleton.TotalBones];
-            skeleton.GetModelSpaceTransforms(skeleton.Animations[animationId], timeMs, modelSpaceTransforms);
-            skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
-            BonePosesUBO.Update(boneSpaceTransforms);
+
+            Driver.TimeMs = timeMs;
+
+            //var modelSpaceTransforms = new Matrix4[Skeleton.TotalBones];
+            //var boneSpaceTransforms = new Matrix4[Skeleton.TotalBones];
+            //Skeleton.GetModelSpaceTransforms(Animations[animationId], timeMs, modelSpaceTransforms);
+            //Skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
+            //var boneSpaceTransforms = Driver.GetBonespaceTransformsFor(Animations[animationId]).ToArray();
+            //BonePosesUBO.Update(boneSpaceTransforms);
 
             var rotation = 00;
-            var modelMatrix = skeleton.ModelMatrix * MathFunctions.CreateModelMatrix(
+            var modelMatrix = Skeleton.ModelMatrix * MathFunctions.CreateModelMatrix(
                 Vector3.Zero,
                 new Quaternion(0, 0, rotation * 0.0174533f),
                 new Vector3(1f)
@@ -227,7 +291,7 @@ namespace AnimationTest
             if (!ImGui.Begin("Timeline"))
                 return;
 
-            var bone = skeleton.Animations[animationId].Bones[0];
+            var bone = Animations[animationId].Bones[0];
             var numSamples = 1000;
             var samples = new float[numSamples];
             var lengthMs = bone.RotationKeyframes.LengthMs;

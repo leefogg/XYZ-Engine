@@ -190,6 +190,12 @@ namespace GLOOP
             SpotLightIndexBuffer.Update(VisibleSpotLights.Current.Elements, VisibleSpotLights.Current.Count);
         }
 
+        public void UpdateAnimations(float deltaMs)
+        {
+            foreach (var model in Models)
+                model.AnimationDriver?.Update(deltaMs);
+        }
+
         private void PopulateSpotLightsBuffer(IList<SpotLight> visibleLights)
         {
             if (visibleLights.Count == 0)
@@ -283,7 +289,7 @@ namespace GLOOP
         {
             using var profiler = EventProfiler.Profile("Batching");
 
-            GroupBy(models.OrderBy(m => m.Material.Shader.Handle), batches, SameRenderBatch);
+            GroupBy(models.Where(model => model.SupportsBulkRendering).OrderBy(m => m.Material.Shader.Handle), batches, SameRenderBatch);
             batches.ForEach(batch => batch.Models = batch.Models.OrderBy(model => (model.Transform.Position - Camera.Current.Position).LengthSquared).ToList());
 
             return batches;

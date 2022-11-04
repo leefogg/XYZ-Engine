@@ -1,9 +1,12 @@
-﻿using GLOOP.Extensions;
+﻿using Assimp;
+using GLOOP.Animation;
+using GLOOP.Extensions;
 using GLOOP.Rendering.Materials;
 using GLOOP.Util;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -45,20 +48,22 @@ namespace GLOOP.Rendering
             Transform = transform;
             OriginalBoundingBox = originalBoundingBox;
         }
-        public ModelLoader(string path, Assimp.AssimpContext assimp, Material material)
+        public ModelLoader(string modelPath, AssimpContext assimp, Material material)
         {
-            if (Path.GetExtension(path).ToLower() == ".fbx")
+            if (Path.GetExtension(modelPath).ToLower() == ".fbx")
                 throw new NotSupportedException("FBX files not supported yet");
 
-            var steps = Assimp.PostProcessSteps.FlipUVs
-                | Assimp.PostProcessSteps.GenerateNormals
-                | Assimp.PostProcessSteps.CalculateTangentSpace
-                | Assimp.PostProcessSteps.PreTransformVertices
-                | Assimp.PostProcessSteps.Triangulate;
+            var steps = 
+                  PostProcessSteps.FlipUVs
+                | PostProcessSteps.PreTransformVertices
+                | PostProcessSteps.GenerateNormals
+                | PostProcessSteps.CalculateTangentSpace
+                //| PostProcessSteps.LimitBoneWeights
+                | PostProcessSteps.Triangulate;
             var startLoadingModel = DateTime.Now;
-            var scene = assimp.ImportFile(path, steps);
+            var assimpScene = assimp.ImportFile(modelPath, steps);
             Metrics.TimeLoadingModels += DateTime.Now - startLoadingModel;
-            if (!scene.HasMeshes)
+            if (!assimpScene.HasMeshes)
                 return;
 
             /*
@@ -84,17 +89,17 @@ namespace GLOOP.Rendering
             }
             */
 
-            var currentFolder = Path.GetDirectoryName(path);
+            var currentFolder = Path.GetDirectoryName(modelPath);
 
-            for (var i = 0; i < scene.Meshes.Count; i++)
+            for (var i = 0; i < assimpScene.Meshes.Count; i++)
             {
-                var mesh = scene.Meshes[i];
-                var mat = scene.Materials[mesh.MaterialIndex];
-                string diffTex = mat.TextureDiffuse.FilePath;
-                string normTex = mat.TextureNormal.FilePath;
-                string specTex = mat.TextureSpecular.FilePath;
-                string emmtex = mat.TextureEmissive.FilePath;
-                foreach (var m in scene.Materials)
+                var assimpMesh = assimpScene.Meshes[i];
+                var assimpMat = assimpScene.Materials[assimpMesh.MaterialIndex];
+                string diffTex = assimpMat.TextureDiffuse.FilePath;
+                string normTex = assimpMat.TextureNormal.FilePath;
+                string specTex = assimpMat.TextureSpecular.FilePath;
+                string emmtex = assimpMat.TextureEmissive.FilePath;
+                foreach (var m in assimpScene.Materials)
                 {
                     diffTex ??= m.TextureDiffuse.FilePath;
                     normTex ??= m.TextureNormal.FilePath;
@@ -107,7 +112,7 @@ namespace GLOOP.Rendering
                     normTex,
                     specTex,
                     emmtex,
-                    path,
+                    modelPath,
                     out var diffuseTex,
                     out var normalTex,
                     out var specularTex,
@@ -116,22 +121,51 @@ namespace GLOOP.Rendering
                 Metrics.TimeLoadingTextures += DateTime.Now - beforeLoadingTextures;
 
                 var startSavingModel = DateTime.Now;
-                var vaoName = $"{path}[{i}]";
+
                 VirtualVAO vao;
+                Skeleton skeleton = null;
+                SkeletonAnimationSet animationSet = null;
+
+                var vaoName = $"{modelPath}[{i}]";
                 if (!VAOCache.Get(vaoName, out vao))
                 {
                     var geo = new Geometry();
-                    geo.Positions = mesh.Vertices.Select(v => v.ToOpenTK()).ToList();
-                    if (!mesh.HasTextureCoords(0))
+                    geo.Positions = assimpMesh.Vertices.Select(v => v.ToOpenTK()).ToList();
+                    if (!assimpMesh.HasTextureCoords(0))
                         throw new Exception("No texture coords");
-                    geo.UVs = mesh.TextureCoordinateChannels[0].Select(uv => new Vector2(uv.X, uv.Y)).ToList();
-                    geo.Indicies = mesh.GetIndices().Cast<uint>().ToList();
-                    geo.Normals = mesh.Normals.Select(n => n.ToOpenTK()).ToList();
-                    if (mesh.HasTangentBasis)
-                        geo.Tangents = mesh.Tangents.Select(n => n.ToOpenTK()).ToList();
+                    geo.UVs = assimpMesh.TextureCoordinateChannels[0].Select(uv => new Vector2(uv.X, uv.Y)).ToList();
+                    geo.Indicies = assimpMesh.GetIndices().Cast<uint>().ToList();
+                    geo.Normals = assimpMesh.Normals.Select(n => n.ToOpenTK()).ToList();
+                    if (assimpMesh.HasTangentBasis)
+                        geo.Tangents = assimpMesh.Tangents.Select(n => n.ToOpenTK()).ToList();
                     else
                         geo.CalculateTangents();
                     //geo.Scale(new Vector3(Transform.Scale.X, Transform.Scale.Y, Transform.Scale.Z));
+
+                    var animFolder = Path.GetDirectoryName(modelPath);
+                    animFolder = Path.Combine(animFolder, "animations");
+                    if (Directory.Exists(animFolder))
+                    {
+                        var assimpSkeletonScene = assimp.ImportFile(modelPath, PostProcessSteps.LimitBoneWeights);
+                        var allBoneNames = assimpSkeletonScene.Meshes[i].Bones.Select(x => x.Name).ToList();
+                        var animModel = assimpSkeletonScene.Meshes[0];
+                        if (assimpSkeletonScene.MeshCount == 1 && animModel.HasBones)
+                        {
+                            var vertcies = CreateVertexWeights(assimpMesh.Bones, geo.Positions.Count);
+                            geo.BoneIds = vertcies.SelectMany(p => p.Ids).ToVec4s().ToList();
+                            geo.BoneWeights = vertcies.SelectMany(p => p.Weights).ToVec4s().ToList();
+
+                            skeleton = new Skeleton(
+                                assimpSkeletonScene.RootNode.Find(b => allBoneNames.Contains(b.Name)),
+                                assimpSkeletonScene.Meshes[i].Bones
+                            );
+                            animationSet = LoadAnimations(
+                                skeleton,
+                                assimp,
+                                animFolder
+                            );
+                        }
+                    }
 
                     vao = geo.ToVirtualVAO();
                     VAOCache.Put(vao, vaoName);
@@ -141,12 +175,49 @@ namespace GLOOP.Rendering
 
                 var materialInstance = material.Clone();
                 materialInstance.SetTextures(diffuseTex, normalTex, specularTex, illumTex);
-                Models.Add(new Model(vao, materialInstance));
+                var model = new Model(vao, materialInstance);
+                if (skeleton != null && animationSet.Any())
+                {
+                    model.Skeleton = skeleton;
+                    model.Animations = animationSet;
+                    model.AnimationDriver = new SkeletonAnimationDriver(skeleton);
+                    Transform.Scale /= 100;
+                }
+                Models.Add(model);
 
                 Metrics.TimeLoadingModels += DateTime.Now - startSavingModel;
             }
 
-            Transform.Scale = Vector3.One;
+            //Transform.Scale = Vector3.One;
+        }
+
+        private SkeletonAnimationSet LoadAnimations(
+            Skeleton skeleton,
+            AssimpContext assimp,
+            string animFolder)
+        {
+            var animationSet = new SkeletonAnimationSet(10);
+
+            foreach (var animFilePath in Directory.EnumerateFiles(animFolder, "*.dae_anim"))
+            {
+                var assimpScene = assimp.ImportFile(animFilePath, PostProcessSteps.LimitBoneWeights);
+                var animations = new SkeletonAnimationSet(4);
+                foreach (var anim in assimpScene.Animations)
+                    animations.Add(
+                        new SkeletonAnimation(
+                            anim.NodeAnimationChannels,
+                            skeleton.AllBones,
+                            anim.Name,
+                            (float)anim.TicksPerSecond
+                        )
+                    );
+                animations.MergeAllAs(Path.GetFileName(animFilePath));
+                animationSet.Add(animations[0]);
+
+                Console.WriteLine($"Loaded animation '{animFilePath}'");
+            }
+
+            return animationSet;
         }
 
         public virtual void GetTextures(
@@ -193,6 +264,65 @@ namespace GLOOP.Rendering
                 renderable.Render();
         }
 
-        public ModelLoader Clone() => new ModelLoader(Models, Transform, OriginalBoundingBox);
+        public ModelLoader Clone() => new ModelLoader(Models, Transform.Clone(), OriginalBoundingBox);
+
+        // TODO: Ids are ints not floats
+        private VertexBoneData[] CreateVertexWeights(IEnumerable<Assimp.Bone> bones, int numVerts)
+        {
+
+            const float fillerValue = float.MaxValue;
+            var vertcies = Enumerable.Range(0, numVerts)
+                .Select(i => new VertexBoneData(
+                    Enumerable.Repeat(fillerValue, 4).ToArray(),
+                    Enumerable.Repeat(fillerValue, 4).ToArray()
+                )
+            ).ToArray();
+            int boneIdx = 0;
+            foreach (var bone in bones)
+            {
+                Debug.Assert(bone.HasVertexWeights);
+
+                foreach (var weight in bone.VertexWeights)
+                {
+                    var nextBlankSlot = vertcies[weight.VertexID].Ids.IndexOf(fillerValue);
+                    vertcies[weight.VertexID].Ids[nextBlankSlot] = boneIdx++;
+                    nextBlankSlot = vertcies[weight.VertexID].Weights.IndexOf(fillerValue);
+                    vertcies[weight.VertexID].Weights[nextBlankSlot] = weight.Weight;
+                }
+            }
+
+            foreach (var vert in vertcies)
+            {
+                var sum = vert.Weights.Where(x => x != fillerValue).Sum();
+                ///Debug.Assert(sum > 0.99999f && sum < 1.0001);
+                for (int i = 0; i < 4; i++)
+                    if (vert.Weights[i] != float.MaxValue)
+                        Debug.Assert(vert.Ids[i] != float.MaxValue, "weight linking to no bone");
+            }
+
+            // Cleanup
+            foreach (var vert in vertcies)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    if (vert.Ids[i] == fillerValue) vert.Ids[i] = 0;
+                    if (vert.Weights[i] == fillerValue) vert.Weights[i] = 0;
+                }
+            }
+
+            return vertcies;
+        }
+
+        private readonly struct VertexBoneData
+        {
+            public readonly float[] Ids;
+            public readonly float[] Weights;
+
+            public VertexBoneData(float[] boneIds, float[] boneWeights)
+            {
+                Ids = boneIds;
+                Weights = boneWeights;
+            }
+        }
     }
 }

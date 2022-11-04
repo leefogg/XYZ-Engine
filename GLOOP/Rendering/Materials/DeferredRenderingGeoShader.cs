@@ -48,6 +48,7 @@ namespace GLOOP.Rendering.Materials
         public DeferredRenderingGeoShader(IDictionary<string, string> defines)
             : base("assets/shaders/Deferred/GeoPass/VertexShader.vert", "assets/shaders/Deferred/GeoPass/FragmentShader.frag", defines, "Deferred geometry pass")
         {
+
 #if BINDLESSTEXTURES
             diffuse = new UniformBindlessTexture(this, "diffuseTex");
             normal = new UniformBindlessTexture(this, "normalTex");

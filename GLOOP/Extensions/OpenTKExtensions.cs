@@ -237,5 +237,10 @@ namespace GLOOP.Extensions
             
             return new Box3(position, position + scale);
         }
+
+        public static Vector3 Clone(this Vector3 self) => new Vector3(self.X, self.Y, self.Z);
+        public static Vector2 Clone(this Vector2 self) => new Vector2(self.X, self.Y);
+        public static Quaternion Clone(this Quaternion self) => new Quaternion(self.Xyz.Clone(), self.W);
+        public static Matrix4 Clone(this Matrix4 self) => new Matrix4(self.Column0, self.Column1, self.Column2, self.Column3);
     }
 }

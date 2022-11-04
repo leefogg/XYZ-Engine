@@ -15,7 +15,9 @@ namespace GLOOP.Rendering
 
         public static Shader Current { get; private set; }
 
+
         public int Handle { get; protected set; }
+        public bool SupportsBulkRendering { get; protected set; } = true;
 
         private readonly Dictionary<string, int> uniformLocations = new Dictionary<string, int>();
 
@@ -296,6 +298,7 @@ namespace GLOOP.Rendering
                 Uniforms = uniforms;
             }
         }
+       
         public class Variable
         {
             public readonly All Type;

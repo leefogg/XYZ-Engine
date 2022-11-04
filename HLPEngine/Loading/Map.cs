@@ -302,7 +302,7 @@ namespace GLOOP.HPL.Loading
 
                 foreach (var instance in section.Objects) {
                     var pos = instance.Position.ParseVector3();
-                    var rot = OpenTK.Mathematics.Quaternion.FromEulerAngles(-instance.Rotation.ParseVector3());
+                    var rot = Quaternion.FromEulerAngles(-instance.Rotation.ParseVector3());
                     var scale = instance.Scale.ParseVector3();
 
                     var model = files[instance.Index];

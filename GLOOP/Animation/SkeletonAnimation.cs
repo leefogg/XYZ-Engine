@@ -22,6 +22,8 @@ namespace GLOOP.Animation
             }
         }
 
+        // TODO: Virtual start and stop time fields
+
         public SkeletonAnimation(BoneAnimation[] boneAnimations, string name)
         {
             Bones = boneAnimations;
@@ -59,5 +61,7 @@ namespace GLOOP.Animation
                 name ?? (Name + anim.Name)
             );
         }
+
+        public override string ToString() => Name;
     }
 }

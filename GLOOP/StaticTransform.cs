@@ -1,4 +1,5 @@
-﻿using GLOOP.Util;
+﻿using GLOOP.Extensions;
+using GLOOP.Util;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -20,5 +21,7 @@ namespace GLOOP
             : this(MathFunctions.CreateModelMatrix(position, rotation, scale))
         {
         }
+
+        public StaticTransform Clone() => new StaticTransform(_matrix);
     }
 }

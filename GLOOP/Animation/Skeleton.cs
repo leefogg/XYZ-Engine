@@ -12,7 +12,7 @@ namespace GLOOP.Animation
     {
         private readonly Bone RootBone;
         public int TotalBones => BindPose.Length;
-        public List<SkeletonAnimation> Animations = new List<SkeletonAnimation>(4);
+        public Dictionary<string, Bone> AllBones;
         public readonly Matrix4 ModelMatrix;
 
         private readonly Matrix4[] BindPose;
@@ -22,7 +22,7 @@ namespace GLOOP.Animation
             RootBone = rootBone;
         }
 
-        public Skeleton(Assimp.Node rootAssimpNode, IList<Assimp.Bone> assimpBones, IList<Assimp.Animation> animations)
+        public Skeleton(Assimp.Node rootAssimpNode, IList<Assimp.Bone> assimpBones)
         {
             var skeletonNodes = new List<Assimp.Node>();
             GetAll(skeletonNodes, rootAssimpNode);
@@ -31,7 +31,7 @@ namespace GLOOP.Animation
 
             BindPose = new Matrix4[assimpBones.Count];
 
-            var boneDict = new Dictionary<string, Bone>(assimpBones.Count);
+            AllBones = new Dictionary<string, Bone>(assimpBones.Count);
             for (int i = 0; i < assimpBones.Count; i++)
             {
                 var bone = assimpBones[i];
@@ -41,32 +41,18 @@ namespace GLOOP.Animation
                 var newBone = new Bone(bone.Name, i, bone.OffsetMatrix.ToOpenTK());
                 BindPose[i] = boneBindPose;
 
-                boneDict.Add(newBone.Name, newBone);
+                AllBones.Add(newBone.Name, newBone);
             }
 
-            RootBone = CopyHierarchy(boneDict, rootAssimpNode);
-
-            if ((RootBone.GetAllChildren().Count() - boneDict.Count) > 1)
+            RootBone = CopyHierarchy(AllBones, rootAssimpNode);
+#if DEBUG
+            if ((RootBone.GetAllChildren().Count() - AllBones.Count) > 1)
             {
                 var allbones = RootBone.GetAllChildren();
-                var missingBones = boneDict.Values.Except(allbones);
+                var missingBones = AllBones.Values.Except(allbones);
                 Debug.Fail("Coudn't find some bones in hierarchy");
             }
-
-            if (animations != null)
-            {
-                foreach (var anim in animations)
-                {
-                    Animations.Add(
-                        new SkeletonAnimation(
-                            anim.NodeAnimationChannels,
-                            boneDict,
-                            anim.Name,
-                            (float)anim.TicksPerSecond
-                        )
-                    );
-                }
-            }
+#endif
         }
 
         public void GetModelSpaceTransforms(SkeletonAnimation anim, float timeMs, Span<Matrix4> modelSpaceTransforms)
@@ -83,7 +69,11 @@ namespace GLOOP.Animation
             RootBone.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
         }
 
-        public void Render(Rendering.Debugging.DebugLineRenderer lineRenderer, Span<Matrix4> modelSpaceTransforms, Matrix4 modelMatrix)
+        public void Render(
+            Rendering.Debugging.DebugLineRenderer lineRenderer,
+            Span<Matrix4> modelSpaceTransforms,
+            Matrix4 modelMatrix
+        )
         {
             RootBone.Render(lineRenderer, modelSpaceTransforms, modelMatrix);
         }
@@ -101,18 +91,6 @@ namespace GLOOP.Animation
                     self.Children.Add(bone);
 
             return self;
-        }
-
-        public void MergeAnims(string name)
-        {
-            if (Animations.Count == 1)
-                return;
-
-            var combinedAnim = new SkeletonAnimation(
-                Animations.SelectMany(anim => anim.Bones).ToArray(),
-                name
-            );
-            Animations.Add(combinedAnim);
         }
 
         private void GetAll(List<Assimp.Node> children, Assimp.Node self)

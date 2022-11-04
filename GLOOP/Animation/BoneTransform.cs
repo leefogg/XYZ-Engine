@@ -1,8 +1,6 @@
-﻿using GLOOP.Util;
+﻿using GLOOP.Extensions;
+using GLOOP.Util;
 using OpenTK.Mathematics;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace GLOOP.Animation
 {
@@ -23,5 +21,7 @@ namespace GLOOP.Animation
         }
 
         public Matrix4 Matrix => MathFunctions.CreateModelMatrix(Position, Rotation, Vector3.One);
+
+        public BoneTransform Clone() => new BoneTransform(Position, Rotation);
     }
 }

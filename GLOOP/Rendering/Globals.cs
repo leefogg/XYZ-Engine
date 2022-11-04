@@ -8,6 +8,11 @@ namespace GLOOP.Rendering
 {
     public static class Globals
     {
+        public class Limits
+        {
+            public static readonly int MaxBonesPerModel = 1024;
+        }
+
         private static int? maxLabelLength, uniformBufferOffsetAlignment, maxTextureUnits, maxDebugGroupNameLength;
         private static float? maxTextureAnisotropy;
         private static string[]? supportedExtensions;

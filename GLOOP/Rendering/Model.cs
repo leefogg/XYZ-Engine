@@ -1,34 +1,60 @@
-﻿using GLOOP.Extensions;
-using GLOOP.Rendering.Materials;
-using OpenTK;
+﻿using GLOOP.Animation;
+using GLOOP.Extensions;
+using GLOOP.Rendering.Debugging;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace GLOOP.Rendering
 {
     public class Model : Entity
     {
+        private static readonly Matrix4[] ModelSpaceTransforms = new Matrix4[Globals.Limits.MaxBonesPerModel];
+        private static readonly Matrix4[] BoneSpaceTransforms = new Matrix4[Globals.Limits.MaxBonesPerModel];
+
         public VirtualVAO VAO { get; set; }
         public Material Material { get; }
         public bool IsStatic = false;
         public bool IsOccluder = false;
+        public Skeleton Skeleton { get; set; }
+        public SkeletonAnimationSet Animations { get; set; }
+        public SkeletonAnimationDriver AnimationDriver { get; set; }
+
+        public bool IsSkinned => Skeleton != null;
+        public bool SupportsBulkRendering => !IsSkinned;
 
         public Matrix4 BoundingBoxMatrix
             => Matrix4.CreateScale(VAO.BoundingBox.Size) * Matrix4.CreateTranslation(VAO.BoundingBox.Center) * Transform.Matrix;
-        public Box3 BoundingBox => new Box3(new Vector3(-1f), new Vector3(1f)).Transform(BoundingBoxMatrix);
+        public Box3 BoundingBox => new Box3(-Vector3.One, Vector3.One).Transform(BoundingBoxMatrix);
 
 
         public Model(
             VirtualVAO vao,
             Material material,
-            DynamicTransform? transform = null)
+            DynamicTransform? transform = null) // TODO: Add SetTransform() instead
         {
             Transform = transform ?? DynamicTransform.Default;
             Material = material;
             VAO = vao;
+        }
+
+        private Model(
+            VirtualVAO vao, 
+            Material material,
+            bool isStatic,
+            bool isOccluder,
+            Skeleton skeleton, 
+            SkeletonAnimationSet animations, 
+            SkeletonAnimationDriver animationDriver,
+            DynamicTransform? transform = null)
+        {
+            VAO = vao;
+            Material = material;
+            IsStatic = isStatic;
+            IsOccluder = isOccluder;
+            Skeleton = skeleton;
+            Animations = animations;
+            AnimationDriver = animationDriver;
         }
 
         public void Render(PrimitiveType renderMode = PrimitiveType.Triangles)
@@ -41,9 +67,30 @@ namespace GLOOP.Rendering
 
         public void RenderBoundingBox()
         {
-            Debugging.Draw.BoundingBox(BoundingBoxMatrix, Vector4.One);
+            Draw.BoundingBox(BoundingBoxMatrix, Vector4.One);
         }
 
-        public Model Clone() => new Model(VAO, Material.Clone(), Transform);
+        public Span<Matrix4> GetModelSpaceBoneTransforms(SkeletonAnimation animation, float timeMs)
+        {
+            Skeleton.GetModelSpaceTransforms(animation, timeMs, ModelSpaceTransforms);
+            return ModelSpaceTransforms[..Skeleton.TotalBones];
+        }
+
+        public Span<Matrix4> GetBoneSpaceBoneTransforms(Span<Matrix4> modelspaceTransforms)
+        {
+            Skeleton.GetBoneSpaceTransforms(modelspaceTransforms, BoneSpaceTransforms);
+            return BoneSpaceTransforms[..Skeleton.TotalBones];
+        }
+
+        public Model Clone() => new Model(
+            VAO,
+            Material.Clone(),
+            IsStatic,
+            IsOccluder,
+            Skeleton,
+            Animations,
+            AnimationDriver,
+            Transform.Clone()
+        );
     }
 }

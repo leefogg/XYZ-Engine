@@ -1,4 +1,6 @@
-﻿using GLOOP.Util;
+﻿using GLOOP.Animation;
+using GLOOP.Extensions;
+using GLOOP.Util;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -28,5 +30,7 @@ namespace GLOOP
         }
 
         public Matrix4 Matrix => MathFunctions.CreateModelMatrix(Position, Rotation, Scale);
+
+        public DynamicTransform Clone() => new DynamicTransform(Position, Scale, Rotation);
     }
 }

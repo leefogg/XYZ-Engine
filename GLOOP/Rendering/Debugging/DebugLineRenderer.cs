@@ -10,7 +10,7 @@ namespace GLOOP.Rendering.Debugging
 {
     public class DebugLineRenderer
     {
-        private static StaticPixelShader PointsShader;
+        private static StaticPixelShader LineShader;
         private static VAOManager.VAOContainer VAOPool = VAOManager.Create(VAO.VAOShape.Lines, 0, sizeof(float) * 3 * 2 * 1024 * 128); // 128k lines
 
         private Geometry Geometry = new Geometry();
@@ -18,7 +18,7 @@ namespace GLOOP.Rendering.Debugging
 
         static DebugLineRenderer()
         {
-            PointsShader = new StaticPixelShader("assets/shaders/line/shader.vert", "assets/shaders/line/shader.frag", null, null);
+            LineShader = new StaticPixelShader("assets/shaders/line/shader.vert", "assets/shaders/line/shader.frag", null, null);
         }
 
         public DebugLineRenderer(int maxLines)
@@ -40,9 +40,10 @@ namespace GLOOP.Rendering.Debugging
         public void Render()
         {
             // Hack to avoid redrawing previous frame's lines
+            // TODO: Use circular buffer
             Geometry.Positions.AddRange(Enumerable.Repeat(Vector3.Zero, Geometry.Positions.Capacity - Geometry.Positions.Count));
 
-            PointsShader.Use();
+            LineShader.Use();
             Geometry.UpdateVAO(VirtualVAO);
             VirtualVAO.Draw(PrimitiveType.Lines);
 

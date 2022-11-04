@@ -26,6 +26,8 @@ using System.IO;
 using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
 using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
+using System.Runtime.CompilerServices;
+using GLOOP.DAE;
 
 namespace GLOOP.HPL
 {
@@ -127,13 +129,13 @@ namespace GLOOP.HPL
         private int NumBlurSamples = 6;
         private int BlurStrideElements;
 #if DEBUG
+        private float DirtHighlightScalar = 0;
+        private float DirtGeneralScalar = 0;
+        private float CrackScalar = 0;
+#else
         private float DirtHighlightScalar = 0.5f;
         private float DirtGeneralScalar = 0.01f;
         private float CrackScalar = 0.005f;
-#else
-        private float DirtHighlightScalar = 2.0f;
-        private float DirtGeneralScalar = 0.01f;
-        private float CrackScalar = 0.02f;
 #endif
         // Post
         private float Key = 1f;
@@ -156,6 +158,7 @@ namespace GLOOP.HPL
         private bool enableSSAO = false;
         private bool enableBloom = true;
         private bool showBoundingBoxes = false;
+        private bool showSkeletons = true;
         private bool enablePortalCulling = true;
         private bool enableImGui = false;
         private bool shouldUpdateVisibility = true;
@@ -172,6 +175,7 @@ namespace GLOOP.HPL
         private readonly Ring<float> GPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         //private readonly StringBuilder CSV = new StringBuilder(10000);
         private const bool BenchmarkMode = false;
+        private DebugLineRenderer LineRenderer;
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) 
@@ -214,6 +218,7 @@ namespace GLOOP.HPL
 #endif
 #if DEBUG || BETA
             ImGuiController = new ImGuiController(ClientSize.X, ClientSize.Y);
+            LineRenderer = new DebugLineRenderer(ushort.MaxValue);
 #endif
         }
 
@@ -446,6 +451,7 @@ namespace GLOOP.HPL
 #endif
 
                 UpdateBuffers();
+                UpdateScene();
 
                 DrawImGUIWindows();
 
@@ -669,6 +675,7 @@ namespace GLOOP.HPL
 
                     currentBuffer = ResolveGBuffer(albedo);
 
+#if DEBUG
                     if (!debugLightBuffer)
                     {
                         if (enableBloom)
@@ -691,8 +698,35 @@ namespace GLOOP.HPL
                         currentBuffer = newBuffer;
                     }
                 }
+#endif
             }
 
+#if DEBUG
+            if (showSkeletons)
+            {
+                foreach (var skinnedModel in scene.Models.Where(model => model.IsSkinned && model.Animations.Any()))
+                {
+                    var modelspaceTransforms = skinnedModel.GetModelSpaceBoneTransforms(skinnedModel.Animations[1], (float)GameMillisecondsElapsed);
+                    skinnedModel.Skeleton.Render(
+                    LineRenderer,
+                        modelspaceTransforms,
+                        skinnedModel.Transform.Matrix
+                    );
+                }
+            }
+
+            LineRenderer.AddAxisHelper(Matrix4.Identity);
+#endif
+
+            finalBuffer.Use();
+            DoPostEffect(FullBrightShader, currentBuffer.ColorBuffers[0]);
+
+#if DEBUG
+            GL.Disable(EnableCap.DepthTest);
+            LineRenderer.Render();
+            GL.Enable(EnableCap.DepthTest);
+
+            // TODO: Bounding boxes should use LineRenderer now
             if (showBoundingBoxes)
             {
                 using var bbGroup = new DebugGroup("Bounding Boxes");
@@ -712,9 +746,7 @@ namespace GLOOP.HPL
 
                 GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
             }
-
-            finalBuffer.Use();
-            DoPostEffect(FullBrightShader, currentBuffer.ColorBuffers[0]);
+#endif
         }
 
         [Conditional("DEBUG")]
@@ -770,6 +802,11 @@ namespace GLOOP.HPL
 #if DEBUG
             UpdateBloomBuffer();
 #endif
+        }
+
+        public void UpdateScene()
+        {
+            scene.UpdateAnimations(FrameMillisecondsElapsed);
         }
 
         private void setupBuffers()

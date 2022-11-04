@@ -7,16 +7,18 @@ namespace GLOOP.Rendering.Materials
 {
     public class DeferredRenderingGeoMaterial : Material
     {
-        private const string 
+        private const string
             USE_NORMAL = "USE_NORMAL_MAP",
             USE_SPECULAR = "USE_SPECULAR_MAP",
-            USE_ILLUM = "USE_ILLUM_MAP";
+            USE_ILLUM = "USE_ILLUM_MAP",
+            USE_SKINNED_MESH = "IS_SKINNED_MESH";
         private static readonly ShaderFactory<DeferredRenderingGeoShader> factory = new ShaderFactory<DeferredRenderingGeoShader>(
             defines => new DeferredRenderingGeoShader(defines), 
             new[] {
                 USE_NORMAL,
                 USE_SPECULAR,
-                USE_ILLUM
+                USE_ILLUM,
+                USE_SKINNED_MESH
             }
         );
         private static readonly Texture2D DefaultNormalTexture = Texture.Gray;
@@ -61,11 +63,14 @@ namespace GLOOP.Rendering.Materials
             }
         }
 
+        public bool IsSkinnedMesh = false;
+
         public override Shader Shader => LazyShader ??= GetShaderVarient();
         public Shader LazyShader;
 
         public DeferredRenderingGeoMaterial()
         {
+
         }
 
         public override void Commit()
@@ -112,7 +117,8 @@ namespace GLOOP.Rendering.Materials
             return factory.GetVarient(
                 NormalTexture != DefaultNormalTexture,
                 SpecularTexture != DefaultSpecularTexture,
-                IlluminationTexture != DefaultImmuminationTexture
+                IlluminationTexture != DefaultImmuminationTexture,
+                IsSkinnedMesh
             );
         }
     }
