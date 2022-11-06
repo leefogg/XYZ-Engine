@@ -67,8 +67,11 @@ namespace AnimationTest
 
             LoadedEnt = new ModelLoader(modelPath, assimp, new SingleColorMaterial(new SingleColorShader3D()));
             {
-                var steps = Assimp.PostProcessSteps.FlipUVs
+                var steps = 
+                    Assimp.PostProcessSteps.FlipUVs
                     | Assimp.PostProcessSteps.Triangulate
+                    | Assimp.PostProcessSteps.CalculateTangentSpace
+                    | Assimp.PostProcessSteps.GenerateNormals
                     | Assimp.PostProcessSteps.ValidateDataStructure;
                 var assimpScene = assimp.ImportFile(modelPath, steps);
                 var assimpMesh = assimpScene.Meshes[0];
@@ -128,7 +131,7 @@ namespace AnimationTest
             );
 
             BonePosesUBO = new Buffer<Matrix4>(128, BufferTarget.UniformBuffer, BufferUsageHint.DynamicDraw, "Bone Poses");
-            BonePosesUBO.Bind(2);
+            BonePosesUBO.Bind(Globals.BindingPoints.UBOs.SkeletonBonePoses);
         }
 
         private void Benchmark()
@@ -226,7 +229,7 @@ namespace AnimationTest
             //model.Skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
             //BonePosesUBO.Update(boneSpaceTransforms);
             //model.Skeleton.Render(LineRenderer, modelSpaceTransforms, LoadedEnt.Transform.Matrix);
-            var modelspaceTransforms = model.GetModelSpaceBoneTransforms(model.Animations[1], (float)Window.GameMillisecondsElapsed);
+            var modelspaceTransforms = model.GetModelSpaceBoneTransforms(model.Animations[1], (float)GameMillisecondsElapsed);
             var bonespaceTransforms = model.GetBoneSpaceBoneTransforms(modelspaceTransforms);
             model.Skeleton.Render(LineRenderer, modelspaceTransforms, model.Transform.Matrix);
             BonePosesUBO.Update(bonespaceTransforms.ToArray());

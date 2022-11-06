@@ -17,7 +17,6 @@ namespace GLOOP.Rendering
 
 
         public int Handle { get; protected set; }
-        public bool SupportsBulkRendering { get; protected set; } = true;
 
         private readonly Dictionary<string, int> uniformLocations = new Dictionary<string, int>();
 

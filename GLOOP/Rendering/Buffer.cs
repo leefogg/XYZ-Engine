@@ -93,8 +93,11 @@ namespace GLOOP.Rendering
             GL.BindBuffer(Type, Handle);
             Metrics.BufferBinds++;
         }
+
+        // TODO: Remove this for types that dont support it
         public void Bind(int index)
         {
+            Debug.Assert(Type != BufferTarget.DrawIndirectBuffer, "Only one draw indirect binding point exists. Use Bind() instead.");
             GL.BindBufferBase((BufferRangeTarget)Type, index, Handle);
             Metrics.BufferBinds++;
         }

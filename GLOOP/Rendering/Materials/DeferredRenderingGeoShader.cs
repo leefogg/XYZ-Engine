@@ -26,6 +26,11 @@ namespace GLOOP.Rendering.Materials
         }
 #else
         private CachedUniformTexture diffuse, normal, specular, illumination;
+        private Uniform16f modelMatrix;
+        private Uniform3f illumColor, albedoColor;
+        private Uniform2f textureRepeat, textureOffset;
+        private Uniform1f normalStrength;
+        private Uniform1b isWorldSpaceUvs;
         public TextureUnit DiffuseTexture
         {
             set => diffuse.Set(value);
@@ -43,7 +48,35 @@ namespace GLOOP.Rendering.Materials
             set => illumination.Set(value);
         }
 #endif
-        private int numSamples = 1;
+        public Matrix4 ModelMatrix
+        {
+            set => modelMatrix.Set(value);
+        }
+        public Vector3 AlbedoColor
+        {
+            set => albedoColor.Set(value);
+        }
+        public Vector3 IlluminationColor
+        {
+            set => illumColor.Set(value);
+        }
+        public Vector2 TextureRepeat
+        {
+            set => textureRepeat.Set(value);
+        }
+        public Vector2 TextureOffset
+        {
+            set => textureOffset.Set(value);
+        }
+        public float NormalStrength
+        {
+            set => normalStrength.Set(value);
+        }
+        public bool IsWorldSpaceUvs
+        {
+            set => isWorldSpaceUvs.Set(value);
+        }
+
 
         public DeferredRenderingGeoShader(IDictionary<string, string> defines)
             : base("assets/shaders/Deferred/GeoPass/VertexShader.vert", "assets/shaders/Deferred/GeoPass/FragmentShader.frag", defines, "Deferred geometry pass")
@@ -60,14 +93,19 @@ namespace GLOOP.Rendering.Materials
             specular = new CachedUniformTexture(this, "specularTex");
             illumination = new CachedUniformTexture(this, "illumTex");
 #endif
+
             diffuse.Set(TextureUnit.Texture0);
             normal.Set(TextureUnit.Texture1);
             specular.Set(TextureUnit.Texture2);
             illumination.Set(TextureUnit.Texture3);
 
-            foreach (var value in defines.Values)
-                if (value == "1")
-                    numSamples++;
+            modelMatrix = new Uniform16f(this,      "ModelMatrix");
+            albedoColor = new Uniform3f(this,       "ModelMaterial.AlbedoColourTint");
+            illumColor = new Uniform3f(this,        "ModelMaterial.IlluminationColor");
+            textureRepeat = new Uniform2f(this,     "ModelMaterial.TextureRepeat");
+            textureOffset = new Uniform2f(this,     "ModelMaterial.TextureRepeat");
+            normalStrength = new Uniform1f(this,    "ModelMaterial.NormalStrength");
+            isWorldSpaceUvs = new Uniform1b(this,   "ModelMaterial.IsWorldSpaceUVs");
         }
     }
 }

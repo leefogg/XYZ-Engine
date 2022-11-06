@@ -706,7 +706,7 @@ namespace GLOOP.HPL
             {
                 foreach (var skinnedModel in scene.Models.Where(model => model.IsSkinned && model.Animations.Any()))
                 {
-                    var modelspaceTransforms = skinnedModel.GetModelSpaceBoneTransforms(skinnedModel.Animations[1], (float)GameMillisecondsElapsed);
+                    var modelspaceTransforms = skinnedModel.GetModelSpaceBoneTransforms(skinnedModel.Animations[^1], (float)GameMillisecondsElapsed);
                     skinnedModel.Skeleton.Render(
                     LineRenderer,
                         modelspaceTransforms,
@@ -775,7 +775,7 @@ namespace GLOOP.HPL
 
                 GL.Enable(EnableCap.FramebufferSrgb);
 
-                scene.RenderModels();
+                scene.RenderModels((float)GameMillisecondsElapsed);
                 scene.RenderTerrain();
             }
 
@@ -1039,7 +1039,7 @@ namespace GLOOP.HPL
                             shader.Set("NumSamples", NumBlurSamples);
                             BloomBuffers[i].Use();
 
-                            bloomBuffer.Bind(3, NumBlurSamples, BlurStrideElements * i);
+                            bloomBuffer.Bind(Globals.BindingPoints.UBOs.Bloom, NumBlurSamples, BlurStrideElements * i);
 
                             DoPostEffect(shader, previousTexture);
 

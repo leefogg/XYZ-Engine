@@ -100,7 +100,7 @@ namespace GLOOP
         private void setupCameraUniformBuffer()
         {
             cameraBuffer = new Buffer<Matrix4>(5, BufferTarget.UniformBuffer, BufferUsageHint.StreamRead, "CameraData");
-            cameraBuffer.Bind(0, 0);
+            cameraBuffer.Bind(Globals.BindingPoints.UBOs.Camera);
         }
 
         protected void updateCameraUBO(in Matrix4 projectionMatrix, in Matrix4 viewMatrix)

@@ -1,6 +1,7 @@
 ﻿using GLOOP.Animation;
 using GLOOP.Extensions;
 using GLOOP.Rendering.Debugging;
+using GLOOP.Rendering.Materials;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
@@ -16,7 +17,17 @@ namespace GLOOP.Rendering
         public Material Material { get; }
         public bool IsStatic = false;
         public bool IsOccluder = false;
-        public Skeleton Skeleton { get; set; }
+        private Skeleton _skeleton;
+        public Skeleton Skeleton
+        {
+            get => _skeleton;
+            set
+            {
+                _skeleton = value;
+                if (Material is ISkinnableMaterial mat)
+                    mat.IsSkinned = Skeleton != null;
+            }
+        }
         public SkeletonAnimationSet Animations { get; set; }
         public SkeletonAnimationDriver AnimationDriver { get; set; }
 

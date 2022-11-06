@@ -28,6 +28,8 @@ namespace GLOOP
         private Buffer<GPUPointLight> PointLightsBuffer;
         private Buffer<GPUSpotLight> SpotLightsBuffer;
         private Buffer<int> PointLightIndexBuffer, SpotLightIndexBuffer;
+        private Buffer<Matrix4> BonePosesUBO;
+        private readonly Dictionary<Model, uint> ModelBufferLUT = new Dictionary<Model, uint>();
         private readonly FastList<DrawElementsIndirectData> ScratchDrawCommands = new FastList<DrawElementsIndirectData>(1024 * 4);
         private readonly FastList<GPUModel> ScratchGPUModels = new FastList<GPUModel>(1024 * 4);
         private readonly Ring<FastList<int>> VisibleSpotLights = new Ring<FastList<int>>(PowerOfTwo.Two, i => new FastList<int>(1024));
@@ -126,6 +128,12 @@ namespace GLOOP
                 BufferTarget.ShaderStorageBuffer,
                 BufferUsageHint.StreamDraw,
                 "Models"
+            );
+            BonePosesUBO = new Buffer<Matrix4>(
+                Globals.Limits.MaxBonesPerModel,
+                BufferTarget.UniformBuffer,
+                BufferUsageHint.StreamDraw,
+                "Skeleton Bone poses"
             );
         }
 
@@ -289,7 +297,13 @@ namespace GLOOP
         {
             using var profiler = EventProfiler.Profile("Batching");
 
-            GroupBy(models.Where(model => model.SupportsBulkRendering).OrderBy(m => m.Material.Shader.Handle), batches, SameRenderBatch);
+            GroupBy(
+                models.
+                //Where(model => model.SupportsBulkRendering).
+                OrderBy(m => m.Material.Shader.Handle), 
+                batches, 
+                SameRenderBatch
+            );
             batches.ForEach(batch => batch.Models = batch.Models.OrderBy(model => (model.Transform.Position - Camera.Current.Position).LengthSquared).ToList());
 
             return batches;
@@ -331,6 +345,7 @@ namespace GLOOP
             FastList<DrawElementsIndirectData> drawIndirectDest,
             FastList<GPUModel> modelDest)
         {
+            uint index = 0;
             foreach (var batch in batches)
             {
                 foreach (var model in batch.Models)
@@ -349,17 +364,47 @@ namespace GLOOP
                         command.InstanceCount,
                         (uint)drawIndirectDest.Count
                     ));
+
+                    if (ModelBufferLUT.ContainsKey(model))
+                        ModelBufferLUT[model] = index;
+                    else
+                        ModelBufferLUT.Add(model, index);
+
+                    ++index;
                 }
             }
         }
 
-        public void RenderModels()
+        public void RenderModels(float timeMs)
         {
             DrawIndirectBuffer.Bind();
-            ModelsBuffer.Bind(1);
+            ModelsBuffer.Bind(Globals.BindingPoints.SSBOs.DeferredRendering.Models);
             var drawCommandPtr = (IntPtr)0;
             RenderOccluderGeometry(ref drawCommandPtr);
             RenderNonOccluderGeometry(ref drawCommandPtr);
+
+            // Draw skinned
+            RenderSkinnedGeometry(timeMs);
+        }
+
+        private void RenderSkinnedGeometry(float timeMs)
+        {
+            using var timer = new DebugGroup("Skinned");
+            BonePosesUBO.Bind(Globals.BindingPoints.UBOs.SkeletonBonePoses);
+            foreach (var model in Models.Where(m => m.IsSkinned))
+            {
+                // TODO: Do all bone calcs at once in own heap
+                if (ModelBufferLUT.TryGetValue(model, out var index))
+                {
+                    var mat = model.Material as DeferredRenderingGeoMaterial;
+                    //mat.ModelMatrix = MathFunctions.CreateModelMatrix(new Vector3(), Quaternion.Identity, new Vector3(100));
+
+                    var modelspaceTransforms = model.GetModelSpaceBoneTransforms(model.Animations[^1], timeMs);
+                    var bonespaceTransforms = model.GetBoneSpaceBoneTransforms(modelspaceTransforms);
+                    BonePosesUBO.Update(bonespaceTransforms.ToArray());
+                    model.Render();
+                }
+            }
         }
 
         public void RenderOccluderGeometry(ref IntPtr drawCommandPtr)
@@ -380,6 +425,9 @@ namespace GLOOP
         {
             foreach (var batch in batches)
             {
+                if (!batch.Models[0].SupportsBulkRendering)
+                    continue;
+
                 var batchSize = batch.Models.Count;
 
                 batch.BindState();
@@ -413,8 +461,8 @@ namespace GLOOP
                 {
                     using (new DebugGroup("Point Lights"))
                     {
-                        PointLightsBuffer.Bind(1);
-                        PointLightIndexBuffer.Bind(1);
+                        PointLightsBuffer.Bind(Globals.BindingPoints.SSBOs.DeferredRendering.PointLights);
+                        PointLightIndexBuffer.Bind(Globals.BindingPoints.UBOs.DeferredRendering.PointLights);
 
                         var shader = pointLightShader;
                         shader.Use();
@@ -453,8 +501,8 @@ namespace GLOOP
                 {
                     using (new DebugGroup("Spot Lights"))
                     {
-                        SpotLightsBuffer.Bind(1);
-                        SpotLightIndexBuffer.Bind(1);
+                        SpotLightsBuffer.Bind(Globals.BindingPoints.SSBOs.DeferredRendering.SpotLights);
+                        SpotLightIndexBuffer.Bind(Globals.BindingPoints.UBOs.DeferredRendering.SpotLights);
 
                         var shader = spotLightShader;
                         shader.Use();

@@ -8,9 +8,36 @@ namespace GLOOP.Rendering
 {
     public static class Globals
     {
-        public class Limits
+        public static class Limits
         {
             public static readonly int MaxBonesPerModel = 1024;
+        }
+
+        public static class BindingPoints
+        {
+            // Probably want to move some of these out to a rendering technique class when we have it
+            // TODO: Would be good to have a typedef so cant accidentally use wrong type
+            public static class UBOs
+            {
+                public static readonly int Camera = 0;
+                public static readonly int SkeletonBonePoses = 2;
+                public static readonly int Bloom = 3;
+
+                public static class DeferredRendering
+                {
+                    public static readonly int PointLights = 1;
+                    public static readonly int SpotLights = 1;
+                }
+            }
+            public static class SSBOs
+            {
+                public static class DeferredRendering
+                {
+                    public static readonly int Models = 1;
+                    public static readonly int PointLights = 1;
+                    public static readonly int SpotLights = 1;
+                }
+            }
         }
 
         private static int? maxLabelLength, uniformBufferOffsetAlignment, maxTextureUnits, maxDebugGroupNameLength;

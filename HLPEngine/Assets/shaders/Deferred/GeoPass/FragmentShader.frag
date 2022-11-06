@@ -3,7 +3,7 @@
 in vec3 fragPos;
 in vec2 uv;
 in mat3 TBNMatrix;
-flat in uint DrawID;
+
 uniform sampler2D diffuseTex;
 uniform sampler2D normalTex;
 uniform sampler2D specularTex;
@@ -39,15 +39,12 @@ struct Material {
 	float NormalStrength;
 	bool IsWorldSpaceUVs;
 };
+#if (IS_SKINNED_MESH == 1)
+	
+#else
+	flat in uint DrawID;
+#endif
 
-struct Model {
-	mat4 ModelMatrix;
-	Material ModelMaterial;
-};
-
-layout (std430, binding = 1) buffer ModelBuffer {
-	Model Models[];
-};
 
 vec3 UnpackNormalmapYW(in vec4 avNormalValue, float normalStrength)
 {
@@ -56,10 +53,11 @@ vec3 UnpackNormalmapYW(in vec4 avNormalValue, float normalStrength)
 	return vNormal;	
 }
 
+flat in Material material;
 
 void main()
 {
-	Material mat = Models[DrawID].ModelMaterial;
+	Material mat = material;
 	vec2 textureCoord;
 	if (mat.IsWorldSpaceUVs) {
 		textureCoord = fragPos.xz;

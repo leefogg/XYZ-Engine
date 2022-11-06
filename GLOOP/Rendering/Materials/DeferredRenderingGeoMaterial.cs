@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace GLOOP.Rendering.Materials
 {
-    public class DeferredRenderingGeoMaterial : Material
+    public class DeferredRenderingGeoMaterial : Material, ISkinnableMaterial
     {
         private const string
             USE_NORMAL = "USE_NORMAL_MAP",
@@ -63,9 +63,12 @@ namespace GLOOP.Rendering.Materials
             }
         }
 
-        public bool IsSkinnedMesh = false;
+
+        // Non uniform data
+        public bool IsSkinned { get; set; }
 
         public override Shader Shader => LazyShader ??= GetShaderVarient();
+
         public Shader LazyShader;
 
         public DeferredRenderingGeoMaterial()
@@ -86,6 +89,16 @@ namespace GLOOP.Rendering.Materials
 #else
             Texture.Use(Textures, TextureUnit.Texture0);
 #endif
+            if (IsSkinned)
+            {
+                shader.IsWorldSpaceUvs = HasWorldpaceUVs;
+                shader.ModelMatrix = ModelMatrix;
+                shader.AlbedoColor = AlbedoColourTint;
+                shader.IlluminationColor = IlluminationColor;
+                shader.TextureOffset = TextureOffset;
+                shader.TextureRepeat = TextureRepeat;
+                shader.NormalStrength = 1;
+            }
         }
 
         public override void SetTextures(Texture2D diffuse, Texture2D normal, Texture2D specular, Texture2D illumination)
@@ -108,7 +121,8 @@ namespace GLOOP.Rendering.Materials
                 NormalTexture = NormalTexture,
                 SpecularTexture = SpecularTexture,
                 TextureOffset = TextureOffset,
-                TextureRepeat = TextureRepeat
+                TextureRepeat = TextureRepeat,
+                IsSkinned = IsSkinned,
             };
         public bool SameTextures(DeferredRenderingGeoMaterial other) => Textures.SequenceEqual(other.Textures);
 
@@ -118,7 +132,7 @@ namespace GLOOP.Rendering.Materials
                 NormalTexture != DefaultNormalTexture,
                 SpecularTexture != DefaultSpecularTexture,
                 IlluminationTexture != DefaultImmuminationTexture,
-                IsSkinnedMesh
+                IsSkinned
             );
         }
     }

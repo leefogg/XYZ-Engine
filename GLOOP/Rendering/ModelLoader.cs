@@ -53,13 +53,24 @@ namespace GLOOP.Rendering
             if (Path.GetExtension(modelPath).ToLower() == ".fbx")
                 throw new NotSupportedException("FBX files not supported yet");
 
-            var steps = 
-                  PostProcessSteps.FlipUVs
-                | PostProcessSteps.PreTransformVertices
+            var animFolder = Path.GetDirectoryName(modelPath);
+            animFolder = Path.Combine(animFolder, "animations");
+            var animFolderExists = Directory.Exists(animFolder);
+
+            var steps =
+                //  PostProcessSteps.FlipUVs
+                //| PostProcessSteps.PreTransformVertices
+                //| PostProcessSteps.GenerateNormals
+                //| PostProcessSteps.CalculateTangentSpace
+                //| PostProcessSteps.LimitBoneWeights
+                //| PostProcessSteps.Triangulate;
+                PostProcessSteps.FlipUVs
                 | PostProcessSteps.GenerateNormals
                 | PostProcessSteps.CalculateTangentSpace
-                //| PostProcessSteps.LimitBoneWeights
-                | PostProcessSteps.Triangulate;
+                | PostProcessSteps.Triangulate
+                | PostProcessSteps.ValidateDataStructure;
+            if (!animFolderExists)
+                steps |= PostProcessSteps.PreTransformVertices;
             var startLoadingModel = DateTime.Now;
             var assimpScene = assimp.ImportFile(modelPath, steps);
             Metrics.TimeLoadingModels += DateTime.Now - startLoadingModel;
@@ -142,16 +153,16 @@ namespace GLOOP.Rendering
                         geo.CalculateTangents();
                     //geo.Scale(new Vector3(Transform.Scale.X, Transform.Scale.Y, Transform.Scale.Z));
 
-                    var animFolder = Path.GetDirectoryName(modelPath);
-                    animFolder = Path.Combine(animFolder, "animations");
-                    if (Directory.Exists(animFolder))
+                    if (animFolderExists)
                     {
+                        Transform.Scale /= 100; // TODO: Load scale from dae properly
+
                         var assimpSkeletonScene = assimp.ImportFile(modelPath, PostProcessSteps.LimitBoneWeights);
                         var allBoneNames = assimpSkeletonScene.Meshes[i].Bones.Select(x => x.Name).ToList();
                         var animModel = assimpSkeletonScene.Meshes[0];
                         if (assimpSkeletonScene.MeshCount == 1 && animModel.HasBones)
                         {
-                            var vertcies = CreateVertexWeights(assimpMesh.Bones, geo.Positions.Count);
+                            var vertcies = CreateVertexWeights(animModel.Bones, geo.Positions.Count);
                             geo.BoneIds = vertcies.SelectMany(p => p.Ids).ToVec4s().ToList();
                             geo.BoneWeights = vertcies.SelectMany(p => p.Weights).ToVec4s().ToList();
 
@@ -165,6 +176,14 @@ namespace GLOOP.Rendering
                                 animFolder
                             );
                         }
+
+                        //var assimpAnimationScene = assimp.ImportFile(modelPath, PostProcessSteps.LimitBoneWeights);
+                        //{
+                        //    var boneNames = assimpMesh.Bones.Select(b => b.Name).ToArray();
+                        //    var assimpRootNode = assimpScene.RootNode.Find(b => boneNames.Contains(b.Name));
+                        //    var assimpBones = assimpMesh.Bones;
+                        //    skeleton = new Skeleton(assimpRootNode, assimpBones);
+                        //}
                     }
 
                     vao = geo.ToVirtualVAO();
@@ -181,7 +200,6 @@ namespace GLOOP.Rendering
                     model.Skeleton = skeleton;
                     model.Animations = animationSet;
                     model.AnimationDriver = new SkeletonAnimationDriver(skeleton);
-                    Transform.Scale /= 100;
                 }
                 Models.Add(model);
 
@@ -267,7 +285,7 @@ namespace GLOOP.Rendering
         public ModelLoader Clone() => new ModelLoader(Models, Transform.Clone(), OriginalBoundingBox);
 
         // TODO: Ids are ints not floats
-        private VertexBoneData[] CreateVertexWeights(IEnumerable<Assimp.Bone> bones, int numVerts)
+        private VertexBoneData[] CreateVertexWeights(IList<Assimp.Bone> bones, int numVerts)
         {
 
             const float fillerValue = float.MaxValue;
@@ -285,10 +303,11 @@ namespace GLOOP.Rendering
                 foreach (var weight in bone.VertexWeights)
                 {
                     var nextBlankSlot = vertcies[weight.VertexID].Ids.IndexOf(fillerValue);
-                    vertcies[weight.VertexID].Ids[nextBlankSlot] = boneIdx++;
+                    vertcies[weight.VertexID].Ids[nextBlankSlot] = boneIdx;
                     nextBlankSlot = vertcies[weight.VertexID].Weights.IndexOf(fillerValue);
                     vertcies[weight.VertexID].Weights[nextBlankSlot] = weight.Weight;
                 }
+                boneIdx++;
             }
 
             foreach (var vert in vertcies)
