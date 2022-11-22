@@ -704,7 +704,7 @@ namespace GLOOP.HPL
 #if DEBUG
             if (showSkeletons)
             {
-                foreach (var skinnedModel in scene.Models.Where(model => model.IsSkinned && model.Animations.Any()))
+                foreach (var skinnedModel in scene.Models.Where(model => model.IsSkinned).Cast<AnimatedModel>())
                 {
                     var modelspaceTransforms = skinnedModel.GetModelSpaceBoneTransforms(skinnedModel.Animations[^1], (float)GameMillisecondsElapsed);
                     skinnedModel.Skeleton.Render(
@@ -806,7 +806,7 @@ namespace GLOOP.HPL
 
         public void UpdateScene()
         {
-            scene.UpdateAnimations(FrameMillisecondsElapsed);
+            
         }
 
         private void setupBuffers()

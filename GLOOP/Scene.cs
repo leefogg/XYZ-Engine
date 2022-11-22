@@ -198,12 +198,6 @@ namespace GLOOP
             SpotLightIndexBuffer.Update(VisibleSpotLights.Current.Elements, VisibleSpotLights.Current.Count);
         }
 
-        public void UpdateAnimations(float deltaMs)
-        {
-            foreach (var model in Models)
-                model.AnimationDriver?.Update(deltaMs);
-        }
-
         private void PopulateSpotLightsBuffer(IList<SpotLight> visibleLights)
         {
             if (visibleLights.Count == 0)
@@ -391,7 +385,7 @@ namespace GLOOP
         {
             using var timer = new DebugGroup("Skinned");
             BonePosesUBO.Bind(Globals.BindingPoints.UBOs.SkeletonBonePoses);
-            foreach (var model in Models.Where(m => m.IsSkinned))
+            foreach (var model in Models.Where(m => m.IsSkinned).Cast<AnimatedModel>())
             {
                 // TODO: Do all bone calcs at once in own heap
                 if (ModelBufferLUT.TryGetValue(model, out var index))

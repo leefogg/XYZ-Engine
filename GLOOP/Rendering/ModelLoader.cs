@@ -135,7 +135,7 @@ namespace GLOOP.Rendering
 
                 VirtualVAO vao;
                 Skeleton skeleton = null;
-                SkeletonAnimationSet animationSet = null;
+                IList<SkeletonAnimation> animations = null;
 
                 var vaoName = $"{modelPath}[{i}]";
                 if (!VAOCache.Get(vaoName, out vao))
@@ -170,7 +170,7 @@ namespace GLOOP.Rendering
                                 assimpSkeletonScene.RootNode.Find(b => allBoneNames.Contains(b.Name)),
                                 assimpSkeletonScene.Meshes[i].Bones
                             );
-                            animationSet = LoadAnimations(
+                            animations = LoadAnimations(
                                 skeleton,
                                 assimp,
                                 animFolder
@@ -194,12 +194,14 @@ namespace GLOOP.Rendering
 
                 var materialInstance = material.Clone();
                 materialInstance.SetTextures(diffuseTex, normalTex, specularTex, illumTex);
-                var model = new Model(vao, materialInstance);
-                if (skeleton != null && animationSet.Any())
+                Model model;
+                if (skeleton != null && animations.Any())
                 {
-                    model.Skeleton = skeleton;
-                    model.Animations = animationSet;
-                    model.AnimationDriver = new SkeletonAnimationDriver(skeleton);
+                    model = new AnimatedModel(vao, materialInstance, skeleton, animations);
+                } 
+                else
+                {
+                    model = new Model(vao, materialInstance);
                 }
                 Models.Add(model);
 
@@ -209,17 +211,19 @@ namespace GLOOP.Rendering
             //Transform.Scale = Vector3.One;
         }
 
-        private SkeletonAnimationSet LoadAnimations(
+        private IList<SkeletonAnimation> LoadAnimations(
             Skeleton skeleton,
             AssimpContext assimp,
             string animFolder)
         {
-            var animationSet = new SkeletonAnimationSet(10);
+            var animationFiles = Directory.EnumerateFiles(animFolder, "*.dae_anim");
 
-            foreach (var animFilePath in Directory.EnumerateFiles(animFolder, "*.dae_anim"))
+            var animationSet = new List<SkeletonAnimation>(animationFiles.Count());
+
+            foreach (var animFilePath in animationFiles)
             {
                 var assimpScene = assimp.ImportFile(animFilePath, PostProcessSteps.LimitBoneWeights);
-                var animations = new SkeletonAnimationSet(4);
+                var animations = new List<SkeletonAnimation>(4);
                 foreach (var anim in assimpScene.Animations)
                     animations.Add(
                         new SkeletonAnimation(
@@ -229,8 +233,13 @@ namespace GLOOP.Rendering
                             (float)anim.TicksPerSecond
                         )
                     );
-                animations.MergeAllAs(Path.GetFileName(animFilePath));
-                animationSet.Add(animations[0]);
+
+                var mergedAnim = new SkeletonAnimation(
+                    animations.SelectMany(anim => anim.Bones).ToArray(),
+                    Path.GetFileName(animFilePath)
+                );
+                animationSet.Clear();
+                animationSet.Add(mergedAnim);
 
                 Console.WriteLine($"Loaded animation '{animFilePath}'");
             }

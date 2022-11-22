@@ -28,8 +28,7 @@ namespace AnimationTest
         private DynamicPixelShader SkeletonShader;
         private Buffer<Matrix4> BonePosesUBO;
         private Skeleton Skeleton;
-        private SkeletonAnimationDriver Driver;
-        private SkeletonAnimationSet Animations;
+        private IList<SkeletonAnimation> Animations;
         private Texture2D AlbedoTexture;
         int animationId = 0;
         private ModelLoader LoadedEnt;
@@ -95,20 +94,16 @@ namespace AnimationTest
                     // Add animations
                     //skeleton = new Skeleton(assimpRootNode, bones, scene.Animations);
                     Skeleton = new Skeleton(assimpRootNode, assimpBones);
-                    Animations = new SkeletonAnimationSet(4);
+                    Animations = new List<SkeletonAnimation>(4);
                     foreach (var anim in scene.Animations)
                     {
-                        var mergedAnim = new SkeletonAnimationSet(4);
-                        mergedAnim.Add(new SkeletonAnimation(
-                            anim.NodeAnimationChannels,
-                            Skeleton.AllBones,
-                            anim.Name,
-                            (float)anim.TicksPerSecond
-                        ));
-                        mergedAnim.MergeAllAs(anim.Name);
-                        Animations.Add(mergedAnim[0]);
+                        var mergedAnim = new SkeletonAnimation(
+                            Animations.SelectMany(anim => anim.Bones).ToArray(),
+                            "MergedAnim"
+                        );
+                        Animations.Clear();
+                        Animations.Add(mergedAnim);
                     }
-                    Driver = new SkeletonAnimationDriver(Skeleton);
                 }
             }
 
@@ -221,7 +216,7 @@ namespace AnimationTest
 
         private void RenderNewTest()
         {
-            var model = LoadedEnt.Models[0];
+            var model = LoadedEnt.Models[0] as AnimatedModel;
             //var boneSpaceTransforms = model.AnimationDriver.GetTransformsFor(Animations[animationId]).ToArray();
             //var modelSpaceTransforms = new Matrix4[Skeleton.TotalBones];
             //var boneSpaceTransforms = new Matrix4[Skeleton.TotalBones];
@@ -263,8 +258,6 @@ namespace AnimationTest
             var timeMs = (float)GameMillisecondsElapsed;
             var animLength = (animEndMs ?? Animations[animationId].Bones[0].RotationKeyframes.LengthMs) - animStartMs;
             timeMs = animStartMs + (timeMs % animLength);
-
-            Driver.TimeMs = timeMs;
 
             //var modelSpaceTransforms = new Matrix4[Skeleton.TotalBones];
             //var boneSpaceTransforms = new Matrix4[Skeleton.TotalBones];
