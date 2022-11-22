@@ -40,6 +40,8 @@ namespace GLOOP
         private readonly List<RenderBatch> NonOccluderBatches = new List<RenderBatch>();
         private readonly List<RenderBatch> OccluderBatches = new List<RenderBatch>();
 
+        private IEnumerable<AnimatedModel> SkinnedModels => Models.Where(m => m.IsSkinned).Cast<AnimatedModel>();
+
 #if DEBUG
         // Debug
         private IList<SpotLight> AllSpotLights;
@@ -385,7 +387,7 @@ namespace GLOOP
         {
             using var timer = new DebugGroup("Skinned");
             BonePosesUBO.Bind(Globals.BindingPoints.UBOs.SkeletonBonePoses);
-            foreach (var model in Models.Where(m => m.IsSkinned).Cast<AnimatedModel>())
+            foreach (var model in SkinnedModels)
             {
                 // TODO: Do all bone calcs at once in own heap
                 if (ModelBufferLUT.TryGetValue(model, out var index))
@@ -393,9 +395,7 @@ namespace GLOOP
                     var mat = model.Material as DeferredRenderingGeoMaterial;
                     //mat.ModelMatrix = MathFunctions.CreateModelMatrix(new Vector3(), Quaternion.Identity, new Vector3(100));
 
-                    var modelspaceTransforms = model.GetModelSpaceBoneTransforms(model.Animations[^1], timeMs);
-                    var bonespaceTransforms = model.GetBoneSpaceBoneTransforms(modelspaceTransforms);
-                    BonePosesUBO.Update(bonespaceTransforms.ToArray());
+                    BonePosesUBO.Update(model.BoneSpaceBoneTransforms.ToArray());
                     model.Render();
                 }
             }
@@ -528,6 +528,14 @@ namespace GLOOP
 #endif
                     }
                 }
+            }
+        }
+
+        public void UpdateSkinnedModels()
+        {
+            foreach (var skinnedModel in SkinnedModels)
+            {
+                skinnedModel.UpdateBoneTransforms();
             }
         }
     }

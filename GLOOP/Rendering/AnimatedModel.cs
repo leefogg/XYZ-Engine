@@ -1,7 +1,9 @@
-﻿using GLOOP.Animation;
+﻿using Assimp;
+using GLOOP.Animation;
 using GLOOP.Rendering.Materials;
 using OpenTK.Mathematics;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 
@@ -9,9 +11,11 @@ namespace GLOOP.Rendering
 {
     public class AnimatedModel : Model
     {
-        private static readonly Matrix4[] ModelSpaceTransforms = new Matrix4[Globals.Limits.MaxBonesPerModel];
-        private static readonly Matrix4[] BoneSpaceTransforms = new Matrix4[Globals.Limits.MaxBonesPerModel];
+        private static readonly MemoryPool<Matrix4> BoneTransformHeap = MemoryPool<Matrix4>.Shared;
 
+        private readonly IMemoryOwner<Matrix4> _modelSpaceBoneTransforms, _boneSpaceBoneTransforms;
+        public Span<Matrix4> ModelSpaceBoneTransforms => _modelSpaceBoneTransforms.Memory.Span;
+        public Span<Matrix4> BoneSpaceBoneTransforms => _boneSpaceBoneTransforms.Memory.Span;
         public IList<SkeletonAnimation> Animations;
         private Skeleton _skeleton;
         public Skeleton Skeleton
@@ -25,6 +29,7 @@ namespace GLOOP.Rendering
             }
         }
         private float AnimationStart;
+        public SkeletonAnimation CurrentAnimation;
 
         public AnimatedModel(
            VirtualVAO vao,
@@ -48,23 +53,23 @@ namespace GLOOP.Rendering
         ) 
             : base(vao, material, isStatic, isOccluder, transform)
         {
-            AnimationStart = Window.FrameMillisecondsElapsed;
+            AnimationStart = (float)Window.GameMillisecondsElapsed;
             Animations = animations;
             Skeleton = skeleton;
-
+            
             IsSkinned = true;
+
+            System.Diagnostics.Debug.Assert(animations.Count > 0);
+            CurrentAnimation = Animations[0];
+
+            _modelSpaceBoneTransforms = BoneTransformHeap.Rent(Skeleton.TotalBones);
+            _boneSpaceBoneTransforms = BoneTransformHeap.Rent(Skeleton.TotalBones);
         }
 
-        public Span<Matrix4> GetModelSpaceBoneTransforms(SkeletonAnimation animation, float timeMs)
+        public void UpdateBoneTransforms()
         {
-            Skeleton.GetModelSpaceTransforms(animation, timeMs, ModelSpaceTransforms);
-            return ModelSpaceTransforms[..Skeleton.TotalBones];
-        }
-
-        public Span<Matrix4> GetBoneSpaceBoneTransforms(Span<Matrix4> modelspaceTransforms)
-        {
-            Skeleton.GetBoneSpaceTransforms(modelspaceTransforms, BoneSpaceTransforms);
-            return BoneSpaceTransforms[..Skeleton.TotalBones];
+            Skeleton.GetModelSpaceTransforms(CurrentAnimation, (float)Window.GameMillisecondsElapsed - AnimationStart, ModelSpaceBoneTransforms);
+            Skeleton.GetBoneSpaceTransforms(ModelSpaceBoneTransforms, BoneSpaceBoneTransforms);
         }
 
         public override Model Clone() => new AnimatedModel(
@@ -76,5 +81,11 @@ namespace GLOOP.Rendering
             Animations,
             Transform.Clone()
         );
+
+        ~AnimatedModel()
+        {
+            _modelSpaceBoneTransforms.Dispose();
+            _boneSpaceBoneTransforms.Dispose();
+        }
     }
 }

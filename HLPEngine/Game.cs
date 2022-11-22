@@ -706,7 +706,7 @@ namespace GLOOP.HPL
             {
                 foreach (var skinnedModel in scene.Models.Where(model => model.IsSkinned).Cast<AnimatedModel>())
                 {
-                    var modelspaceTransforms = skinnedModel.GetModelSpaceBoneTransforms(skinnedModel.Animations[^1], (float)GameMillisecondsElapsed);
+                    var modelspaceTransforms = skinnedModel.ModelSpaceBoneTransforms;
                     skinnedModel.Skeleton.Render(
                     LineRenderer,
                         modelspaceTransforms,
@@ -806,7 +806,7 @@ namespace GLOOP.HPL
 
         public void UpdateScene()
         {
-            
+            scene.UpdateSkinnedModels();
         }
 
         private void setupBuffers()

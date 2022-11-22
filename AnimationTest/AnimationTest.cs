@@ -224,8 +224,9 @@ namespace AnimationTest
             //model.Skeleton.GetBoneSpaceTransforms(modelSpaceTransforms, boneSpaceTransforms);
             //BonePosesUBO.Update(boneSpaceTransforms);
             //model.Skeleton.Render(LineRenderer, modelSpaceTransforms, LoadedEnt.Transform.Matrix);
-            var modelspaceTransforms = model.GetModelSpaceBoneTransforms(model.Animations[1], (float)GameMillisecondsElapsed);
-            var bonespaceTransforms = model.GetBoneSpaceBoneTransforms(modelspaceTransforms);
+            model.UpdateBoneTransforms();
+            var modelspaceTransforms = model.ModelSpaceBoneTransforms;
+            var bonespaceTransforms = model.BoneSpaceBoneTransforms;
             model.Skeleton.Render(LineRenderer, modelspaceTransforms, model.Transform.Matrix);
             BonePosesUBO.Update(bonespaceTransforms.ToArray());
 
