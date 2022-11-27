@@ -67,6 +67,8 @@ namespace GLOOP.Util.Structures
 
         public void Clear() => head = 0;
 
-        public Span<T> ToSpan() => Elements.AsSpan(Count);
+        public Span<T> AsSpan() => Elements.AsSpan(Count);
+        public Span<T> AsSpan(int count) => Elements.AsSpan(0, count);
+        public Span<T> AsSpan(int start, int length) => Elements.AsSpan(start, length);
     }
 }

@@ -68,12 +68,12 @@ namespace GLOOP.Rendering
         {
             var startByte = ItemSize * startElement;
             Debug.Assert(startByte < SizeInBytes, $"{nameof(startByte)} must be less than {SizeInBytes - ItemSize}");
-            var length = ItemSize * numElements;
-            var endByte = length + startByte;
+            var lengthBytes = ItemSize * numElements;
+            var endByte = lengthBytes + startByte;
             Debug.Assert(endByte <= SizeInBytes, $"Wrote {endByte - SizeInBytes} bytes to unmanaged memory");
 
-            GL.NamedBufferSubData(Handle, (IntPtr)startByte, length, data);
-            Metrics.BufferWrites += (ulong)length;
+            GL.NamedBufferSubData(Handle, (IntPtr)startByte, lengthBytes, data);
+            Metrics.BufferWrites += (ulong)lengthBytes;
         }
 
         public void Read(ref T data, uint start = 0) 

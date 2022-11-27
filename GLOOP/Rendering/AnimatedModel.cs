@@ -14,8 +14,8 @@ namespace GLOOP.Rendering
         private static readonly MemoryPool<Matrix4> BoneTransformHeap = MemoryPool<Matrix4>.Shared;
 
         private readonly IMemoryOwner<Matrix4> _modelSpaceBoneTransforms, _boneSpaceBoneTransforms;
-        public Span<Matrix4> ModelSpaceBoneTransforms => _modelSpaceBoneTransforms.Memory.Span;
-        public Span<Matrix4> BoneSpaceBoneTransforms => _boneSpaceBoneTransforms.Memory.Span;
+        public Span<Matrix4> ModelSpaceBoneTransforms => _modelSpaceBoneTransforms.Memory.Span[..Skeleton.TotalBones];
+        public Span<Matrix4> BoneSpaceBoneTransforms => _boneSpaceBoneTransforms.Memory.Span[..Skeleton.TotalBones];
         public IList<SkeletonAnimation> Animations;
         private Skeleton _skeleton;
         public Skeleton Skeleton

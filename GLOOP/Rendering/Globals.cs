@@ -10,8 +10,6 @@ namespace GLOOP.Rendering
     {
         public static class Limits
         {
-            public const int MaxBonesPerModel = 1024;
-            public const int MaxSkinnedModels = 32;
         }
 
         public static class BindingPoints
