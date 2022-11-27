@@ -10,8 +10,8 @@ namespace GLOOP.Rendering
     {
         public static class Limits
         {
-            public static readonly int MaxBonesPerModel = 1024;
-            public static readonly int MaxSkinnedModels = 32;
+            public const int MaxBonesPerModel = 1024;
+            public const int MaxSkinnedModels = 32;
         }
 
         public static class BindingPoints
@@ -20,23 +20,23 @@ namespace GLOOP.Rendering
             // TODO: Would be good to have a typedef so cant accidentally use wrong type
             public static class UBOs
             {
-                public static readonly int Camera = 0;
-                public static readonly int Bloom = 3;
+                public const int Camera = 0;
+                public const int Bloom = 3;
 
                 public static class DeferredRendering
                 {
-                    public static readonly int PointLights = 1;
-                    public static readonly int SpotLights = 1;
+                    public const int PointLights = 1;
+                    public const int SpotLights = 1;
                 }
             }
             public static class SSBOs
             {
                 public static class DeferredRendering
                 {
-                    public static readonly int Models = 1;
-                    public static readonly int PointLights = 1;
-                    public static readonly int SpotLights = 1;
-                    public static readonly int SkeletonBonePoses = 2;
+                    public const int Models = 1;
+                    public const int PointLights = 1;
+                    public const int SpotLights = 1;
+                    public const int SkeletonBonePoses = 2;
                 }
             }
         }
