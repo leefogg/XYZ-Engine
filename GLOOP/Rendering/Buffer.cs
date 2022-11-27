@@ -72,7 +72,7 @@ namespace GLOOP.Rendering
             var endByte = length + startByte;
             Debug.Assert(endByte <= SizeInBytes, $"Wrote {endByte - SizeInBytes} bytes to unmanaged memory");
 
-            GL.NamedBufferSubData(Handle, (IntPtr)startByte, (int)(length - startByte), data);
+            GL.NamedBufferSubData(Handle, (IntPtr)startByte, length, data);
             Metrics.BufferWrites += (ulong)length;
         }
 
