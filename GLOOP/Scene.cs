@@ -29,7 +29,7 @@ namespace GLOOP
         private Buffer<GPUSpotLight> SpotLightsBuffer;
         private Buffer<int> PointLightIndexBuffer, SpotLightIndexBuffer;
         private Buffer<Matrix4> BonePosesSSBO;
-        private readonly Dictionary<Model, uint> ModelBufferLUT = new Dictionary<Model, uint>();
+        private readonly Dictionary<Model, uint> SkinnedModelLUT = new Dictionary<Model, uint>();
         private readonly FastList<DrawElementsIndirectData> ScratchDrawCommands = new FastList<DrawElementsIndirectData>(1024 * 4);
         private readonly FastList<GPUModel> ScratchGPUModels = new FastList<GPUModel>(1024 * 4);
         private readonly Ring<FastList<int>> VisibleSpotLights = new Ring<FastList<int>>(PowerOfTwo.Two, i => new FastList<int>(1024));
@@ -132,8 +132,7 @@ namespace GLOOP
                 "Models"
             );
             BonePosesSSBO = new Buffer<Matrix4>(
-                //Globals.Limits.MaxBonesPerModel * Globals.Limits.MaxSkinnedModels,
-                numModels * Globals.Limits.MaxBonesPerModel,
+                Globals.Limits.MaxBonesPerModel * Globals.Limits.MaxSkinnedModels,
                 BufferTarget.ShaderStorageBuffer,
                 BufferUsageHint.StreamDraw,
                 "Skeleton Bone poses"
@@ -184,6 +183,7 @@ namespace GLOOP
 
         public void UpdateBuffers()
         {
+            // TODO: Batch models while updating something else
             BatchModels(VisibleOccluders.Current, OccluderBatches);
             BatchModels(VisibleNonOccluders.Current, NonOccluderBatches);
 
@@ -343,35 +343,40 @@ namespace GLOOP
             FastList<DrawElementsIndirectData> drawIndirectDest,
             FastList<GPUModel> modelDest)
         {
+            uint skinnedIdx = 0;
             foreach (var batch in batches)
             {
                 foreach (var model in batch.Models)
                 {
                     var mat = (DeferredRenderingGeoMaterial)model.Material;
+                    var boneStartIdx = skinnedIdx * Globals.Limits.MaxBonesPerModel;
                     modelDest.Add(new GPUModel(
                         model.Transform.Matrix,
-                        new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs)
+                        new GPUDeferredGeoMaterial(mat.AlbedoColourTint, mat.IlluminationColor, mat.TextureRepeat, mat.TextureOffset, 1, mat.HasWorldpaceUVs, boneStartIdx)
                     ));
 
                     var command = (DrawElementsIndirectData)model.VAO.Description;
-                    var index = (uint)drawIndirectDest.Count;
                     drawIndirectDest.Add(new DrawElementsIndirectData(
                         command.Count,
                         command.FirstIndex / sizeof(ushort),
                         command.BaseVertex,
                         command.InstanceCount,
-                        index
+                        (uint)drawIndirectDest.Count
                     ));
 
-                    if (ModelBufferLUT.ContainsKey(model))
-                        ModelBufferLUT[model] = index;
-                    else
-                        ModelBufferLUT.Add(model, index);
+                    if (mat.IsSkinned)
+                    {
+                        if (SkinnedModelLUT.ContainsKey(model))
+                            SkinnedModelLUT[model] = boneStartIdx;
+                        else
+                            SkinnedModelLUT.Add(model, boneStartIdx);
+                        skinnedIdx++;
+                    }
                 }
             }
         }
 
-        public void RenderModels(float timeMs)
+        public void RenderModels()
         {
             DrawIndirectBuffer.Bind();
             ModelsBuffer.Bind(Globals.BindingPoints.SSBOs.DeferredRendering.Models);
@@ -379,39 +384,15 @@ namespace GLOOP
             var drawCommandPtr = IntPtr.Zero;
             RenderOccluderGeometry(ref drawCommandPtr);
             RenderNonOccluderGeometry(ref drawCommandPtr);
-
-            // Draw skinned
-            //RenderSkinnedGeometry(timeMs);
         }
 
         private void UpdateSkinBuffer()
         {
-            var bones = new Matrix4[BonePosesSSBO.SizeInItems];
-            var bonesPerModel = Globals.Limits.MaxBonesPerModel;
             foreach (var model in SkinnedModels)
             {
-                if (ModelBufferLUT.TryGetValue(model, out var index))
+                if (SkinnedModelLUT.TryGetValue(model, out var boneStartIdx) && boneStartIdx < BonePosesSSBO.SizeInItems)
                 {
-                    //var span = bones.AsSpan(bonesPerModel * (int)index, bonesPerModel);
-                    //model.BoneSpaceBoneTransforms.CopyTo(span);
-                    BonePosesSSBO.Update(model.BoneSpaceBoneTransforms.ToArray(), (uint)(bonesPerModel * index));
-                }
-            }
-
-            //BonePosesSSBO.Update(bones);
-        }
-
-        private void RenderSkinnedGeometry(float timeMs)
-        {
-            using var timer = new DebugGroup("Skinned");
-            BonePosesSSBO.Bind(Globals.BindingPoints.SSBOs.DeferredRendering.SkeletonBonePoses);
-            foreach (var model in SkinnedModels)
-            {
-                // TODO: Do all bone calcs at once in own heap
-                if (ModelBufferLUT.TryGetValue(model, out var index))
-                {
-                    BonePosesSSBO.Update(model.BoneSpaceBoneTransforms.ToArray());
-                    model.Render();
+                    BonePosesSSBO.Update(model.BoneSpaceBoneTransforms.ToArray(), boneStartIdx);
                 }
             }
         }

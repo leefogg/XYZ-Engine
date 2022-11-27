@@ -775,7 +775,7 @@ namespace GLOOP.HPL
 
                 GL.Enable(EnableCap.FramebufferSrgb);
 
-                scene.RenderModels((float)GameMillisecondsElapsed);
+                scene.RenderModels();
                 scene.RenderTerrain();
             }
 

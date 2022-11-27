@@ -15,8 +15,9 @@ namespace GLOOP.Rendering
         [FieldOffset(40)] public readonly Vector2 TextureOffset;
         [FieldOffset(48)] public readonly float NormalStrength;
         [FieldOffset(52)] public readonly bool IsWorldSpaceUVs;
+        [FieldOffset(56)] public readonly uint BoneStartIdx;
 
-        public GPUDeferredGeoMaterial(Vector3 illuminationColor, Vector3 albedoColourTint, Vector2 textureRepeat, Vector2 textureOffset, float normalStrength, bool isWorldSpaceUVs)
+        public GPUDeferredGeoMaterial(Vector3 illuminationColor, Vector3 albedoColourTint, Vector2 textureRepeat, Vector2 textureOffset, float normalStrength, bool isWorldSpaceUVs, uint boneStartIndx)
         {
             IlluminationColor = illuminationColor;
             AlbedoColourTint = albedoColourTint;
@@ -24,6 +25,7 @@ namespace GLOOP.Rendering
             TextureOffset = textureOffset;
             NormalStrength = normalStrength;
             IsWorldSpaceUVs = isWorldSpaceUVs;
+            BoneStartIdx = boneStartIndx;
         }
     }
 }

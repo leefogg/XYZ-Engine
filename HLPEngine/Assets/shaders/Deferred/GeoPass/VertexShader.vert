@@ -5,10 +5,8 @@ layout (location = 0) in vec3 Position;
 layout (location = 1) in vec2 UV;
 layout (location = 2) in vec3 Normal;
 layout (location = 3) in vec3 Tangent;
-#if (IS_SKINNED_MESH == 1)
-	layout(location = 4) in vec4 BoneIds;
-	layout(location = 5) in vec4 BoneWeights;
-#endif
+layout(location = 4) in vec4 BoneIds;
+layout(location = 5) in vec4 BoneWeights;
 
 layout (std140, binding = 0) uniform CameraMatricies {
 	mat4 ProjectionMatrix;
@@ -30,13 +28,8 @@ struct Material {
 	vec2 TextureOffset;
 	float NormalStrength;
 	bool IsWorldSpaceUVs;
+	uint BoneStartIdx;
 };
-
-#if (IS_SKINNED_MESH == 1)	
-	layout (std140, binding = 2) buffer BonePoses {
-		mat4 BoneTransforms[];
-	};
-#endif
 
 struct Model {
 	mat4 ModelMatrix;
@@ -47,6 +40,10 @@ layout (std430, binding = 1) buffer ModelBuffer {
 	Model Models[];
 };
 
+layout (std140, binding = 2) buffer BonePoses {
+	mat4 BoneTransforms[];
+};
+
 out vec3 fragPos;
 out vec2 uv;
 out mat3 TBNMatrix;
@@ -55,24 +52,23 @@ out Material material;
 void main(void) {
 	uv = UV;
 	
-
 	uint DrawID = gl_BaseInstance;
-	material = Models[DrawID].ModelMaterial;
-	mat4 ModelMatrix = Models[DrawID].ModelMatrix;
-
-	
+	Model thisModel = Models[DrawID];
+	material = thisModel.ModelMaterial;
+	mat4 ModelMatrix = thisModel.ModelMatrix;
+		
 	vec4 worldspacePos = ModelMatrix * vec4(Position, 1.0);
 	vec3 normal = Normal;
 	vec3 tangent = Tangent;
 	
 	#if (IS_SKINNED_MESH == 1)
+		uint boneStartIdx = material.BoneStartIdx;
 		vec4 totalLocalPos = vec4(0.0);
 		vec4 totalNormal = vec4(0.0);
 		vec4 totalTangent = vec4(0.0);
 		for(int i=0; i<4; i++){
-			uint startBoneIndex = DrawID * MaxBonesPerModel;
 			uint boneOffset = uint(BoneIds[i]);
-			mat4 jointTransform = BoneTransforms[startBoneIndex + boneOffset];
+			mat4 jointTransform = BoneTransforms[boneStartIdx + boneOffset];
 			float boneWeight = BoneWeights[i];
 			
 			vec4 posePosition = jointTransform * vec4(Position, 1.0);
