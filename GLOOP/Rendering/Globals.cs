@@ -11,6 +11,7 @@ namespace GLOOP.Rendering
         public static class Limits
         {
             public static readonly int MaxBonesPerModel = 1024;
+            public static readonly int MaxSkinnedModels = 32;
         }
 
         public static class BindingPoints
@@ -20,7 +21,6 @@ namespace GLOOP.Rendering
             public static class UBOs
             {
                 public static readonly int Camera = 0;
-                public static readonly int SkeletonBonePoses = 2;
                 public static readonly int Bloom = 3;
 
                 public static class DeferredRendering
@@ -36,6 +36,7 @@ namespace GLOOP.Rendering
                     public static readonly int Models = 1;
                     public static readonly int PointLights = 1;
                     public static readonly int SpotLights = 1;
+                    public static readonly int SkeletonBonePoses = 2;
                 }
             }
         }

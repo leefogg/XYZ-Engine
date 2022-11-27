@@ -39,12 +39,6 @@ struct Material {
 	float NormalStrength;
 	bool IsWorldSpaceUVs;
 };
-#if (IS_SKINNED_MESH == 1)
-	
-#else
-	flat in uint DrawID;
-#endif
-
 
 vec3 UnpackNormalmapYW(in vec4 avNormalValue, float normalStrength)
 {

@@ -126,7 +126,7 @@ namespace AnimationTest
             );
 
             BonePosesUBO = new Buffer<Matrix4>(128, BufferTarget.UniformBuffer, BufferUsageHint.DynamicDraw, "Bone Poses");
-            BonePosesUBO.Bind(Globals.BindingPoints.UBOs.SkeletonBonePoses);
+            BonePosesUBO.Bind(Globals.BindingPoints.SSBOs.DeferredRendering.SkeletonBonePoses);
         }
 
         private void Benchmark()

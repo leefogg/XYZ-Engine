@@ -63,7 +63,6 @@ namespace GLOOP.Rendering.Materials
             }
         }
 
-
         // Non uniform data
         public bool IsSkinned { get; set; }
 
@@ -89,16 +88,6 @@ namespace GLOOP.Rendering.Materials
 #else
             Texture.Use(Textures, TextureUnit.Texture0);
 #endif
-            if (IsSkinned)
-            {
-                shader.IsWorldSpaceUvs = HasWorldpaceUVs;
-                shader.ModelMatrix = ModelMatrix;
-                shader.AlbedoColor = AlbedoColourTint;
-                shader.IlluminationColor = IlluminationColor;
-                shader.TextureOffset = TextureOffset;
-                shader.TextureRepeat = TextureRepeat;
-                shader.NormalStrength = 1;
-            }
         }
 
         public override void SetTextures(Texture2D diffuse, Texture2D normal, Texture2D specular, Texture2D illumination)

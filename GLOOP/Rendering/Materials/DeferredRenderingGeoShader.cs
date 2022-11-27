@@ -98,14 +98,6 @@ namespace GLOOP.Rendering.Materials
             normal.Set(TextureUnit.Texture1);
             specular.Set(TextureUnit.Texture2);
             illumination.Set(TextureUnit.Texture3);
-
-            modelMatrix = new Uniform16f(this,      "ModelMatrix");
-            albedoColor = new Uniform3f(this,       "ModelMaterial.AlbedoColourTint");
-            illumColor = new Uniform3f(this,        "ModelMaterial.IlluminationColor");
-            textureRepeat = new Uniform2f(this,     "ModelMaterial.TextureRepeat");
-            textureOffset = new Uniform2f(this,     "ModelMaterial.TextureRepeat");
-            normalStrength = new Uniform1f(this,    "ModelMaterial.NormalStrength");
-            isWorldSpaceUvs = new Uniform1b(this,   "ModelMaterial.IsWorldSpaceUVs");
         }
     }
 }
