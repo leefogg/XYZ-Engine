@@ -53,9 +53,17 @@ namespace GLOOP.Rendering
             if (Path.GetExtension(modelPath).ToLower() == ".fbx")
                 throw new NotSupportedException("FBX files not supported yet");
 
-            var animFolder = Path.GetDirectoryName(modelPath);
-            animFolder = Path.Combine(animFolder, "animations");
-            var animFolderExists = Directory.Exists(animFolder);
+            var currentFolder = Path.GetDirectoryName(modelPath);
+            var animFolderNames = new[] { "animation", "animations" };
+            string animFolder = null;
+            bool animFolderExists = false;
+            foreach (var animFolderName in animFolderNames)
+            {
+                animFolder = Path.Combine(currentFolder, animFolderName);
+                animFolderExists = Directory.Exists(animFolder);
+                if (animFolderExists)
+                    break;
+            }
 
             var steps =
                 //  PostProcessSteps.FlipUVs
@@ -74,7 +82,7 @@ namespace GLOOP.Rendering
             var startLoadingModel = DateTime.Now;
             var assimpScene = assimp.ImportFile(modelPath, steps);
             Metrics.TimeLoadingModels += DateTime.Now - startLoadingModel;
-            if (!assimpScene.HasMeshes)
+            if (assimpScene == null || !assimpScene.HasMeshes)
                 return;
 
             /*
@@ -99,8 +107,6 @@ namespace GLOOP.Rendering
                 Transform.Scale *= daeScale ?? 1.0f;
             }
             */
-
-            var currentFolder = Path.GetDirectoryName(modelPath);
 
             for (var i = 0; i < assimpScene.Meshes.Count; i++)
             {
@@ -158,11 +164,12 @@ namespace GLOOP.Rendering
                         Transform.Scale /= 100; // TODO: Load scale from dae properly
 
                         var assimpSkeletonScene = assimp.ImportFile(modelPath, PostProcessSteps.LimitBoneWeights);
-                        var allBoneNames = assimpSkeletonScene.Meshes[i].Bones.Select(x => x.Name).ToList();
-                        var animModel = assimpSkeletonScene.Meshes[0];
-                        if (assimpSkeletonScene.MeshCount == 1 && animModel.HasBones)
+                        var allBones = assimpSkeletonScene.Meshes.SelectMany(mesh => mesh.Bones);
+                        // TODO: Support skinned models with more than one mesh (e.g machines)
+                        if (allBones.Any())
                         {
-                            var vertcies = CreateVertexWeights(animModel.Bones, geo.Positions.Count);
+                            var allBoneNames = allBones.Select(x => x.Name).ToList();
+                            var vertcies = CreateVertexWeights(allBones.ToList(), geo.Positions.Count);
                             geo.BoneIds = vertcies.SelectMany(p => p.Ids).ToVec4s().ToList();
                             geo.BoneWeights = vertcies.SelectMany(p => p.Weights).ToVec4s().ToList();
 
@@ -176,15 +183,11 @@ namespace GLOOP.Rendering
                                 animFolder
                             );
                         }
-
-                        //var assimpAnimationScene = assimp.ImportFile(modelPath, PostProcessSteps.LimitBoneWeights);
-                        //{
-                        //    var boneNames = assimpMesh.Bones.Select(b => b.Name).ToArray();
-                        //    var assimpRootNode = assimpScene.RootNode.Find(b => boneNames.Contains(b.Name));
-                        //    var assimpBones = assimpMesh.Bones;
-                        //    skeleton = new Skeleton(assimpRootNode, assimpBones);
-                        //}
-                    }
+                        else
+                        {
+                            Console.WriteLine($"Animated model ({modelPath}) has no bones!?");
+                        }
+                    } 
 
                     vao = geo.ToVirtualVAO();
                     VAOCache.Put(vao, vaoName);
@@ -238,10 +241,9 @@ namespace GLOOP.Rendering
                     animations.SelectMany(anim => anim.Bones).ToArray(),
                     Path.GetFileName(animFilePath)
                 );
-                animationSet.Clear();
                 animationSet.Add(mergedAnim);
 
-                Console.WriteLine($"Loaded animation '{animFilePath}'");
+                //Console.WriteLine($"Loaded animation '{animFilePath}'");
             }
 
             return animationSet;

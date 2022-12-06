@@ -160,7 +160,7 @@ namespace GLOOP.Rendering
         public void UpdateVAO(VirtualVAO virtualVAO)
         {
             var firstIndex = 0;
-            var firstVertex = 0;
+            int firstVertex;
             if (IsIndexed)
             {
                 var desc = (DrawElementsIndirectData)virtualVAO.Description;
