@@ -54,7 +54,7 @@ namespace GLOOP.Util.Structures
 
         private void Resize(int requestedLength)
         {
-            var newLength = Count;
+            var newLength = Elements.Length;
             while (newLength < requestedLength)
                 newLength *= 2;
 
