@@ -73,7 +73,8 @@ namespace GLOOP.HPL
         private static readonly MapSetup ThetaTunnels = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_06_theta_tunnels\02_06_theta_tunnels.hpm", new Vector3(4, 9, -61));
         private static readonly MapSetup ThetaExit = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_07_theta_exit\02_07_theta_exit.hpm", new Vector3(11.340768f, 1.6000444f, 47.520298f));
         private static readonly MapSetup Wau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_03_tau_escape\04_03_tau_escape.hpm", new Vector3(-26.12f, 93.691f, 167.313f));
-        private static readonly MapSetup Awake = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_01_upsilon_awake\01_01_upsilon_awake.hpm", new Vector3(9.325157f, -0.44998702f, 50.61429f));
+        private static readonly MapSetup UpsilonAwake = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_01_upsilon_awake\01_01_upsilon_awake.hpm", new Vector3(9.325157f, -0.44998702f, 50.61429f));
+        private static readonly MapSetup Upsilon = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_02_upsilon_inside\01_02_upsilon_inside.hpm", new Vector3(9.325157f, -0.44998702f, 50.61429f));
         private static readonly MapSetup Bedroom = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_01_apartment\00_01_apartment.hpm", new Vector3(-11.600799f, 1.4500086f, 11.624353f));
         private static readonly MapSetup Omicron = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter03\03_02_omicron_inside\03_02_omicron_inside.hpm", new Vector3(-1.0284736f, -2.0497713f, 21.69069f));
         private static readonly MapSetup TauOutside = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_01_tau_outside\04_01_tau_outside.hpm", new Vector3(77.65444f, 315.97113f, -340.09308f));
@@ -158,7 +159,7 @@ namespace GLOOP.HPL
         private bool enableSSAO = false;
         private bool enableBloom = true;
         private bool showBoundingBoxes = false;
-        private bool showSkeletons = true;
+        private bool showSkeletons = false;
         private bool enablePortalCulling = true;
         private bool enableImGui = false;
         private bool shouldUpdateVisibility = true;
@@ -218,7 +219,7 @@ namespace GLOOP.HPL
 #endif
 #if DEBUG || BETA
             ImGuiController = new ImGuiController(ClientSize.X, ClientSize.Y);
-            LineRenderer = new DebugLineRenderer(ushort.MaxValue);
+            LineRenderer = new DebugLineRenderer(128);
 #endif
         }
 
@@ -390,13 +391,14 @@ namespace GLOOP.HPL
 
         protected override void OnRenderFrame(FrameEventArgs args)
         {
+            var cpuFrame = CPUProfiler.NextFrame;
+            CPUFrame = cpuFrame;
+
             FrameStart();
 
             float frameElapsedMs = 0;
             using (var query = queryPool.BeginScope(QueryTarget.TimeElapsed))
             {
-                using var cpuFrame = CPUProfiler.NextFrame;
-                CPUFrame = cpuFrame;
                 using var gpuFrame = GPUProfiler.NextFrame;
                 GPUFrame = gpuFrame;
                 TaskMaster.AddTask(
@@ -415,36 +417,36 @@ namespace GLOOP.HPL
                 GL.Viewport(0, 0, Size.X, Size.Y);
 
 #if VR
-                VRSystem.UpdateEyes();
-                VRSystem.UpdatePoses();
+            VRSystem.UpdateEyes();
+            VRSystem.UpdatePoses();
                
-                if (FrameNumber == 1)
-                   VRSystem.SetOriginHeadTransform();
+            if (FrameNumber == 1)
+                VRSystem.SetOriginHeadTransform();
 
-                // Left Eye
+            // Left Eye
+            updateCameraUBO(
+                VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Left),
+                Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Left)
+            );
+            ResetGBuffer();
+            VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Left);
+            RenderPass(LeftEyeBuffer);
+            VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
+
+            // Right Eye
+            {
+                using var timer = CurrentFrame[FrameProfiler.Event.UpdateBuffers];
                 updateCameraUBO(
-                    VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Left),
-                    Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Left)
+                    VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Right),
+                    Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Right)
                 );
-                ResetGBuffer();
-                VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Left);
-                RenderPass(LeftEyeBuffer);
-                VRSystem.SubmitEye(LeftEyeBuffer.ColorBuffers[0], EVREye.Eye_Left);
+            }
+            ResetGBuffer();
+            VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Right);
+            RenderPass(RightEyeBuffer);
+            VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
 
-                // Right Eye
-                {
-                    using var timer = CurrentFrame[FrameProfiler.Event.UpdateBuffers];
-                    updateCameraUBO(
-                        VRSystem.GetEyeProjectionMatrix(EVREye.Eye_Right),
-                        Camera.ViewMatrix * VRSystem.GetEyeViewMatrix(EVREye.Eye_Right)
-                    );
-                }
-                ResetGBuffer();
-                VRSystem.RenderEyeHiddenAreaMesh(EVREye.Eye_Right);
-                RenderPass(RightEyeBuffer);
-                VRSystem.SubmitEye(RightEyeBuffer.ColorBuffers[0], EVREye.Eye_Right);
-
-                RightEyeBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
+            RightEyeBuffer.BlitTo(backBuffer, ClearBufferMask.ColorBufferBit);
 #else
                 ResetGBuffer();
                 RenderPass(backBuffer);
@@ -461,10 +463,11 @@ namespace GLOOP.HPL
                 frameElapsedMs = (float)(DateTime.Now - frameStart).TotalMilliseconds;
                 CPUFrameTimings.SetAndMove(frameElapsedMs);
                 EventProfiler.NewFrame();
-            }
-            Metrics.WriteLog(CPUFrame, GPUFrame);
 
-            SwapBuffers();
+                Metrics.WriteLog(CPUFrame, GPUFrame);
+
+                SwapBuffers();
+            }
 
             FrameEnd();
 

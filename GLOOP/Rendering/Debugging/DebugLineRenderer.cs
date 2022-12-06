@@ -21,9 +21,9 @@ namespace GLOOP.Rendering.Debugging
             LineShader = new StaticPixelShader("assets/shaders/line/shader.vert", "assets/shaders/line/shader.frag", null, null);
         }
 
-        public DebugLineRenderer(int maxLines)
+        public DebugLineRenderer(int initialLines)
         {
-            Geometry.Positions = Enumerable.Repeat(Vector3.Zero, maxLines * 2).ToList();
+            Geometry.Positions = Enumerable.Repeat(Vector3.Zero, initialLines * 2).ToList();
             VirtualVAO = Geometry.ToVirtualVAO(VAOPool); // Put all LineRenderers in same VAO
             Geometry.Positions.Clear();
         }

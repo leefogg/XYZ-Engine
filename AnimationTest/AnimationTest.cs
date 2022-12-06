@@ -42,7 +42,7 @@ namespace AnimationTest
             };
 
             ImGuiController = new ImGuiController(ClientSize.X, ClientSize.Y);
-            LineRenderer = new DebugLineRenderer(1024);
+            LineRenderer = new DebugLineRenderer(128);
         }
 
         protected override void OnLoad()
