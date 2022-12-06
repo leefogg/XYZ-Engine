@@ -195,6 +195,8 @@ namespace GLOOP.Rendering
                 // Create EBO
                 var indicies = vertexIndicies.Select(x => (ushort)x).ToArray();
                 GL.NamedBufferSubData(EBOHandle, (IntPtr)firstIndexByte, indiciesSizeBytes, indicies);
+
+                Metrics.BufferWrites += (ulong)indiciesSizeBytes;
             }
 
             // Create and fill VBO
@@ -207,6 +209,8 @@ namespace GLOOP.Rendering
             var verts = createVertexArray(positions, uvs, normals, tangents, boneIds, boneWeights);
             var vertciesSizeBytes = verts.SizeInBytes();
             GL.NamedBufferSubData(VBOHandle, (IntPtr)firstVertexByte, vertciesSizeBytes, verts);
+
+            Metrics.BufferWrites += (ulong)vertciesSizeBytes;
 
             return (numIndicies, indiciesSizeBytes, vertciesSizeBytes);
         }
