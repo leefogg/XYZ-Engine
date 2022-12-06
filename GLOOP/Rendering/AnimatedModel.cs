@@ -60,7 +60,7 @@ namespace GLOOP.Rendering
             IsSkinned = true;
 
             System.Diagnostics.Debug.Assert(animations.Count > 0);
-            CurrentAnimation = Animations[0];
+            CurrentAnimation = Animations[^1];
 
             _modelSpaceBoneTransforms = BoneTransformHeap.Rent(Skeleton.TotalBones);
             _boneSpaceBoneTransforms = BoneTransformHeap.Rent(Skeleton.TotalBones);
