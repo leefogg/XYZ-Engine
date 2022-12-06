@@ -198,8 +198,8 @@ namespace GLOOP
                 ModelsBuffer.Update(ScratchGPUModels.Elements, ScratchGPUModels.Count);
             }
 
-            PointLightIndexBuffer.Update(VisiblePointLights.Current.Elements, VisiblePointLights.Current.Count);
-            SpotLightIndexBuffer.Update(VisibleSpotLights.Current.Elements, VisibleSpotLights.Current.Count);
+            PointLightIndexBuffer.Update(VisiblePointLights.Current.Elements, Math.Min(PointLightIndexBuffer.SizeInItems, VisiblePointLights.Current.Count));
+            SpotLightIndexBuffer.Update(VisibleSpotLights.Current.Elements, Math.Min(SpotLightIndexBuffer.SizeInItems, VisibleSpotLights.Current.Count));
 
             UpdateSkinBuffer();
         }
@@ -338,7 +338,6 @@ namespace GLOOP
                 && a.Material.Shader.Handle == b.Material.Shader.Handle
                 && mat1.SameTextures(mat2);
         }
-
 
         private void AddModelData(
             IEnumerable<RenderBatch> batches,
