@@ -5,7 +5,7 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <StartupObject></StartupObject>
     <Platforms>AnyCPU;x64</Platforms>
-    <Configurations>Debug;Release;Beta</Configurations>
+    <Configurations>Debug;Release;Beta;Profile</Configurations>
     <Nullable>disable</Nullable>
   </PropertyGroup>
 
@@ -14,6 +14,11 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Beta|x64'">
+    <DefineConstants>TRACE;BETA</DefineConstants>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <DefineConstants>TRACE;BETA</DefineConstants>
     <Optimize>true</Optimize>
   </PropertyGroup>

@@ -34,6 +34,7 @@ namespace GLOOP
 
         [Conditional("DEBUG")]
         [Conditional("BETA")]
+        [Conditional("PROFILE")]
         public static void ResetFrameCounters()
         {
             ModelsDrawn = 0;
@@ -94,6 +95,7 @@ namespace GLOOP
 
         [Conditional("DEBUG")]
         [Conditional("BETA")]
+        [Conditional("PROFILE")]
         public static void StartRecording(string filename)
         {
             RecordingStream = File.CreateText(filename);
@@ -129,6 +131,7 @@ namespace GLOOP
 
         [Conditional("DEBUG")]
         [Conditional("BETA")]
+        [Conditional("PROFILE")]
         public static void StopRecording()
         {
             if (RecordingStream != null)

@@ -6,7 +6,7 @@
     <ApplicationIcon />
     <StartupObject />
     <Platforms>AnyCPU;x64</Platforms>
-    <Configurations>Debug;Release;Beta</Configurations>
+    <Configurations>Debug;Release;Beta;Profile</Configurations>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

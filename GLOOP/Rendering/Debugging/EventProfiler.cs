@@ -65,6 +65,7 @@ namespace GLOOP.Rendering.Debugging
 
         [Conditional("DEBUG")]
         [Conditional("BETA")]
+        [Conditional("PROFILE")]
         public static void NewFrame()
         {
             EventTimings.MoveNext();
@@ -73,6 +74,7 @@ namespace GLOOP.Rendering.Debugging
 
         [Conditional("DEBUG")]
         [Conditional("BETA")]
+        [Conditional("PROFILE")]
         public static void DrawImGuiWindow()
         {
             if (!ImGui.Begin("Event Profiler"))

@@ -89,7 +89,11 @@ namespace GLOOP.HPL
         private static readonly MapSetup Omicron = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter03\03_02_omicron_inside\03_02_omicron_inside.hpm", new Vector3(-1.0284736f, -2.0497713f, 21.69069f));
         private static readonly MapSetup TauOutside = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_01_tau_outside\04_01_tau_outside.hpm", new Vector3(77.65444f, 315.97113f, -340.09308f));
         private static readonly MapSetup Tau = new MapSetup(@"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter04\04_02_tau_inside\04_02_tau_inside.hpm", new Vector3(26.263678f, 1.7000114f, 36.090767f));
+#if PROFILE
+        private readonly MapSetup MapToUse = Phi;
+#else
         private readonly MapSetup MapToUse = Custom;
+#endif
 
         private Camera Camera;
         private Scene scene;
@@ -185,10 +189,14 @@ namespace GLOOP.HPL
         private readonly Ring<float> CPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         private readonly Ring<float> GPUFrameTimings = new Ring<float>(PowerOfTwo.OneHundrendAndTwentyEight);
         //private readonly StringBuilder CSV = new StringBuilder(10000);
+#if !PROFILE
         private const bool BenchmarkMode = false;
+#else
+        private const bool BenchmarkMode = true;
+#endif
         private DebugLineRenderer LineRenderer;
 
-        #region Setup
+#region Setup
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) 
@@ -229,7 +237,7 @@ namespace GLOOP.HPL
             enableSSAO = false;
             enableBloom = false;
 #endif
-#if DEBUG || BETA
+#if !RELEASE
             ImGuiController = new ImGuiController(ClientSize.X, ClientSize.Y);
             LineRenderer = new DebugLineRenderer(128);
 #endif
@@ -463,9 +471,9 @@ namespace GLOOP.HPL
             UpdateBloomBuffer();
         }
 
-        #endregion
+#endregion
 
-        #region Game Loop
+#region Game Loop
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             var cpuFrame = CPUProfiler.NextFrame;
@@ -922,17 +930,6 @@ namespace GLOOP.HPL
                 return;
 #endif
 
-            if (ImGui.Begin("Blur"))
-            {
-                ImGui.SliderInt("NumSamples", ref NumBlurSamples, 6, MaxSamples);
-                ImGui.SliderFloat("Horizontal Width", ref BlurWidthPercent, 1, 25);
-                ImGui.SliderFloat("Offset", ref BlurPixelOffset, 0, 0.75f);
-                ImGui.SliderFloat("Dirt Highlights", ref DirtHighlightScalar, 0, 5);
-                ImGui.SliderFloat("Dirt General", ref DirtGeneralScalar, 0, 0.1f);
-                ImGui.SliderFloat("Crack Strength", ref CrackScalar, 0, 0.1f);
-            }
-
-
             var sizeOfStruct = Marshal.SizeOf<BlurData>();
             Debug.Assert(Globals.UniformBufferOffsetAlignment % sizeOfStruct == 0, "BlurData cannot align to UniformBuffer Offset Alignment");
 
@@ -1068,9 +1065,9 @@ namespace GLOOP.HPL
             );
         }
 
-        #endregion
+#endregion
 
-        #region ImGUI
+#region ImGUI
         private void DrawImGUIWindows()
         {
             using var gpuTimer = GPUFrame[GPUProfiler.Event.ImGUI];
@@ -1087,6 +1084,7 @@ namespace GLOOP.HPL
             DrawLightResolveImGuiWindow();
             DrawImGuiBloomWindow();
             DrawImGuiSSAOWindow();
+            RenderBloomImGuiWindow();
             queryPool.DrawWindow(nameof(queryPool));
             CPUProfiler.Render(CPUFrame);
             GPUProfiler.Render();
@@ -1112,6 +1110,7 @@ namespace GLOOP.HPL
 
         [Conditional("DEBUG")]
         [Conditional("BETA")]
+        [Conditional("PROFILE")]
         private void DrawImGuiMetricsWindow()
         {
             if (!ImGui.Begin("Metrics"))
@@ -1236,6 +1235,20 @@ namespace GLOOP.HPL
             ImGui.End();
         }
 
+        [Conditional("DEBUG")]
+        private void RenderBloomImGuiWindow()
+        {
+            if (ImGui.Begin("Blur"))
+            {
+                ImGui.SliderInt("NumSamples", ref NumBlurSamples, 6, MaxSamples);
+                ImGui.SliderFloat("Horizontal Width", ref BlurWidthPercent, 1, 25);
+                ImGui.SliderFloat("Offset", ref BlurPixelOffset, 0, 0.75f);
+                ImGui.SliderFloat("Dirt Highlights", ref DirtHighlightScalar, 0, 5);
+                ImGui.SliderFloat("Dirt General", ref DirtGeneralScalar, 0, 0.1f);
+                ImGui.SliderFloat("Crack Strength", ref CrackScalar, 0, 0.1f);
+            }
+        }
+
         #endregion
 
         #region Debug Rendering
@@ -1288,9 +1301,9 @@ namespace GLOOP.HPL
             }
         }
        
-        #endregion
+#endregion
 
-        #region Events
+#region Events
 
         private void OnBenchmarkComplete()
         {
@@ -1319,6 +1332,7 @@ namespace GLOOP.HPL
 
         [Conditional("DEBUG")]
         [Conditional("BETA")]
+        [Conditional("PROFILE")]
         private void UpdateDebugVars()
         {
             var input = KeyboardState;
@@ -1387,6 +1401,6 @@ namespace GLOOP.HPL
             base.OnClosing(e);
         }
 
-        #endregion
+#endregion
     }
 }
