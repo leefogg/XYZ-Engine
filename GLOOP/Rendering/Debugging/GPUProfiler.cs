@@ -143,7 +143,6 @@ namespace GLOOP.Rendering.Debugging
 
         [Conditional("DEBUG")]
         [Conditional("BETA")]
-        [Conditional("PROFILE")]
         public static void Render()
         {
 #if !RELEASE

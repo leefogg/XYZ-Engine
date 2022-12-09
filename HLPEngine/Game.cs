@@ -476,7 +476,7 @@ namespace GLOOP.HPL
 #region Game Loop
         protected override void OnRenderFrame(FrameEventArgs args)
         {
-            var cpuFrame = CPUProfiler.NextFrame;
+            using var cpuFrame = CPUProfiler.NextFrame;
             CPUFrame = cpuFrame;
 
             FrameStart();
@@ -550,10 +550,11 @@ namespace GLOOP.HPL
                 CPUFrameTimings.SetAndMove(frameElapsedMs);
                 EventProfiler.NewFrame();
 
-                Metrics.WriteLog(CPUFrame, GPUFrame);
-
-                SwapBuffers();
             }
+
+            Metrics.WriteLog(CPUFrame, GPUFrame);
+
+            SwapBuffers();
 
             FrameEnd();
 
@@ -741,7 +742,6 @@ namespace GLOOP.HPL
 
                     currentBuffer = ResolveGBuffer();
 
-#if DEBUG
                     if (!debugLightBuffer)
                     {
                         if (enableBloom)
@@ -761,7 +761,6 @@ namespace GLOOP.HPL
                         DoPostEffect(shader, currentBuffer.ColorBuffers[0]);
                         currentBuffer = newBuffer;
                     }
-#endif
                 }
             }
 

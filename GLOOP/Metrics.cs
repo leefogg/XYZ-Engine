@@ -78,7 +78,7 @@ namespace GLOOP
                 FrameBufferBinds,
                 BufferReads,
                 BufferWrites,
-                EventProfiler.GetTiming("Visbility") * 1000,
+                EventProfiler.GetTiming("Visibility") * 1000,
                 CPUEventLength(CPUProfiler.Event.UpdateBuffers),
                 CPUEventLength(CPUProfiler.Event.Geomertry),
                 CPUEventLength(CPUProfiler.Event.PortalCulling),
