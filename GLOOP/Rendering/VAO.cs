@@ -217,10 +217,10 @@ namespace GLOOP.Rendering
 
         public void Allocate(int sizeOfIndicies, int sizeOfVertcies)
         {
-            GL.NamedBufferData(EBOHandle, sizeOfIndicies, (IntPtr)0, BufferUsageHint.StaticDraw);
+            GL.NamedBufferData(EBOHandle, sizeOfIndicies, IntPtr.Zero, BufferUsageHint.StaticDraw);
             Metrics.ModelsIndiciesBytesUsed += (ulong)sizeOfIndicies;
 
-            GL.NamedBufferData(VBOHandle, sizeOfVertcies, (IntPtr)0, BufferUsageHint.StaticDraw);
+            GL.NamedBufferData(VBOHandle, sizeOfVertcies, IntPtr.Zero, BufferUsageHint.StaticDraw);
             Metrics.ModelsVertciesBytesUsed += (ulong)sizeOfVertcies;
         }
 
@@ -312,9 +312,9 @@ namespace GLOOP.Rendering
 
             if (NumIndicies > 0) // Indexed
                 if (numInstances > 1) // Instanced
-                    GL.DrawElementsInstanced(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0, numInstances);
+                    GL.DrawElementsInstanced(renderMode, NumIndicies, DrawElementsType.UnsignedShort, IntPtr.Zero, numInstances);
                 else
-                    GL.DrawElements(renderMode, NumIndicies, DrawElementsType.UnsignedShort, (IntPtr)0);
+                    GL.DrawElements(renderMode, NumIndicies, DrawElementsType.UnsignedShort, IntPtr.Zero);
             else
                 if (numInstances > 1) // Instanced
                     GL.DrawArrays(renderMode, 0, NumVertcies);

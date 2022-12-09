@@ -49,7 +49,7 @@ namespace GLOOP.Rendering
         public Buffer(int count, BufferTarget type, BufferUsageHint usage, string name)
             : this(type, usage, count, name)
         {
-            GL.NamedBufferData(Handle, SizeInBytes, (IntPtr)0, usage);
+            GL.NamedBufferData(Handle, SizeInBytes, IntPtr.Zero, usage);
             Metrics.BufferWrites += (ulong)SizeInBytes; 
         }
 

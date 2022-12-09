@@ -145,7 +145,7 @@ namespace HLPEngine
                     VertexAttribPointerType.Float,
                     false,
                     sizeofHmdVector2_t,
-                    (IntPtr)0
+                    IntPtr.Zero
                 );
                 GL.EnableVertexAttribArray(0);
 
