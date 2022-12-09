@@ -427,24 +427,19 @@ namespace GLOOP.HPL.Loading
                         attempted++;
                         var fullPath = Path.Combine(Constants.SOMARoot, detailMesh.FilePath);
 
-                        if (true) {
-                            var model = new HPLModelLoader(fullPath, assimp, material);
-                            var positions = detailMesh.GetPositions().ToArray();
-                            var rotations = detailMesh.GetRotations().ToArray();
+                        var model = new HPLModelLoader(fullPath, assimp, material);
+                        var positions = detailMesh.GetPositions().ToArray();
+                        var rotations = detailMesh.GetRotations().ToArray();
 
-                            for (var i=0; i<detailMesh.NumInstances; i++) {
-                                var newInstance = model.Clone();
-                                newInstance.Transform.Position += positions[i];
-                                newInstance.Transform.Rotation *= rotations[i];
+                        for (var i=0; i<detailMesh.NumInstances; i++) {
+                            var newInstance = model.Clone();
+                            newInstance.Transform.Position += positions[i];
+                            newInstance.Transform.Rotation *= rotations[i];
 
-                                instances.Add(newInstance);
-                            }
-
-                            success++;
+                            instances.Add(newInstance);
                         }
-                        else {
-                            Console.WriteLine("Skipped.");
-                        }
+
+                        success++;
                         Console.Write(".");
                     }
                     catch (Exception ex) {
