@@ -32,6 +32,14 @@ using GLOOP.DAE;
 namespace GLOOP.HPL
 {
     public class Game : Window {
+        public enum GBufferTexture
+        {
+            Diffuse,
+            Position,
+            Normal,
+            Specular
+        }
+
         [StructLayout(LayoutKind.Explicit, Size = 16)]
         private readonly struct BlurData
         {
@@ -46,6 +54,7 @@ namespace GLOOP.HPL
             }
             public override string ToString() => $"Weight:{Weight}, Offset:{Offset}";
         }
+
         private readonly struct MapSetup
         {
             public readonly string Path;
@@ -57,6 +66,7 @@ namespace GLOOP.HPL
                 CameraPos = cameraPos;
             }
         }
+
         private const string lab = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter00\00_03_laboratory\00_03_laboratory.hpm";
         private const string theta_outside = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter02\02_04_theta_outside\02_04_theta_outside.hpm";
         private const string upsilon = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA\maps\chapter01\01_02_upsilon_inside\01_02_upsilon_inside.hpm";
@@ -178,6 +188,8 @@ namespace GLOOP.HPL
         private const bool BenchmarkMode = false;
         private DebugLineRenderer LineRenderer;
 
+        #region Setup
+
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) 
         {
@@ -222,12 +234,7 @@ namespace GLOOP.HPL
             LineRenderer = new DebugLineRenderer(128);
 #endif
         }
-
-        private void OnBenchmarkComplete()
-        {
-            Close();
-        }
-
+        
         protected override void OnLoad() {
             base.OnLoad();
 
@@ -376,7 +383,7 @@ namespace GLOOP.HPL
 
             VisibleAreas.AddRange(scene.VisibilityAreas.Values); 
 
-            setupBuffers();
+            SetupBuffers();
 
             /*
             var usedTextures = TextureArrayManager.GetSummary();
@@ -388,7 +395,77 @@ namespace GLOOP.HPL
             */
         }
 
+        private void CreateRandomRGBTexture()
+        {
+            const int randomTextureSize = 64;
+            const int randomTexturePixels = randomTextureSize * randomTextureSize;
+            var data = new byte[randomTexturePixels * 3];
+            new Random().NextBytes(data);
 
+            var texParams = new TextureParams()
+            {
+                GenerateMips = false,
+                InternalFormat = PixelInternalFormat.Rgb,
+                MagFilter = TextureMinFilter.Nearest,
+                MinFilter = TextureMinFilter.Nearest,
+                WrapMode = TextureWrapMode.Repeat,
+                Name = "Random RGB",
+                PixelFormat = PixelFormat.Rgb,
+                Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
+            };
+            RGBNoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
+        }
+
+        private void CreateRandomBWTexture()
+        {
+            const int randomTextureSize = 64;
+            const int randomTexturePixels = randomTextureSize * randomTextureSize;
+            var data = new byte[randomTexturePixels];
+            new Random().NextBytes(data);
+
+            var texParams = new TextureParams()
+            {
+                GenerateMips = false,
+                InternalFormat = PixelInternalFormat.CompressedRed,
+                MagFilter = TextureMinFilter.Nearest,
+                MinFilter = TextureMinFilter.Nearest,
+                WrapMode = TextureWrapMode.Repeat,
+                Name = "Random Red",
+                PixelFormat = PixelFormat.Red,
+                Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
+            };
+            BWNoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
+        }
+
+        private void SetupBuffers()
+        {
+            scene.SetupBuffers();
+
+            CreateRandomRGBTexture();
+            CreateRandomBWTexture();
+            DirtTexture = new Texture2D("assets/textures/Scratches.png", new TextureParams()
+            {
+                InternalFormat = PixelInternalFormat.R8,
+                GenerateMips = false,
+                MinFilter = TextureMinFilter.Nearest,
+                MagFilter = TextureMinFilter.Nearest,
+                Name = "Dirt"
+            });
+            CrackTexture = new Texture2D("assets/textures/Crack.jpg", new TextureParams()
+            {
+                InternalFormat = PixelInternalFormat.Rgb,
+                GenerateMips = false,
+                MinFilter = TextureMinFilter.Linear,
+                MagFilter = TextureMinFilter.Linear,
+                Name = "Crack"
+            });
+
+            UpdateBloomBuffer();
+        }
+
+        #endregion
+
+        #region Game Loop
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             var cpuFrame = CPUProfiler.NextFrame;
@@ -453,6 +530,7 @@ namespace GLOOP.HPL
 #endif
 
                 UpdateBuffers();
+
                 UpdateScene();
 
                 DrawImGUIWindows();
@@ -474,25 +552,74 @@ namespace GLOOP.HPL
             elapsedMilliseconds = (float)(DateTime.Now - startTime).TotalMilliseconds;
         }
 
-        private void DrawImGUIWindows()
+        private void ResetGBuffer()
         {
-            using var gpuTimer = GPUFrame[GPUProfiler.Event.ImGUI];
-            using var cpuTimer = CPUFrame[CPUProfiler.Event.ImGUI];
+            GBuffers.Use();
+            var clearColor = debugLights ? 0.2f : 0;
+            GL.ClearColor(clearColor, clearColor, clearColor, 0);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
+        }
 
-            if (!enableImGui)
-                return;
+        private void RenderPass(FrameBuffer backbuffer)
+        {
+            GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
 
-            DrawImGuiOptionsWindow();
-            DrawImGuiMetricsWindow();
-            DrawImGuiMaterialWindow();
-            DrawImGuiPortalWindow();
-            queryPool.DrawWindow(nameof(queryPool));
-            CPUProfiler.Render(CPUFrame);
-            GPUProfiler.Render();
-            EventProfiler.DrawImGuiWindow();
-            TaskMaster.DrawImGuiWindow();
+            var currentBuffer = PostMan.NextFramebuffer;
 
-            ImGuiController?.Render();
+            GeometryPass(currentBuffer);
+
+            currentBuffer = DoPostEffects();
+
+            BlitToBackBuffer(backbuffer, currentBuffer);
+
+            RenderSkeletons();
+            RenderBoundingBoxes();
+        }
+
+        private void GeometryPass(FrameBuffer finalBuffer)
+        {
+            using var profiler = EventProfiler.Profile();
+            Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
+
+            {
+                using var cpuTimer = CPUFrame[CPUProfiler.Event.Geomertry];
+                using var gpuTimer = GPUFrame[GPUProfiler.Event.Geomertry];
+                using var debugGroup = new DebugGroup(nameof(GeometryPass));
+
+                GL.Enable(EnableCap.FramebufferSrgb);
+                scene.RenderModels();
+                scene.RenderTerrain();
+                GL.Disable(EnableCap.FramebufferSrgb);
+            }
+
+            DetermineVisibleAreas();
+
+        }
+
+        private void UpdateBuffers()
+        {
+            using var profiler = EventProfiler.Profile();
+            using var cpuTimer = CPUFrame[CPUProfiler.Event.UpdateBuffers];
+            using var gpuTimer = GPUFrame[GPUProfiler.Event.UpdateBuffers];
+
+            if (VisibilityTask?.IsCompleted ?? true)
+            {
+                VisibilityTask = Task.Run(UpdateVisibility);
+                if (shouldUpdateVisibility || FrameNumber == 0)
+                    scene.UpdateBuffers();
+            }
+
+            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+
+#if DEBUG
+            UpdateBloomBuffer();
+#endif
+        }
+
+        public void UpdateScene()
+        {
+            scene.UpdateSkinnedModels();
         }
 
         private void UpdateVisibility()
@@ -501,46 +628,6 @@ namespace GLOOP.HPL
                 return;
 
             scene.UpdateVisibility(VisibleAreas.Cast<RenderableArea>().ToList());
-        }
-
-        [Conditional("DEBUG")]
-        private void DrawImGuiOptionsWindow()
-        {
-            if (!ImGui.Begin("Options"))
-                return;
-
-            ImGui.Checkbox("FXAA", ref enableFXAA);
-            ImGui.Checkbox("SSAO", ref enableSSAO);
-            ImGui.Checkbox("Bloom", ref enableBloom);
-            ImGui.Checkbox("Update Visibility", ref shouldUpdateVisibility);
-
-            ImGui.End();
-        }
-
-        [Conditional("DEBUG")]
-        [Conditional("BETA")]
-        private void DrawImGuiMetricsWindow()
-        {
-            if (!ImGui.Begin("Metrics"))
-                return;
-
-            const int TargetFPS = 144;
-            var values = GPUFrameTimings.ToArray();
-            float average = values.Average();
-            var red = (float)MathFunctions.Map(average, 144, 120, 0, 1);
-            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(red, 1 - red, 0, 1));
-            ImGui.PlotHistogram("GPU", ref values[0], values.Length, 0, null, 144 * 2, 60, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
-            ImGui.Text($"Average: {1000f / average:0.00}ms ({average:0.000} fps)");
-            ImGui.PopStyleColor();
-
-            values = CPUFrameTimings.ToArray();
-            average = values.Average();
-            ImGui.PlotHistogram("CPU", ref values[0], values.Length, 0, null, 0, 1000f / TargetFPS, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
-            ImGui.Text($"Average: {average:0.000}ms ({1000f / average:00.00} fps)");
-
-            Metrics.AddImGuiMetrics();
-
-            ImGui.End();
         }
 
         private void DetermineVisibleAreas()
@@ -615,43 +702,11 @@ namespace GLOOP.HPL
 
         }
 
-        [Conditional("DEBUG")]
-        private void DrawImGuiPortalWindow()
+        private FrameBuffer DoPostEffects()
         {
-            if (!ImGui.Begin("Portals"))
-                return;
-
-            ImGui.Checkbox("Enable", ref enablePortalCulling);
-            ImGui.Text("Visible Areas");
-            foreach (var area in VisibleAreas)
-                ImGui.Text(area.Name);
-            ImGui.Separator();
-            ImGui.Text("Active Portal Queries");
-            foreach (var portal in PortalQueries)
-                ImGui.Text(portal.Item1.Name);
-
-            ImGui.End();
-        }
-
-        private void ResetGBuffer()
-        {
-            GBuffers.Use();
-            var clearColor = debugLights ? 0.2f : 0;
-            GL.ClearColor(clearColor, clearColor, clearColor, 0);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-            GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
-        }
-
-        private void RenderPass(FrameBuffer finalBuffer)
-        {
-            GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
-
-            var currentBuffer = PostMan.NextFramebuffer;
-            GeometryPass(currentBuffer);
-
+            FrameBuffer currentBuffer;
             using (GPUFrame[GPUProfiler.Event.Post])
             {
-
                 if (debugGBufferTexture > -1)
                 {
                     DisplayTexture(currentBuffer = PostMan.NextFramebuffer, GBuffers.ColorBuffers[debugGBufferTexture]);
@@ -676,7 +731,7 @@ namespace GLOOP.HPL
                         albedo = GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse];
                     }
 
-                    currentBuffer = ResolveGBuffer(albedo);
+                    currentBuffer = ResolveGBuffer();
 
 #if DEBUG
                     if (!debugLightBuffer)
@@ -684,10 +739,8 @@ namespace GLOOP.HPL
                         if (enableBloom)
                             currentBuffer = DoBloomPass(currentBuffer.ColorBuffers[0]);
 
-                        DrawImGUIColourCorrectionWindow();
-
                         using var group = new DebugGroup("Colour Correction");
-                        using var timer = CPUFrame[CPUProfiler.Event.PostEffects];
+                        using var timer = CPUFrame[CPUProfiler.Event.PostEffects]; // TODO: Correct being here?
 
                         var newBuffer = PostMan.NextFramebuffer;
                         newBuffer.Use();
@@ -704,138 +757,159 @@ namespace GLOOP.HPL
 #endif
             }
 
-#if DEBUG
-            if (showSkeletons)
-            {
-                foreach (var skinnedModel in scene.Models.Where(model => model.IsSkinned).Cast<AnimatedModel>())
-                {
-                    var modelspaceTransforms = skinnedModel.ModelSpaceBoneTransforms;
-                    skinnedModel.Skeleton.Render(
-                    LineRenderer,
-                        modelspaceTransforms,
-                        skinnedModel.Transform.Matrix
-                    );
-                }
-            }
+            return currentBuffer;
+        }
 
-            LineRenderer.AddAxisHelper(Matrix4.Identity);
-#endif
-
+        private void DisplayTexture(FrameBuffer finalBuffer, Texture inputTexture)
+        {
+            GL.Enable(EnableCap.FramebufferSrgb);
             finalBuffer.Use();
-            DoPostEffect(FullBrightShader, currentBuffer.ColorBuffers[0]);
 
-#if DEBUG
-            GL.Disable(EnableCap.DepthTest);
-            LineRenderer.Render();
-            GL.Enable(EnableCap.DepthTest);
-
-            // TODO: Bounding boxes should use LineRenderer now
-            if (showBoundingBoxes)
-            {
-                using var bbGroup = new DebugGroup("Bounding Boxes");
-                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-
-                foreach (var area in scene.VisibilityPortals)
-                    area.RenderBoundingBox();
-                foreach (var area in scene.VisibilityAreas.Values)
-                    area.RenderBoundingBox();
-                foreach (var model in scene.Models)
-                    model.RenderBoundingBox();
-                foreach (var area in VisibleAreas)
-                    foreach (var model in area.Models)
-                        model.RenderBoundingBox();
-                foreach (var terrainPeice in scene.Terrain)
-                    terrainPeice.RenderBoundingBox();
-
-                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
-            }
-#endif
-        }
-
-        [Conditional("DEBUG")]
-        private void DrawImGUIColourCorrectionWindow()
-        {
-            if (!ImGui.Begin("Colour Correction"))
-                return;
-
-            ImGui.DragFloat("Key", ref Key, 0.01f, 0.0f, 2.0f);
-            ImGui.DragFloat("Exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
-            ImGui.DragFloat("Gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
-            ImGui.DragFloat("White cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
-
-            ImGui.End();
-        }
-
-        private void GeometryPass(FrameBuffer finalBuffer)
-        {
-            using var profiler = EventProfiler.Profile();
-            Debug.Assert(FrameBuffer.Current == GBuffers.Handle);
-
-            {
-                using var cpuTimer = CPUFrame[CPUProfiler.Event.Geomertry];
-                using var gpuTimer = GPUFrame[GPUProfiler.Event.Geomertry];
-                using var debugGroup = new DebugGroup(nameof(GeometryPass));
-
-                GL.Enable(EnableCap.FramebufferSrgb);
-
-                scene.RenderModels();
-                scene.RenderTerrain();
-            }
-
-            DetermineVisibleAreas();
+            GL.Clear(ClearBufferMask.ColorBufferBit);
+            DoPostEffect(FullBrightShader, inputTexture);
 
             GL.Disable(EnableCap.FramebufferSrgb);
         }
 
-        private void UpdateBuffers()
+        private void DoPostEffect(Shader shader, Texture input)
         {
-            using var profiler = EventProfiler.Profile();
-            using var cpuTimer = CPUFrame[CPUProfiler.Event.UpdateBuffers];
-            using var gpuTimer = GPUFrame[GPUProfiler.Event.UpdateBuffers];
+            shader.Use();
+            input.Use();
+            shader.Set("texture0", 0);
+            Primitives.Quad.Draw();
+        }
 
-            if (VisibilityTask?.IsCompleted ?? true)
+        private FrameBuffer ResolveGBuffer()
+        {
+            var outputBuffer = PostMan.NextFramebuffer;
+
+            GL.Disable(EnableCap.DepthTest);
+            //GL.DepthMask(false);
+
+            DoLightPass(new Vector3(0.00f));
+
+            outputBuffer.Use();
+            GL.Clear(ClearBufferMask.ColorBufferBit);
+            if (debugLightBuffer)
             {
-                VisibilityTask = Task.Run(UpdateVisibility);
-                if (shouldUpdateVisibility || FrameNumber == 0)
-                    scene.UpdateBuffers();
+                GL.Enable(EnableCap.FramebufferSrgb);
+                DoPostEffect(FullBrightShader, LightingBuffer.ColorBuffers[0]);
+                GL.Disable(EnableCap.FramebufferSrgb);
+            }
+            else
+            {
+                using (new DebugGroup("Light Resolve"))
+                {
+                    var shader = FinalCombineShader;
+                    shader.Use();
+                    LightingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
+                    BWNoiseMap.Use(TextureUnit.Texture1);
+                    shader.Set("lightMap", TextureUnit.Texture0);
+                    shader.Set("noiseMap", TextureUnit.Texture1);
+                    shader.Set("timeMilliseconds", elapsedMilliseconds);
+                    shader.Set("noiseScalar", NoiseScalar);
+                    Primitives.Quad.Draw();
+                }
             }
 
-            updateCameraUBO(Camera.ProjectionMatrix, Camera.ViewMatrix);
+            // Blit depth to output frame buffer
+            // GBuffers.BlitTo(outputBuffer, ClearBufferMask.DepthBufferBit);
 
-#if DEBUG
-            UpdateBloomBuffer();
-#endif
+            //GL.DepthMask(true);
+            GL.Enable(EnableCap.DepthTest);
+
+            return outputBuffer;
         }
 
-        public void UpdateScene()
+        private void BlitToBackBuffer(FrameBuffer finalBuffer, FrameBuffer currentBuffer)
         {
-            scene.UpdateSkinnedModels();
+            finalBuffer.Use();
+            DoPostEffect(FullBrightShader, currentBuffer.ColorBuffers[0]);
         }
 
-        private void setupBuffers()
+        private FrameBuffer DoBloomPass(Texture2D diffuse)
         {
-            scene.SetupBuffers();
+            using var timer = CPUFrame[CPUProfiler.Event.Bloom];
 
-            CreateRandomRGBTexture();
-            CreateRandomBWTexture();
-            DirtTexture = new Texture2D("assets/textures/Scratches.png", new TextureParams()
+            using (new DebugGroup("Bloom"))
             {
-                InternalFormat = PixelInternalFormat.R8,
-                GenerateMips = false,
-                MinFilter = TextureMinFilter.Nearest,
-                MagFilter = TextureMinFilter.Nearest,
-                Name = "Dirt"
-            });
-            CrackTexture = new Texture2D("assets/textures/Crack.jpg", new TextureParams()
-            {
-                InternalFormat = PixelInternalFormat.Rgb,
-                GenerateMips = false,
-                MinFilter = TextureMinFilter.Linear,
-                MagFilter = TextureMinFilter.Linear,
-                Name = "Crack"
-            });
+                var currentFB = PostMan.NextFramebuffer;
+                using (new DebugGroup("Extract"))
+                {
+                    // Extract bright parts
+                    currentFB.Use();
+                    ExtractBright.Use();
+                    diffuse.Use(TextureUnit.Texture0);
+                    ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
+                    ExtractBright.Set("afBrightPass", BrightPass);
+                    Primitives.Quad.Draw();
+                }
 
-            UpdateBloomBuffer();
+                using (new DebugGroup("Blur"))
+                {
+                    var previousTexture = currentFB.ColorBuffers[0];
+                    Shader shader;
+                    for (var i = 0; i < BloomBuffers.Length;)
+                    {
+                        var buffer = BloomBuffers[i];
+
+                        GL.Viewport(0, 0, buffer.Width, buffer.Height);
+
+                        var shaderSteps = new[] { VerticalBlurShader, HorizontalBlurShader };
+                        foreach (var step in shaderSteps)
+                        {
+                            shader = step;
+                            shader.Use();
+                            shader.Set("NumSamples", NumBlurSamples);
+                            BloomBuffers[i].Use();
+
+                            bloomBuffer.Bind(Globals.BindingPoints.UBOs.Bloom, NumBlurSamples, BlurStrideElements * i);
+
+                            DoPostEffect(shader, previousTexture);
+
+                            previousTexture = buffer.ColorBuffers[0];
+                            i++;
+                        }
+                    }
+                }
+
+                using (new DebugGroup("Combine"))
+                {
+                    // Add all to finished frame
+                    GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
+                    currentFB = PostMan.NextFramebuffer;
+                    currentFB.Use();
+                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+                    GL.Disable(EnableCap.Blend);
+
+                    var shader = BloomCombineShader;
+                    shader.Use();
+                    Texture.Use(new[] {
+                        BloomBuffers[1].ColorBuffers[0],
+                        BloomBuffers[3].ColorBuffers[0],
+                        BloomBuffers[5].ColorBuffers[0],
+                        DirtTexture,
+                        CrackTexture,
+                        diffuse
+                    }, TextureUnit.Texture0);
+                    //shader.Set("avSizeWeight", SizeWeight);
+                    shader.Set("blurMap0", TextureUnit.Texture0);
+                    shader.Set("blurMap1", TextureUnit.Texture1);
+                    shader.Set("blurMap2", TextureUnit.Texture2);
+                    shader.Set("dirtMap", TextureUnit.Texture3);
+                    shader.Set("crackMap", TextureUnit.Texture4);
+                    shader.Set("diffuseMap", TextureUnit.Texture5);
+                    shader.Set("dirtHighlightScalar", DirtHighlightScalar);
+                    shader.Set("dirtGeneralScalar", DirtGeneralScalar);
+                    shader.Set("crackScalar", CrackScalar);
+                    Primitives.Quad.Draw();
+
+                    GL.Enable(EnableCap.Blend);
+                    GL.Disable(EnableCap.FramebufferSrgb);
+                }
+
+                return currentFB;
+            }
         }
 
         private void UpdateBloomBuffer()
@@ -903,227 +977,10 @@ namespace GLOOP.HPL
 
             var weights = structs.Elements.Select(s => s.Weight).ToArray();
             var offsets = structs.Elements.Select(s => s.Offset).ToArray();
-            ImGui.PlotLines("Weights", ref weights[0], NumBlurSamples * 6,0, string.Empty, 0, 1, new System.Numerics.Vector2(0,50));
-            ImGui.PlotLines("Offsets", ref offsets[0], NumBlurSamples * 6, 0, string.Empty, 0, .2f, new System.Numerics.Vector2(0,50));
+            ImGui.PlotLines("Weights", ref weights[0], NumBlurSamples * 6, 0, string.Empty, 0, 1, new System.Numerics.Vector2(0, 50));
+            ImGui.PlotLines("Offsets", ref offsets[0], NumBlurSamples * 6, 0, string.Empty, 0, .2f, new System.Numerics.Vector2(0, 50));
 
             ImGui.End();
-        }
-
-        private void CreateRandomRGBTexture()
-        {
-            const int randomTextureSize = 64;
-            const int randomTexturePixels = randomTextureSize * randomTextureSize;
-            var data = new byte[randomTexturePixels * 3];
-            new Random().NextBytes(data);
-
-            var texParams = new TextureParams()
-            {
-                GenerateMips = false,
-                InternalFormat = PixelInternalFormat.Rgb,
-                MagFilter = TextureMinFilter.Nearest,
-                MinFilter = TextureMinFilter.Nearest,
-                WrapMode = TextureWrapMode.Repeat,
-                Name = "Random RGB",
-                PixelFormat = PixelFormat.Rgb,
-                Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
-            };
-            RGBNoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
-        }
-
-        private void CreateRandomBWTexture()
-        {
-            const int randomTextureSize = 64;
-            const int randomTexturePixels = randomTextureSize * randomTextureSize;
-            var data = new byte[randomTexturePixels];
-            new Random().NextBytes(data);
-
-            var texParams = new TextureParams()
-            {
-                GenerateMips = false,
-                InternalFormat = PixelInternalFormat.CompressedRed,
-                MagFilter = TextureMinFilter.Nearest,
-                MinFilter = TextureMinFilter.Nearest,
-                WrapMode = TextureWrapMode.Repeat,
-                Name = "Random Red",
-                PixelFormat = PixelFormat.Red,
-                Data = Marshal.UnsafeAddrOfPinnedArrayElement(data, 0)
-            };
-            BWNoiseMap = new Texture2D(randomTextureSize, randomTextureSize, texParams);
-        }
-
-        private FrameBuffer ResolveGBuffer(Texture2D albedo)
-        {
-            var outputBuffer = PostMan.NextFramebuffer;
-
-            GL.Disable(EnableCap.DepthTest);
-            //GL.DepthMask(false);
-
-            DoLightPass(new Vector3(0.00f));
-
-            outputBuffer.Use();
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-            if (debugLightBuffer) {
-                GL.Enable(EnableCap.FramebufferSrgb);
-                DoPostEffect(FullBrightShader, LightingBuffer.ColorBuffers[0]);
-                GL.Disable(EnableCap.FramebufferSrgb);
-            } else {
-                DrawLightResolveImGuiWindow();
-                using (new DebugGroup("Light Resolve"))
-                {
-                    var shader = FinalCombineShader;
-                    shader.Use();
-                    LightingBuffer.ColorBuffers[0].Use(TextureUnit.Texture0);
-                    BWNoiseMap.Use(TextureUnit.Texture1);
-                    shader.Set("lightMap", TextureUnit.Texture0);
-                    shader.Set("noiseMap", TextureUnit.Texture1);
-                    shader.Set("timeMilliseconds", elapsedMilliseconds);
-                    shader.Set("noiseScalar", NoiseScalar);
-                    Primitives.Quad.Draw();
-                }
-            }
-
-            // Blit depth to output frame buffer
-            // GBuffers.BlitTo(outputBuffer, ClearBufferMask.DepthBufferBit);
-
-            //GL.DepthMask(true);
-            GL.Enable(EnableCap.DepthTest);
-
-            return outputBuffer;
-        }
-
-        [Conditional("DEBUG")]
-        private void DrawLightResolveImGuiWindow()
-        {
-            if (!enableImGui)
-                return;
-
-            if (ImGui.Begin("Light Resolve"))
-            {
-                ImGui.SliderFloat("Noise scale", ref NoiseScalar, 0f, 0.1f);
-            }
-            ImGui.End();
-        }
-
-        private FrameBuffer DoBloomPass(Texture2D diffuse)
-        {
-            using var timer = CPUFrame[CPUProfiler.Event.Bloom];
-
-            using (new DebugGroup("Bloom"))
-            {
-                DrawImGuiBloomWindow();
-
-                var currentFB = PostMan.NextFramebuffer;
-                using (new DebugGroup("Extract"))
-                {
-                    // Extract bright parts
-                    currentFB.Use();
-                    ExtractBright.Use();
-                    diffuse.Use(TextureUnit.Texture0);
-                    ExtractBright.Set("diffuseMap", TextureUnit.Texture0);
-                    ExtractBright.Set("afBrightPass", BrightPass);
-                    Primitives.Quad.Draw();
-                }
-
-                using (new DebugGroup("Blur"))
-                {
-                    var previousTexture = currentFB.ColorBuffers[0];
-                    Shader shader;
-                    for (var i = 0; i < BloomBuffers.Length;)
-                    {
-                        var buffer = BloomBuffers[i];
-
-                        GL.Viewport(0, 0, buffer.Width, buffer.Height);
-
-                        var shaderSteps = new[] { VerticalBlurShader, HorizontalBlurShader };
-                        foreach (var step in shaderSteps)
-                        {
-                            shader = step;
-                            shader.Use();
-                            shader.Set("NumSamples", NumBlurSamples);
-                            BloomBuffers[i].Use();
-
-                            bloomBuffer.Bind(Globals.BindingPoints.UBOs.Bloom, NumBlurSamples, BlurStrideElements * i);
-
-                            DoPostEffect(shader, previousTexture);
-
-                            previousTexture = buffer.ColorBuffers[0];
-                            i++;
-                        }
-                    }
-                }
-
-                using (new DebugGroup("Combine"))
-                {
-                    // Add all to finished frame
-                    GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
-                    currentFB = PostMan.NextFramebuffer;
-                    currentFB.Use();
-                    GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
-                    GL.Disable(EnableCap.Blend);
-
-                    var shader = BloomCombineShader;
-                    shader.Use();
-                    Texture.Use(new[] {
-                        BloomBuffers[1].ColorBuffers[0],
-                        BloomBuffers[3].ColorBuffers[0], 
-                        BloomBuffers[5].ColorBuffers[0],
-                        DirtTexture, 
-                        CrackTexture,
-                        diffuse
-                    }, TextureUnit.Texture0);
-                    //shader.Set("avSizeWeight", SizeWeight);
-                    shader.Set("blurMap0", TextureUnit.Texture0);
-                    shader.Set("blurMap1", TextureUnit.Texture1);
-                    shader.Set("blurMap2", TextureUnit.Texture2);
-                    shader.Set("dirtMap", TextureUnit.Texture3);
-                    shader.Set("crackMap", TextureUnit.Texture4);
-                    shader.Set("diffuseMap", TextureUnit.Texture5);
-                    shader.Set("dirtHighlightScalar", DirtHighlightScalar);
-                    shader.Set("dirtGeneralScalar", DirtGeneralScalar);
-                    shader.Set("crackScalar", CrackScalar);
-                    Primitives.Quad.Draw();
-
-                    GL.Enable(EnableCap.Blend);
-                    GL.Disable(EnableCap.FramebufferSrgb);
-                }
-
-                return currentFB;
-            }
-        }
-
-        [Conditional("DEBUG")]
-        private void DrawImGuiBloomWindow()
-        {
-            if (!ImGui.Begin("Bloom"))
-                return;
-
-            ImGui.DragFloat("Bright pass", ref BrightPass, 0.1f, 1f, 100f);
-            ImGui.Separator();
-            ImGui.SliderFloat3("Size Weight", ref SizeWeight, 0f, 1f);
-            ImGui.DragFloat("Weight Scalar", ref WeightScalar, 0.01f, 0, 10f);
-            ImGui.Separator();
-
-            ImGui.End();
-        }
-
-        private void DisplayTexture(FrameBuffer finalBuffer, Texture inputTexture)
-        {
-            GL.Enable(EnableCap.FramebufferSrgb);
-            finalBuffer.Use();
-
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-            DoPostEffect(FullBrightShader, inputTexture);
-
-            GL.Disable(EnableCap.FramebufferSrgb);
-        }
-
-        [Pure]
-        private void DoPostEffect(Shader shader, Texture input)
-        {
-            shader.Use();
-            input.Use();
-            shader.Set("texture0", 0);
-            Primitives.Quad.Draw();
         }
 
         public void DoLightPass(Vector3 ambientColor)
@@ -1164,8 +1021,6 @@ namespace GLOOP.HPL
             shader.Set("normalTexture", TextureUnit.Texture1);
             shader.Set("Time", elapsedMilliseconds);
 
-            DrawImGuiSSAOWindow();
-
             shader.Set("MinSamples", MinSamples);
             shader.Set("MaxSamples", MaxSamples);
             shader.Set("MaxSamplesDistance", MaxSamplesDistance);
@@ -1175,23 +1030,6 @@ namespace GLOOP.HPL
             shader.Set("MaxDistance", MaxDistance);
 
             Primitives.Quad.Draw();
-        }
-
-        [Conditional("DEBUG")]
-        private void DrawImGuiSSAOWindow()
-        {
-            if (!ImGui.Begin("SSAO"))
-                return;
-
-            ImGui.DragInt("Min Samples", ref MinSamples, 1, 1, MaxSamples);
-            ImGui.DragInt("Max Samples", ref MaxSamples, 1, MinSamples, 64);
-            ImGui.DragFloat("Max Samples Distance", ref MaxSamplesDistance, 0.1f, 0, Camera.ZFar);
-            ImGui.DragFloat("Intensity", ref Intensity, 0.01f, 0.01f, 8f * 8);
-            ImGui.DragFloat("Bias", ref Bias, 0.01f, 0.01f, 0.5f);
-            ImGui.DragFloat("Sample Radius", ref SampleRadius, 0.001f, 0.001f, 0.2f);
-            ImGui.DragFloat("Sample Disatance", ref MaxDistance, 0.0f, 0.1f, 1);
-
-            ImGui.End();
         }
 
         private void RenderLights()
@@ -1230,6 +1068,74 @@ namespace GLOOP.HPL
             );
         }
 
+        #endregion
+
+        #region ImGUI
+        private void DrawImGUIWindows()
+        {
+            using var gpuTimer = GPUFrame[GPUProfiler.Event.ImGUI];
+            using var cpuTimer = CPUFrame[CPUProfiler.Event.ImGUI];
+
+            if (!enableImGui)
+                return;
+
+            DrawImGuiOptionsWindow();
+            DrawImGuiMetricsWindow();
+            DrawImGuiMaterialWindow();
+            DrawImGuiPortalWindow();
+            DrawImGUIColourCorrectionWindow();
+            DrawLightResolveImGuiWindow();
+            DrawImGuiBloomWindow();
+            DrawImGuiSSAOWindow();
+            queryPool.DrawWindow(nameof(queryPool));
+            CPUProfiler.Render(CPUFrame);
+            GPUProfiler.Render();
+            EventProfiler.DrawImGuiWindow();
+            TaskMaster.DrawImGuiWindow();
+
+            ImGuiController?.Render();
+        }
+
+        [Conditional("DEBUG")]
+        private void DrawImGuiOptionsWindow()
+        {
+            if (!ImGui.Begin("Options"))
+                return;
+
+            ImGui.Checkbox("FXAA", ref enableFXAA);
+            ImGui.Checkbox("SSAO", ref enableSSAO);
+            ImGui.Checkbox("Bloom", ref enableBloom);
+            ImGui.Checkbox("Update Visibility", ref shouldUpdateVisibility);
+
+            ImGui.End();
+        }
+
+        [Conditional("DEBUG")]
+        [Conditional("BETA")]
+        private void DrawImGuiMetricsWindow()
+        {
+            if (!ImGui.Begin("Metrics"))
+                return;
+
+            const int TargetFPS = 144;
+            var values = GPUFrameTimings.ToArray();
+            float average = values.Average();
+            var red = (float)MathFunctions.Map(average, 144, 120, 0, 1);
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(red, 1 - red, 0, 1));
+            ImGui.PlotHistogram("GPU", ref values[0], values.Length, 0, null, 144 * 2, 60, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
+            ImGui.Text($"Average: {1000f / average:0.00}ms ({average:0.000} fps)");
+            ImGui.PopStyleColor();
+
+            values = CPUFrameTimings.ToArray();
+            average = values.Average();
+            ImGui.PlotHistogram("CPU", ref values[0], values.Length, 0, null, 0, 1000f / TargetFPS, new System.Numerics.Vector2(CPUFrameTimings.Count * 2, 50));
+            ImGui.Text($"Average: {average:0.000}ms ({1000f / average:00.00} fps)");
+
+            Metrics.AddImGuiMetrics();
+
+            ImGui.End();
+        }
+
         [Conditional("DEBUG")]
         private void DrawImGuiMaterialWindow()
         {
@@ -1253,6 +1159,144 @@ namespace GLOOP.HPL
             ImGui.End();
         }
 
+        [Conditional("DEBUG")]
+        private void DrawImGuiPortalWindow()
+        {
+            if (!ImGui.Begin("Portals"))
+                return;
+
+            ImGui.Checkbox("Enable", ref enablePortalCulling);
+            ImGui.Text("Visible Areas");
+            foreach (var area in VisibleAreas)
+                ImGui.Text(area.Name);
+            ImGui.Separator();
+            ImGui.Text("Active Portal Queries");
+            foreach (var portal in PortalQueries)
+                ImGui.Text(portal.Item1.Name);
+
+            ImGui.End();
+        }
+
+        [Conditional("DEBUG")]
+        private void DrawImGUIColourCorrectionWindow()
+        {
+            if (!ImGui.Begin("Colour Correction"))
+                return;
+
+            ImGui.DragFloat("Key", ref Key, 0.01f, 0.0f, 2.0f);
+            ImGui.DragFloat("Exposure", ref Exposure, 0.01f, 0.5f, 2.0f);
+            ImGui.DragFloat("Gamma", ref Gamma, 0.01f, 1.0f, 2.5f);
+            ImGui.DragFloat("White cut", ref WhiteCut, 0.01f, 0.1f, 10.0f);
+
+            ImGui.End();
+        }
+
+        [Conditional("DEBUG")]
+        private void DrawLightResolveImGuiWindow()
+        {
+            if (!enableImGui)
+                return;
+
+            if (ImGui.Begin("Light Resolve"))
+            {
+                ImGui.SliderFloat("Noise scale", ref NoiseScalar, 0f, 0.1f);
+            }
+            ImGui.End();
+        }
+
+        [Conditional("DEBUG")]
+        private void DrawImGuiBloomWindow()
+        {
+            if (!ImGui.Begin("Bloom"))
+                return;
+
+            ImGui.DragFloat("Bright pass", ref BrightPass, 0.1f, 1f, 100f);
+            ImGui.Separator();
+            ImGui.SliderFloat3("Size Weight", ref SizeWeight, 0f, 1f);
+            ImGui.DragFloat("Weight Scalar", ref WeightScalar, 0.01f, 0, 10f);
+            ImGui.Separator();
+
+            ImGui.End();
+        }
+
+        [Conditional("DEBUG")]
+        private void DrawImGuiSSAOWindow()
+        {
+            if (!ImGui.Begin("SSAO"))
+                return;
+
+            ImGui.DragInt("Min Samples", ref MinSamples, 1, 1, MaxSamples);
+            ImGui.DragInt("Max Samples", ref MaxSamples, 1, MinSamples, 64);
+            ImGui.DragFloat("Max Samples Distance", ref MaxSamplesDistance, 0.1f, 0, Camera.ZFar);
+            ImGui.DragFloat("Intensity", ref Intensity, 0.01f, 0.01f, 8f * 8);
+            ImGui.DragFloat("Bias", ref Bias, 0.01f, 0.01f, 0.5f);
+            ImGui.DragFloat("Sample Radius", ref SampleRadius, 0.001f, 0.001f, 0.2f);
+            ImGui.DragFloat("Sample Disatance", ref MaxDistance, 0.0f, 0.1f, 1);
+
+            ImGui.End();
+        }
+
+        #endregion
+
+        #region Debug Rendering
+
+        [Conditional("DEBUG")]
+        private void RenderSkeletons()
+        {
+            if (showSkeletons)
+            {
+                foreach (var skinnedModel in scene.Models.Where(model => model.IsSkinned).Cast<AnimatedModel>())
+                {
+                    var modelspaceTransforms = skinnedModel.ModelSpaceBoneTransforms;
+                    skinnedModel.Skeleton.Render(
+                    LineRenderer,
+                        modelspaceTransforms,
+                        skinnedModel.Transform.Matrix
+                    );
+                }
+            }
+
+            LineRenderer.AddAxisHelper(Matrix4.Identity);
+        }
+
+        [Conditional("DEBUG")]
+        private void RenderBoundingBoxes()
+        {
+            GL.Disable(EnableCap.DepthTest);
+            LineRenderer.Render();
+            GL.Enable(EnableCap.DepthTest);
+
+            // TODO: Bounding boxes should use LineRenderer now
+            if (showBoundingBoxes)
+            {
+                using var bbGroup = new DebugGroup("Bounding Boxes");
+                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+                foreach (var area in scene.VisibilityPortals)
+                    area.RenderBoundingBox();
+                foreach (var area in scene.VisibilityAreas.Values)
+                    area.RenderBoundingBox();
+                foreach (var model in scene.Models)
+                    model.RenderBoundingBox();
+                foreach (var area in VisibleAreas)
+                    foreach (var model in area.Models)
+                        model.RenderBoundingBox();
+                foreach (var terrainPeice in scene.Terrain)
+                    terrainPeice.RenderBoundingBox();
+
+                GL.BlendFunc(BlendingFactor.One, BlendingFactor.Zero);
+            }
+        }
+       
+        #endregion
+
+        #region Events
+
+        private void OnBenchmarkComplete()
+        {
+            Close();
+        }
+        
         protected override void OnResize(ResizeEventArgs e)
         {
             base.OnResize(e);
@@ -1333,7 +1377,6 @@ namespace GLOOP.HPL
             ImGuiController?.MouseScroll(e.Offset);
         }
 
-
         protected override void OnClosing(CancelEventArgs e) {
             Mouse.Grabbed = false;
 
@@ -1344,12 +1387,6 @@ namespace GLOOP.HPL
             base.OnClosing(e);
         }
 
-        public enum GBufferTexture
-        {
-            Diffuse,
-            Position,
-            Normal,
-            Specular
-        }
+        #endregion
     }
 }
