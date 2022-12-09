@@ -753,8 +753,8 @@ namespace GLOOP.HPL
                         DoPostEffect(shader, currentBuffer.ColorBuffers[0]);
                         currentBuffer = newBuffer;
                     }
-                }
 #endif
+                }
             }
 
             return currentBuffer;
@@ -821,7 +821,7 @@ namespace GLOOP.HPL
             return outputBuffer;
         }
 
-        private void BlitToBackBuffer(FrameBuffer finalBuffer, FrameBuffer currentBuffer)
+        void BlitToBackBuffer(FrameBuffer finalBuffer, FrameBuffer currentBuffer)
         {
             finalBuffer.Use();
             DoPostEffect(FullBrightShader, currentBuffer.ColorBuffers[0]);
