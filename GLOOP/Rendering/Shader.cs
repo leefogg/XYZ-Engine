@@ -4,6 +4,7 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 
@@ -108,59 +109,74 @@ namespace GLOOP.Rendering
 
         public void Set(string name, TextureUnit unit)
         {
-            if (uniformLocations.TryGetValue(name, out var location))
+            CheckShaderIsCurrent();
+            if (TryGetUniformLocaiton(name, out var location))
                 GL.Uniform1(location, unit - TextureUnit.Texture0);
             else
                 Console.Error.WriteLine($"Cannot find uniform {name}");
         }
         public void Set(string name, int data)
         {
-            if (uniformLocations.TryGetValue(name, out var location))
+            CheckShaderIsCurrent();
+            if (TryGetUniformLocaiton(name, out var location))
                 GL.Uniform1(location, data);
             else
                 Console.Error.WriteLine($"Cannot find uniform {name}");
         }
         public void Set(string name, float data)
         {
-            if (uniformLocations.TryGetValue(name, out var location))
+            CheckShaderIsCurrent();
+            if (TryGetUniformLocaiton(name, out var location))
                 GL.Uniform1(location, data);
             else
                 Console.Error.WriteLine($"Cannot find uniform {name}");
         }
         public void Set(string name, bool data)
         {
-            if (uniformLocations.TryGetValue(name, out var location))
+            CheckShaderIsCurrent();
+            if (TryGetUniformLocaiton(name, out var location))
                 GL.Uniform1(location, data ? 1 : 0);
             else
                 Console.Error.WriteLine($"Cannot find uniform {name}");
         }
+
         public void Set(string name, Matrix4 data)
         {
-            if (uniformLocations.TryGetValue(name, out var location))
+            CheckShaderIsCurrent();
+            if (TryGetUniformLocaiton(name, out var location))
                 GL.UniformMatrix4(location, false, ref data);
             else
                 Console.Error.WriteLine($"Cannot find uniform {name}");
         }
         public void Set(string name, Vector4 data)
         {
-            if (uniformLocations.TryGetValue(name, out var location))
+            CheckShaderIsCurrent();
+            if (TryGetUniformLocaiton(name, out var location))
                 GL.Uniform4(location, data);
             else
                 Console.Error.WriteLine($"Cannot find uniform {name}");
         }
         public void Set(string name, Vector3 data)
         {
-            if (uniformLocations.TryGetValue(name, out var location))
+            CheckShaderIsCurrent();
+            if (TryGetUniformLocaiton(name, out var location))
                 GL.Uniform3(location, data);
             else
                 Console.Error.WriteLine($"Cannot find uniform {name}");
         }
         public void Set(string name, Vector2 data)
         {
-            if (uniformLocations.TryGetValue(name, out var location))
+            CheckShaderIsCurrent();
+            if (TryGetUniformLocaiton(name, out var location))
                 GL.Uniform2(location, data);
             else
                 Console.Error.WriteLine($"Cannot find uniform {name}");
+        }
+
+        [Conditional("DEBUG")]
+        private void CheckShaderIsCurrent()
+        {
+            Debug.Assert(Handle == Current.Handle, "Attempting update a different shader than what is currently bound.");
         }
 
         protected static void CompileShader(int shader)
