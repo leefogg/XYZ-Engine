@@ -49,7 +49,7 @@ namespace GLOOP
             BufferWrites = 0;
         }
 
-        public static void WriteLog(CPUProfiler.Frame cpuFrame, GPUProfiler.Frame gpuFrame)
+        public static void WriteLog(ulong frameNo, CPUProfiler.Frame cpuFrame, GPUProfiler.Frame gpuFrame)
         {
 #if !RELEASE
             float CPUEventLength(CPUProfiler.Event index)
@@ -65,7 +65,7 @@ namespace GLOOP
 
             RecordingStream?.WriteLine(
                 "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23}",
-                Window.FrameNumber,
+                frameNo,
                 cpuFrame.EndMs * 1_000_000,
                 gpuFrame.EndNs - gpuFrame.StartNs,
                 ModelsDrawn,

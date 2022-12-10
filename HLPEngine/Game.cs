@@ -92,7 +92,7 @@ namespace GLOOP.HPL
 #if PROFILE
         private readonly MapSetup MapToUse = Phi;
 #else
-        private readonly MapSetup MapToUse = Custom;
+        private readonly MapSetup MapToUse = Phi;
 #endif
 
         private Camera Camera;
@@ -486,9 +486,14 @@ namespace GLOOP.HPL
             {
                 using var gpuFrame = GPUProfiler.NextFrame;
                 GPUFrame = gpuFrame;
+                var frameNo = Window.FrameNumber;
                 TaskMaster.AddTask(
                     query.IsResultAvailable,
-                    () => { GPUFrameTimings.Set(1000f / (query.GetResult() / 1000000f)); GPUFrameTimings.MoveNext(); },
+                    () => {
+                        GPUFrameTimings.Set(1000f / (query.GetResult() / 1000000f)); 
+                        Metrics.WriteLog(frameNo, cpuFrame, gpuFrame);
+                        GPUFrameTimings.MoveNext();
+                    },
                     "Frame timing query"
                 );
 
@@ -551,8 +556,6 @@ namespace GLOOP.HPL
                 EventProfiler.NewFrame();
 
             }
-
-            Metrics.WriteLog(CPUFrame, GPUFrame);
 
             SwapBuffers();
 
