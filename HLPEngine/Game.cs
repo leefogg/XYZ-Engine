@@ -565,9 +565,9 @@ namespace GLOOP.HPL
 
             GeometryPass(currentBuffer);
 
-            currentBuffer = DoPostEffects();
+            DoPostEffects(backbuffer);
 
-            BlitToBackBuffer(backbuffer, currentBuffer);
+            //BlitToBackBuffer(backbuffer, currentBuffer);
 
             RenderSkeletons();
             RenderBoundingBoxes();
@@ -698,24 +698,23 @@ namespace GLOOP.HPL
 
         }
 
-        private FrameBuffer DoPostEffects()
+        private void DoPostEffects(FrameBuffer destination)
         {
-            GL.Disable(EnableCap.DepthTest);
-
             DoLightPass(new Vector3(0.00f));
-
-            FrameBuffer currentBuffer;
 
             using (GPUFrame[GPUProfiler.Event.Post])
             {
                 if (debugGBufferTexture > -1)
                 {
-                    DisplayTexture(currentBuffer = PostMan.NextFramebuffer, GBuffers.ColorBuffers[debugGBufferTexture]);
+                    if (debugGBufferTexture == 0 || debugGBufferTexture == 3)
+                        GL.Enable(EnableCap.FramebufferSrgb);
+                    destination.Use();
+                    DoPostEffect(FullBrightShader, GBuffers.ColorBuffers[debugGBufferTexture]);
+                    GL.Disable(EnableCap.FramebufferSrgb);
                 }
                 else if (debugLightBuffer)
                 {
-                    currentBuffer = PostMan.NextFramebuffer;
-                    currentBuffer.Use();
+                    destination.Use();
                     GL.Enable(EnableCap.FramebufferSrgb);
                     DoPostEffect(FullBrightShader, LightingBuffer.ColorBuffers[0]);
                     GL.Disable(EnableCap.FramebufferSrgb);
@@ -725,8 +724,7 @@ namespace GLOOP.HPL
                     if (enableBloom)
                         ExtractBloom(GBuffers.ColorBuffers[(int)GBufferTexture.Diffuse], LightingBuffer.ColorBuffers[0]);
 
-                    currentBuffer = PostMan.NextFramebuffer;
-                    currentBuffer.Use();
+                    destination.Use();
                     var shader = FinalCombine;
                     shader.Use();
                     shader.Set("EnableSSAO", enableSSAO);
@@ -790,21 +788,6 @@ namespace GLOOP.HPL
                     Primitives.Quad.Draw();
                 }
             }
-
-            GL.Enable(EnableCap.DepthTest);
-
-            return currentBuffer;
-        }
-
-        private void DisplayTexture(FrameBuffer finalBuffer, Texture inputTexture)
-        {
-            GL.Enable(EnableCap.FramebufferSrgb);
-            finalBuffer.Use();
-
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-            DoPostEffect(FullBrightShader, inputTexture);
-
-            GL.Disable(EnableCap.FramebufferSrgb);
         }
 
         private void DoPostEffect(Shader shader, Texture input)
