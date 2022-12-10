@@ -88,7 +88,7 @@ namespace GLOOP
                 GPUEventLength(GPUProfiler.Event.UpdateBuffers),
                 GPUEventLength(GPUProfiler.Event.Geomertry),
                 GPUEventLength(GPUProfiler.Event.Lighting),
-                GPUEventLength(GPUProfiler.Event.Post)
+                GPUEventLength(GPUProfiler.Event.PostEffects)
             );
 #endif
         }

@@ -92,7 +92,7 @@ namespace GLOOP.HPL
 #if PROFILE
         private readonly MapSetup MapToUse = Phi;
 #else
-        private readonly MapSetup MapToUse = Phi;
+        private readonly MapSetup MapToUse = Custom;
 #endif
 
         private Camera Camera;
@@ -711,7 +711,8 @@ namespace GLOOP.HPL
         {
             DoLightPass(new Vector3(0.00f));
 
-            using (GPUFrame[GPUProfiler.Event.Post])
+            using (CPUFrame[CPUProfiler.Event.PostEffects])
+            using (GPUFrame[GPUProfiler.Event.PostEffects])
             {
                 if (debugGBufferTexture > -1)
                 {

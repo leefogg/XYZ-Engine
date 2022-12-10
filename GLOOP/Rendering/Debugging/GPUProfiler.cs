@@ -21,7 +21,7 @@ namespace GLOOP.Rendering.Debugging
         {
             Geomertry,
             Lighting,
-            Post,
+            PostEffects,
             ImGUI,
             UpdateBuffers,
             Count
