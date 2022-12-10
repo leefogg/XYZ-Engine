@@ -185,7 +185,7 @@ namespace GLOOP.Rendering
                         }
                         else
                         {
-                            Console.WriteLine($"Animated model ({modelPath}) has no bones!?");
+                            //Console.WriteLine($"Animated model ({modelPath}) has no bones!?");
                         }
                     } 
 
