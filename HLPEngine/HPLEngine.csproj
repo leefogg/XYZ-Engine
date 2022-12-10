@@ -101,6 +101,9 @@
     <None Update="Assets\textures\003_RV_SCRATCHES_TEXTURE.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Assets\textures\BlueNoise.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\textures\Crack.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -116,10 +119,6 @@
     <None Update="Assets\textures\WireReinforced_N.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Assets\textures\" />
   </ItemGroup>
 
 </Project>

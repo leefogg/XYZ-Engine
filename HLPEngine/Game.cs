@@ -92,7 +92,7 @@ namespace GLOOP.HPL
 #if PROFILE
         private readonly MapSetup MapToUse = Phi;
 #else
-        private readonly MapSetup MapToUse = Custom;
+        private readonly MapSetup MapToUse = Phi;
 #endif
 
         private Camera Camera;
@@ -107,7 +107,7 @@ namespace GLOOP.HPL
 #endif
         private Shader PointLightShader;
         private Shader SpotLightShader;
-        private Texture2D RGBNoiseMap, BWNoiseMap;
+        private Texture2D RGBNoiseMap, BWNoiseMap, BlueNoiseTexture;
         private SingleColorMaterial singleColorMaterial;
         private Shader FinalCombineShader;
         private Shader FullBrightShader;
@@ -280,7 +280,7 @@ namespace GLOOP.HPL
 #endif
             PostMan.Init(width, height, PixelInternalFormat.Rgb16f);
 
-#region Shaders
+            #region Shaders
             var deferredMaterial = new DeferredRenderingGeoMaterial();
             PointLightShader = new StaticPixelShader(
                 "assets/shaders/deferred/LightPass/VertexShader.vert",
@@ -373,7 +373,7 @@ namespace GLOOP.HPL
             var allModels = scene.Models.Count() + scene.VisibilityAreas.Values.SelectMany(area => area.Models).Count();
             Console.WriteLine($"Scene: {numStatic} Static, {numStaticOccluders} of which occlude. {numDynamic} Dynamic. {allModels} Total.");
 
-            VisibleAreas.AddRange(scene.VisibilityAreas.Values); 
+            VisibleAreas.AddRange(scene.VisibilityAreas.Values);
 
             SetupBuffers();
 
@@ -435,6 +435,15 @@ namespace GLOOP.HPL
 
             CreateRandomRGBTexture();
             CreateRandomBWTexture();
+            BlueNoiseTexture = new Texture2D("assets/textures/BlueNoise.png", new TextureParams()
+            {
+                InternalFormat = PixelInternalFormat.R8,
+                GenerateMips = false,
+                MinFilter = TextureMinFilter.Nearest,
+                MagFilter = TextureMinFilter.Nearest,
+                WrapMode = TextureWrapMode.Repeat,
+                Name = "Blue Noise"
+            });
             DirtTexture = new Texture2D("assets/textures/Scratches.png", new TextureParams()
             {
                 InternalFormat = PixelInternalFormat.R8,
@@ -455,9 +464,9 @@ namespace GLOOP.HPL
             UpdateBloomBuffer();
         }
 
-#endregion
+        #endregion
 
-#region Game Loop
+        #region Game Loop
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             using var cpuFrame = CPUProfiler.NextFrame;
@@ -745,7 +754,7 @@ namespace GLOOP.HPL
                     shader.Set("diffuseMap", TextureUnit.Texture0);
                     LightingBuffer.ColorBuffers[0].Use(TextureUnit.Texture3);
                     shader.Set("lightMap", TextureUnit.Texture3);
-                    BWNoiseMap.Use(TextureUnit.Texture9);
+                    BlueNoiseTexture.Use(TextureUnit.Texture9);
                     shader.Set("noiseMap", TextureUnit.Texture9);
                     // Bloom
                     //shader.Set("avSizeWeight", SizeWeight);
