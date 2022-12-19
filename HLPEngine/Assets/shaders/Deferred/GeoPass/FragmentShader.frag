@@ -38,6 +38,7 @@ struct Material {
 	vec2 TextureOffset;
 	float NormalStrength;
 	bool IsWorldSpaceUVs;
+	uint BoneStartIdx;
 };
 
 vec3 UnpackNormalmapYW(in vec4 avNormalValue, float normalStrength)
