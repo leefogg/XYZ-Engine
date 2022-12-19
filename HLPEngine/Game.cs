@@ -198,7 +198,7 @@ namespace GLOOP.HPL
 #endif
         private DebugLineRenderer LineRenderer;
 
-#region Setup
+        #region Setup
 
         public Game(int width, int height, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings) 
@@ -437,7 +437,7 @@ namespace GLOOP.HPL
             CreateRandomBWTexture();
             BlueNoiseTexture = new Texture2D("assets/textures/BlueNoise.png", new TextureParams()
             {
-                InternalFormat = PixelInternalFormat.R8,
+                InternalFormat = PixelInternalFormat.Rgba,
                 GenerateMips = false,
                 MinFilter = TextureMinFilter.Nearest,
                 MagFilter = TextureMinFilter.Nearest,
@@ -446,7 +446,7 @@ namespace GLOOP.HPL
             });
             DirtTexture = new Texture2D("assets/textures/Scratches.png", new TextureParams()
             {
-                InternalFormat = PixelInternalFormat.R8,
+                InternalFormat = PixelInternalFormat.CompressedRed,
                 GenerateMips = false,
                 MinFilter = TextureMinFilter.Nearest,
                 MagFilter = TextureMinFilter.Nearest,
@@ -454,7 +454,7 @@ namespace GLOOP.HPL
             });
             CrackTexture = new Texture2D("assets/textures/Crack.jpg", new TextureParams()
             {
-                InternalFormat = PixelInternalFormat.Rgb,
+                InternalFormat = PixelInternalFormat.CompressedRgba,
                 GenerateMips = false,
                 MinFilter = TextureMinFilter.Linear,
                 MagFilter = TextureMinFilter.Linear,
@@ -570,14 +570,15 @@ namespace GLOOP.HPL
         {
             GL.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
 
-            var currentBuffer = PostMan.NextFramebuffer;
-
-            GeometryPass(currentBuffer);
+            GeometryPass(PostMan.NextFramebuffer);
 
             DoPostEffects(backbuffer);
 
-            //BlitToBackBuffer(backbuffer, currentBuffer);
+            RenderDebug();
+        }
 
+        private void RenderDebug()
+        {
             RenderSkeletons();
             RenderBoundingBoxes();
         }
@@ -1008,7 +1009,7 @@ namespace GLOOP.HPL
 
 #endregion
 
-#region ImGUI
+        #region ImGUI
         private void DrawImGUIWindows()
         {
             using var gpuTimer = GPUFrame[GPUProfiler.Event.ImGUI];
@@ -1245,7 +1246,7 @@ namespace GLOOP.HPL
        
 #endregion
 
-#region Events
+        #region Events
 
         private void OnBenchmarkComplete()
         {
