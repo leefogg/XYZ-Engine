@@ -33,7 +33,7 @@ namespace GLOOP.HPL.Loading
 
         private void loadAreas(string areaFilePath)
         {
-            Areas = Deserialize<Areas>(areaFilePath);
+            Areas = File.Exists(areaFilePath) ? Deserialize<Areas>(areaFilePath) : new Areas();
         }
 
         private void loadTerrain(string baseFilePath)
@@ -156,6 +156,9 @@ namespace GLOOP.HPL.Loading
 
         private void loadLights(string lightsPath)
         {
+            if (!File.Exists(lightsPath))
+                return;
+
             var lightsModel = Deserialize<Lights>(lightsPath);
 
             var allLights = lightsModel
@@ -189,8 +192,9 @@ namespace GLOOP.HPL.Loading
                         var fullPath = Path.Combine(Constants.SOMARoot, entFile.Path);
                         Console.Write(".");
 
-                        //if (entFile.Path.Contains("Generator_Habitat.ent")) { 
-                        if (!entFile.Path.Contains("camera_surveillance")) {
+                        //if (!entFile.Path.Contains("camera_surveillance")) 
+                        if (true) 
+                        {
                             var entity = Deserialize<Entity>(fullPath);
                             entities[entFile.Id] = entity;
 
@@ -284,8 +288,9 @@ namespace GLOOP.HPL.Loading
                         var fullPath = Path.Combine(Constants.SOMARoot, entFile.Path);
                         Console.Write(".");
 
-                       //if (fullPath.Contains("05_01_adon_support.DAE") || fullPath.Contains("05_01_adon_box_small.DAE") || fullPath.Contains("phi_tunnel_straight.DAE")) { 
-                        if (true) {
+                        //if (fullPath.Contains("05_01_adon_support.DAE") || fullPath.Contains("05_01_adon_box_small.DAE") || fullPath.Contains("phi_tunnel_straight.DAE")) { 
+                        if (true) 
+                        {
                             files[entFile.Id] = new HPLModelLoader(fullPath, assimp, material);
 
                             //Console.WriteLine("SUCCESS.");
@@ -295,7 +300,7 @@ namespace GLOOP.HPL.Loading
                         }
                     } catch (Exception ex) {
                         //Console.WriteLine("Failed.");
-                        //Console.WriteLine(ex);
+                        Console.WriteLine(ex);
                         failed.Add(entFile.Path);
                     }
                 }
