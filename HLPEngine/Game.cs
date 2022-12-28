@@ -28,6 +28,7 @@ using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 using GLOOP.DAE;
+using HPLEngine.Loading;
 
 namespace GLOOP.HPL
 {
@@ -93,7 +94,7 @@ namespace GLOOP.HPL
 #if PROFILE
         private readonly MapSetup MapToUse = Phi;
 #else
-        private readonly MapSetup MapToUse = Bedroom;
+        private readonly MapSetup MapToUse = Phi;
 #endif
 
         #region Members
@@ -248,8 +249,11 @@ namespace GLOOP.HPL
 #endif
         }
         
-        protected override void OnLoad() {
+        protected override void OnLoad() 
+        {
             base.OnLoad();
+
+            Stores.Init();
 
             GL.Enable(EnableCap.Blend);
 

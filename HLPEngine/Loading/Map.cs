@@ -1,6 +1,7 @@
 ﻿using GLOOP.Extensions;
 using GLOOP.Rendering;
 using GLOOP.Rendering.Materials;
+using HPLEngine.Loading;
 using OpenTK;
 using OpenTK.Mathematics;
 using System;
@@ -43,25 +44,29 @@ namespace GLOOP.HPL.Loading
             if (!terrainInfo.Active || string.IsNullOrEmpty(terrainInfo.BaseMaterialFile))
                 return;
 
-            var baseMaterial = Deserialize<Material>(Constants.MaterialsFolder + Path.GetFileName(terrainInfo.BaseMaterialFile));
-            var baseTexture = TextureCache.Get(Constants.TexturesDDSFolder + Path.GetFileName(baseMaterial.Textures.Diffuse.Path));
+            if (!Stores.MAT.TryGetValue(Path.GetFileName(terrainInfo.BaseMaterialFile), out var baseMaterialPath))
+                return;
+            var baseMaterial = Deserialize<Material>(baseMaterialPath);
+            if (!Stores.DDS.TryGetValue(Path.GetFileName(baseMaterial.Textures.Diffuse.Path), out var baseTexturePath))
+                return;
+            var baseTexture = TextureCache.Get(baseTexturePath);
 
             var splatTexture = new Texture2D(baseFilePath + "_Terrain_blendlayer_0.dds");
 
             var textures = new Texture2D[4];
             for (int i = 0; i < 4; i++)
             {
+                textures[i] = Texture.Black;
+
                 if (string.IsNullOrEmpty(terrainInfo.BlendLayers.Materials[i].File))
-                {
-                    textures[i] = Texture.Black;
-                } 
-                else
-                {
-                    var materialPath = Constants.MaterialsFolder + Path.GetFileName(terrainInfo.BlendLayers.Materials[i].File);
-                    var material = Deserialize<Material>(materialPath);
-                    var texturePath = Constants.TexturesDDSFolder + Path.GetFileName(material.Textures.Diffuse.Path);
+                    continue;
+
+                if (!Stores.MAT.TryGetValue(Path.GetFileName(terrainInfo.BlendLayers.Materials[i].File), out var materialPath))
+                    continue;
+
+                var material = Deserialize<Material>(materialPath);
+                if (Stores.DDS.TryGetValue(Path.GetFileName(material.Textures.Diffuse.Path), out var texturePath))
                     textures[i] = TextureCache.Get(texturePath);
-                }
             }
 
             var terrainShader = new DeferredSplatTerrainShader();
@@ -192,8 +197,8 @@ namespace GLOOP.HPL.Loading
                         var fullPath = Path.Combine(Constants.SOMARoot, entFile.Path);
                         Console.Write(".");
 
-                        //if (!entFile.Path.Contains("camera_surveillance")) 
-                        if (true) 
+                        if (!entFile.Path.Contains("camera_surveillance")) 
+                        //if (true) 
                         {
                             var entity = Deserialize<Entity>(fullPath);
                             entities[entFile.Id] = entity;
@@ -300,7 +305,7 @@ namespace GLOOP.HPL.Loading
                         }
                     } catch (Exception ex) {
                         //Console.WriteLine("Failed.");
-                        Console.WriteLine(ex);
+                        //Console.WriteLine(ex);
                         failed.Add(entFile.Path);
                     }
                 }

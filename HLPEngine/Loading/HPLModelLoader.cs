@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
 using GLOOP.Rendering.Materials;
+using HPLEngine.Loading;
 
 namespace GLOOP.HPL.Loading
 {
@@ -72,67 +73,44 @@ namespace GLOOP.HPL.Loading
 
             if (string.IsNullOrEmpty(diffusePath))
                 diffusePath = Path.ChangeExtension(sourceFile, "dds");
-
+            if (Path.GetExtension(diffusePath) != ".dds")
+                diffusePath = Path.ChangeExtension(diffusePath, "dds");
+            
             try
             {
-                var extension = "dds";
-                var texturesFolder = Constants.RootFolder + extension;
-                Texture2D findTex(string[] names, PixelInternalFormat format)
-                {
-                    Texture2D tex = null;
-
-                    foreach (var name in names)
-                    {
-                        var path = Path.Combine(texturesFolder, name + "." + extension);
-                        if (!File.Exists(path))
-                            continue;
-                        tex = TextureCache.Get(path, format);
-                        if (tex != null)
-                            break;
-                    }
-
-                    return tex;
-                }
-
-                string materialPath = null;
-                if (Path.GetExtension(diffusePath) == ".mat")
-                {
-                    var matPath = Path.Combine(Constants.MaterialsFolder, Path.GetFileName(diffusePath));
-                    if (File.Exists(matPath))
-                        materialPath = matPath;
-                }
-                if (materialPath == null)
-                {
-                    var materialName = Path.GetFileName(diffusePath);
-                    var matPath = Path.Combine(Constants.MaterialsFolder, Path.ChangeExtension(materialName, "mat"));
-                    if (File.Exists(matPath))
-                        materialPath = matPath;
-                }
-                if (materialPath != null)
+                var diffuseName = Path.GetFileName(diffusePath);
+                
+                if (Stores.MAT.TryGetValue(Path.ChangeExtension(diffuseName, ".mat"), out var materialPath))
                 {
                     var material = Deserialize<Material>(materialPath);
 
                     diffusePath = material.Textures.Diffuse?.Path ?? diffusePath;
                     specularPath = material.Textures.Specular?.Path ?? specularPath;
                     illumPath = material.Textures.Illumination?.Path ?? illumPath;
+
+                    diffuseName = Path.GetFileName(diffusePath);
                 }
 
-                diffusePath = Path.ChangeExtension(diffusePath, extension);
+                if (Stores.DDS.TryGetValue(diffuseName, out diffusePath))
+                    diffuseTex = TextureCache.Get(diffusePath, PixelInternalFormat.CompressedRgbaS3tcDxt5Ext);
 
-                string diffuseName;
-                if (diffusePath != null)
+                static Texture2D TryFindTex(string[] names, PixelInternalFormat format)
                 {
-                    diffuseName = Path.GetFileNameWithoutExtension(diffusePath);
-                    diffusePath = Path.Combine(texturesFolder, Path.GetFileName(diffusePath));
-                    if (File.Exists(diffusePath))
-                        diffuseTex = TextureCache.Get(diffusePath, PixelInternalFormat.CompressedRgbaS3tcDxt5Ext);
-                } 
-                else
-                {
-                    diffuseTex = Texture.Error;
-                    diffuseName = string.Empty;
+                    Texture2D tex = null;
+                    foreach (var name in names)
+                    {
+                        if (Stores.DDS.TryGetValue(name + ".dds", out var path))
+                        {
+                            tex = TextureCache.Get(path, format);
+                            if (tex != null)
+                               break;
+                        }
+                    }
+
+                    return tex;
                 }
 
+                diffuseName = Path.GetFileNameWithoutExtension(diffusePath);
                 var normNames = new[] {
                     Path.GetFileNameWithoutExtension(normalPath ?? ""),
                     diffuseName + "_nrm",
@@ -140,14 +118,14 @@ namespace GLOOP.HPL.Loading
                     diffuseName + "_norm",
                     diffuseName + "_nmor",
                 };
-                normalTex = findTex(normNames, PixelInternalFormat.CompressedRg);
+                normalTex = TryFindTex(normNames, PixelInternalFormat.CompressedRg);
 
                 var specNames = new[]
                 {
                     Path.GetFileNameWithoutExtension(specularPath ?? ""),
                     diffuseName + "_spec"
                 };
-                specularTex = findTex(specNames, PixelInternalFormat.Rgba);
+                specularTex = TryFindTex(specNames, PixelInternalFormat.Rgba);
 
                 var illumNames = new[]
                 {
@@ -155,7 +133,7 @@ namespace GLOOP.HPL.Loading
                     diffuseName + "_illum",
                     diffuseName + "_emmi"
                 };
-                illumTex = findTex(illumNames, PixelInternalFormat.Rgb8);
+                illumTex = TryFindTex(illumNames, PixelInternalFormat.Rgb8);
             } 
             catch (Exception ex)
             {
