@@ -55,7 +55,8 @@ namespace GLOOP.Rendering
             }
             catch (Exception ex)
             {
-                Console.WriteLine(path);
+                Console.WriteLine("Failed to load texture " + path);
+                Console.WriteLine(ex);
                 return null;
             }
         }
