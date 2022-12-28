@@ -49,8 +49,7 @@ namespace GLOOP.HPL.Loading
         }
 
         public HPLModelLoader Load(AssimpContext context, DeferredRenderingGeoMaterial shader) {
-            var SOMAHome = @"C:\Program Files (x86)\Steam\steamapps\common\SOMA";
-            var fullPath = Path.Combine(SOMAHome, Model.Mesh.FileName);
+            var fullPath = Path.Combine(Constants.SOMARoot, Model.Mesh.FileName);
             var entity = new HPLModelLoader(fullPath, context, shader);
 
             if (bool.TryParse(Variables.First(v => v.Name == "ShowMesh")?.Value, out var visible) && !visible)
