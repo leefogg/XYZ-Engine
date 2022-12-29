@@ -94,7 +94,7 @@ namespace GLOOP.HPL
 #if PROFILE
         private readonly MapSetup MapToUse = Phi;
 #else
-        private readonly MapSetup MapToUse = Phi;
+        private readonly MapSetup MapToUse = Bedroom;
 #endif
 
         #region Members

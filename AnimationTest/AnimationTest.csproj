@@ -11,97 +11,97 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="assets\Animations\arm_slam.dae">
+    <None Update="Assets\Animations\arm_slam.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\Animations\arm_wave.dae">
+    <None Update="Assets\Animations\arm_wave.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\Animations\attack.dae">
+    <None Update="Assets\Animations\attack.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\Animations\awaken.dae">
+    <None Update="Assets\Animations\awaken.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\Animations\idle.dae">
+    <None Update="Assets\Animations\idle.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\Animations\moray_charge.dae">
+    <None Update="Assets\Animations\moray_charge.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\Animations\moray_swim_1.dae">
+    <None Update="Assets\Animations\moray_swim_1.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\Animations\spasms.dae">
+    <None Update="Assets\Animations\spasms.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\Animations\uneasy.dae">
+    <None Update="Assets\Animations\uneasy.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\Animations\walk_n_sit.dae">
+    <None Update="Assets\Animations\walk_n_sit.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\Animations\walk_n_sit.dae_anim">
+    <None Update="Assets\Animations\walk_n_sit.dae_anim">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\crawler_infected.dae">
+    <None Update="Assets\models\crawler_infected.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\leviathan.dae">
+    <None Update="Assets\models\leviathan.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\maintenance_carl.dae">
+    <None Update="Assets\models\maintenance_carl.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\model-fixed.dae">
+    <None Update="Assets\models\model-fixed.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\model.dae">
+    <None Update="Assets\models\model.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\moray.dae">
+    <None Update="Assets\models\moray.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\subway_girl.dae">
+    <None Update="Assets\models\subway_girl.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\worker_medium_infected.dae">
+    <None Update="Assets\models\worker_medium_infected.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\AnimatedModel\FragmentShader.frag">
+    <None Update="Assets\shaders\AnimatedModel\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\AnimatedModel\VertexShader.vert">
+    <None Update="Assets\shaders\AnimatedModel\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\SkinWeights\FragmentShader.frag">
+    <None Update="Assets\shaders\SkinWeights\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\SkinWeights\VertexShader.vert">
+    <None Update="Assets\shaders\SkinWeights\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\crawler_infected.png">
+    <None Update="Assets\textures\crawler_infected.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\diffuse.png">
+    <None Update="Assets\textures\diffuse.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\leviathan.png">
+    <None Update="Assets\textures\leviathan.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\maintenance_carl.png">
+    <None Update="Assets\textures\maintenance_carl.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\moray.png">
+    <None Update="Assets\textures\moray.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\textures\subway_girl_body.png">
+    <None Update="Assets\textures\subway_girl_body.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="assets\shaders\" />
+    <Folder Include="Assets\shaders\" />
   </ItemGroup>
 
 </Project>

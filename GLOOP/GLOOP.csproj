@@ -18,9 +18,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="assets\shaders\PostEffects\**" />
-    <EmbeddedResource Remove="assets\shaders\PostEffects\**" />
-    <None Remove="assets\shaders\PostEffects\**" />
+    <Compile Remove="Assets\shaders\PostEffects\**" />
+    <EmbeddedResource Remove="Assets\shaders\PostEffects\**" />
+    <None Remove="Assets\shaders\PostEffects\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,43 +33,43 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="assets\barrel.obj">
+    <None Update="Assets\barrel.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\backpack\ao.jpg">
+    <None Update="Assets\models\backpack\ao.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\backpack\backpack.mtl">
+    <None Update="Assets\models\backpack\backpack.mtl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\backpack\backpack.obj">
+    <None Update="Assets\models\backpack\backpack.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\backpack\diffuse.jpg">
+    <None Update="Assets\models\backpack\diffuse.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\backpack\normal.png">
+    <None Update="Assets\models\backpack\normal.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\backpack\roughness.jpg">
+    <None Update="Assets\models\backpack\roughness.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\backpack\source_attribution.txt">
+    <None Update="Assets\models\backpack\source_attribution.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\backpack\specular.jpg">
+    <None Update="Assets\models\backpack\specular.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\barrel.obj">
+    <None Update="Assets\models\barrel.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\models\cube.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\dodecahedron.obj">
+    <None Update="Assets\models\dodecahedron.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\icosphere.obj">
+    <None Update="Assets\models\icosphere.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\models\sphere.obj">
@@ -78,43 +78,43 @@
     <None Update="Assets\models\plane.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\plane.obj">
+    <None Update="Assets\models\plane.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\pyramid.obj">
+    <None Update="Assets\models\pyramid.obj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\sarcastic_fringehead.bmp">
+    <None Update="Assets\models\sarcastic_fringehead.bmp">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\sarcastic_fringehead.dae">
+    <None Update="Assets\models\sarcastic_fringehead.dae">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\sarcastic_fringehead.ent">
+    <None Update="Assets\models\sarcastic_fringehead.ent">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\wau_fish_01.bmp">
+    <None Update="Assets\models\wau_fish_01.bmp">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\wau_fish_01.DAE">
+    <None Update="Assets\models\wau_fish_01.DAE">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\wau_fish_01.ent">
+    <None Update="Assets\models\wau_fish_01.ent">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\worker_medium_infected.bmp">
+    <None Update="Assets\models\worker_medium_infected.bmp">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\worker_medium_infected.DAE">
+    <None Update="Assets\models\worker_medium_infected.DAE">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\models\worker_medium_infected.ent">
+    <None Update="Assets\models\worker_medium_infected.ent">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\basic.frag">
+    <None Update="Assets\shaders\basic.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\basic.vert">
+    <None Update="Assets\shaders\basic.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\shaders\Blur\FragmentShader.frag">
@@ -135,16 +135,16 @@
     <None Update="Assets\shaders\FullBright\3D\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\FullBright\FragmentShader.frag">
+    <None Update="Assets\shaders\FullBright\FragmentShader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\FullBright\VertexShader.vert">
+    <None Update="Assets\shaders\FullBright\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Line\shader.frag">
+    <None Update="Assets\shaders\Line\shader.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\Line\shader.vert">
+    <None Update="Assets\shaders\Line\shader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\shaders\Multiply\fragment.frag">
@@ -165,10 +165,10 @@
     <None Update="Assets\shaders\SingleColor\3D\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\SingleColor\basic.frag">
+    <None Update="Assets\shaders\SingleColor\basic.frag">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="assets\shaders\SingleColor\basic.vert">
+    <None Update="Assets\shaders\SingleColor\basic.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\textures\black.png">
@@ -183,10 +183,6 @@
     <None Update="Assets\textures\white.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="assets\shaders\Line\" />
   </ItemGroup>
 
 </Project>

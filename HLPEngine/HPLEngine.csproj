@@ -98,7 +98,7 @@
     <None Update="Assets\shaders\SSAO\VertexShader.vert">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\textures\003_RV_SCRATCHES_TEXTURE.png">
+    <None Update="assets\textures\003_RV_SCRATCHES_TEXTURE.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\textures\BlueNoise.png">
@@ -107,16 +107,16 @@
     <None Update="Assets\textures\Crack.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\textures\Cracked_N.jpg">
+    <None Update="assets\textures\Cracked_N.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\textures\dirt.png">
+    <None Update="assets\textures\dirt.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\textures\Scratches.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\textures\WireReinforced_N.jpg">
+    <None Update="assets\textures\WireReinforced_N.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
