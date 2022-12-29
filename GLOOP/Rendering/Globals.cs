@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 
 namespace GLOOP.Rendering
@@ -39,19 +40,26 @@ namespace GLOOP.Rendering
             }
         }
 
-        private static int? maxLabelLength, uniformBufferOffsetAlignment, maxTextureUnits, maxDebugGroupNameLength;
+        private static int? maxLabelLength,
+            uniformBufferOffsetAlignment, 
+            maxTextureUnits, 
+            maxDebugGroupNameLength,
+            majorVersion,
+            minorVersion;
         private static float? maxTextureAnisotropy;
-        private static string[]? supportedExtensions;
+        private static string vendorName, driverVersion, virtualDeviceName;
+        private static string[] supportedExtensions;
 
         public static int MaxLabelLength => maxLabelLength ??= GL.GetInteger((GetPName)All.MaxLabelLength);
-
         public static int UniformBufferOffsetAlignment => uniformBufferOffsetAlignment ??= GL.GetInteger((GetPName)All.UniformBufferOffsetAlignment);
-
         public static int MaxTextureUnits => maxTextureUnits ??= GL.GetInteger((GetPName)All.MaxTextureImageUnits);
-
         public static int MaxDebugGroupNameLength => maxDebugGroupNameLength ??= GL.GetInteger((GetPName)All.MaxDebugMessageLength);
-
         public static float MaxTextureAnisotropy => maxTextureAnisotropy ??= GL.GetFloat((GetPName)All.MaxTextureMaxAnisotropy);
+        public static float MajorVersion => majorVersion ??= GL.GetInteger((GetPName)All.MajorVersion);
+        public static float MinorVersion => minorVersion ??= GL.GetInteger((GetPName)All.MinorVersion);
+        public static string VendorName => vendorName ??= GL.GetString(StringName.Vendor);
+        public static string DriverVersion => driverVersion ??= GL.GetString(StringName.Version);
+        public static string VirtualDeviceName => virtualDeviceName ??= GL.GetString(StringName.Renderer);
 
         public static string[] SupportedExtensions
         {
@@ -70,5 +78,14 @@ namespace GLOOP.Rendering
         }
 
         public static bool SupportsExtension(string extensionName) => SupportedExtensions.Contains(extensionName);
+
+        public static void PrintHardwareInfo()
+        {
+            Console.WriteLine($"{VirtualDeviceName} version {DriverVersion} by {VendorName}");
+            Console.WriteLine($"{MajorVersion}.{MinorVersion}");
+            Console.WriteLine("Supported Extensions:");
+            foreach (var extension in SupportedExtensions)
+                Console.WriteLine(extension);
+        }
     }
 }

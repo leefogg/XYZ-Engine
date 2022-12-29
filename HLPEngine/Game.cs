@@ -253,6 +253,8 @@ namespace GLOOP.HPL
         {
             base.OnLoad();
 
+            //Globals.PrintHardwareInfo();
+            
             Stores.Init();
 
             GL.Enable(EnableCap.Blend);
