@@ -82,7 +82,7 @@ namespace GLOOP.Rendering
         public static void PrintHardwareInfo()
         {
             Console.WriteLine($"{VirtualDeviceName} version {DriverVersion} by {VendorName}");
-            Console.WriteLine($"{MajorVersion}.{MinorVersion}");
+            Console.WriteLine($"GL Version {MajorVersion}.{MinorVersion}");
             Console.WriteLine("Supported Extensions:");
             foreach (var extension in SupportedExtensions)
                 Console.WriteLine(extension);
